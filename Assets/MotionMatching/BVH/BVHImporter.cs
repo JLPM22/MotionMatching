@@ -6,10 +6,13 @@ using UnityEngine;
 
 namespace MotionMatching
 {
-    using Joint = BVHAnimation.Joint;
+    using Joint = Skeleton.Joint;
     using EndSite = BVHAnimation.EndSite;
     using Frame = BVHAnimation.Frame;
 
+    /// <summary>
+    /// Imports a BVH file and stores the animation data in Unity format (BVHAnimation).
+    /// </summary>
     public class BVHImporter
     {
         private List<AxisOrder> Channels = new List<AxisOrder>();
@@ -26,7 +29,7 @@ namespace MotionMatching
             if (words[w++] != "ROOT") Debug.LogError("[BVHImporter] ROOT not found");
             Joint root = new Joint(words[w++], 0, 0, Vector3.zero);
             ReadLeftBracket(words, ref w);
-            root.Offset = ReadOffset(words, ref w);
+            root.LocalOffset = ReadOffset(words, ref w);
             ReadChannels(words, ref w, true);
             animation.AddJoint(root);
             // JOINTS
@@ -43,7 +46,7 @@ namespace MotionMatching
                 parentIndexStack.Push(parent);
                 parent = jointIndex - 1;
                 brackets += 1;
-                joint.Offset = ReadOffset(words, ref w);
+                joint.LocalOffset = ReadOffset(words, ref w);
                 ReadChannels(words, ref w);
                 animation.AddJoint(joint);
                 if (words[w] == "End")

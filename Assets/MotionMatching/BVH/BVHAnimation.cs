@@ -4,16 +4,21 @@ using UnityEngine;
 
 namespace MotionMatching
 {
+    using Joint = Skeleton.Joint;
+
+    /// <summary>
+    /// Stores the BVH animation data in Unity format.
+    /// </summary>
     public class BVHAnimation
     {
         public float FrameTime { get; private set; }
-        public List<Joint> Skeleton { get; private set; }
+        public Skeleton Skeleton { get; private set; }
         public List<EndSite> EndSites { get; private set; }
         public Frame[] Frames { get; private set; }
 
         public BVHAnimation()
         {
-            Skeleton = new List<Joint>();
+            Skeleton = new Skeleton();
             EndSites = new List<EndSite>();
         }
 
@@ -34,28 +39,12 @@ namespace MotionMatching
 
         public void AddJoint(Joint joint)
         {
-            Skeleton.Add(joint);
+            Skeleton.AddJoint(joint);
         }
 
         public void AddEndSite(EndSite endSite)
         {
             EndSites.Add(endSite);
-        }
-
-        public struct Joint
-        {
-            public string Name;
-            public int Index;
-            public int ParentIndex; // 0 - Root
-            public Vector3 Offset;
-
-            public Joint(string name, int index, int parentIndex, Vector3 offset)
-            {
-                Name = name;
-                Index = index;
-                ParentIndex = parentIndex;
-                Offset = offset;
-            }
         }
 
         public struct EndSite

@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using MotionMatching;
 using UnityEngine;
 
+/// <summary>
+/// Import a BVH and visualize it using Gizmos.
+/// </summary>
 public class BVHDebug : MonoBehaviour
 {
     public TextAsset BVH;
     public bool Play;
     public float UnitScale = 1;
+    public float SpheresRadius = 0.1f;
     public bool LockFPS = true;
 
     private BVHAnimation Animation;
@@ -19,20 +23,20 @@ public class BVHDebug : MonoBehaviour
         BVHImporter importer = new BVHImporter();
         Animation = importer.Import(BVH);
 
-        Skeleton = new Transform[Animation.Skeleton.Count];
-        foreach (BVHAnimation.Joint joint in Animation.Skeleton)
+        Skeleton = new Transform[Animation.Skeleton.Joints.Count];
+        foreach (Skeleton.Joint joint in Animation.Skeleton.Joints)
         {
             Transform t = (new GameObject()).transform;
             t.name = joint.Name;
             if (joint.Index == 0) t.SetParent(transform, false);
             else t.SetParent(Skeleton[joint.ParentIndex], false);
-            t.localPosition = joint.Offset * UnitScale;
+            t.localPosition = joint.LocalOffset * UnitScale;
             Skeleton[joint.Index] = t;
         }
 
         if (LockFPS)
         {
-            Application.targetFrameRate = 60;
+            Application.targetFrameRate = (int)(1.0f / Animation.FrameTime);
             Debug.Log("[BVHDebug] Updated Target FPS: " + Application.targetFrameRate);
         }
         else
@@ -85,7 +89,7 @@ public class BVHDebug : MonoBehaviour
         foreach (Transform t in Skeleton)
         {
             if (t.name == "End Site") continue;
-            Gizmos.DrawWireSphere(t.position, 0.1f);
+            Gizmos.DrawWireSphere(t.position, SpheresRadius);
         }
     }
 #endif
