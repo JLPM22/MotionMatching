@@ -62,10 +62,10 @@ namespace MotionMatching
             GetJointFeatures(pose, poseNext, poseSet.Skeleton, hips, characterOrigin, characterForward, clip, out _, out feature.HipsLocalVelocity);
             // Trajectory
             feature.FutureTrajectoryLocalPosition = new Vector2[3];
-            feature.FutureTrajectoryLocalDirections = new Vector2[3];
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 20], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[0], out feature.FutureTrajectoryLocalDirections[0]);
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 40], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[1], out feature.FutureTrajectoryLocalDirections[1]);
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 60], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[2], out feature.FutureTrajectoryLocalDirections[2]);
+            feature.FutureTrajectoryLocalDirection = new Vector2[3];
+            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 20], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[0], out feature.FutureTrajectoryLocalDirection[0]);
+            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 40], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[1], out feature.FutureTrajectoryLocalDirection[1]);
+            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 60], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[2], out feature.FutureTrajectoryLocalDirection[2]);
             return feature;
         }
 

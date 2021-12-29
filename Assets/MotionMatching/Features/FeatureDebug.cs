@@ -172,7 +172,7 @@ public class FeatureDebug : MonoBehaviour
                 Vector2 futurePos = fv.FutureTrajectoryLocalPosition[i];
                 Vector3 futureWorld = characterOrigin + characterRot * (new Vector3(futurePos.x, 0.0f, futurePos.y));
                 Gizmos.DrawWireSphere(futureWorld, SpheresRadius);
-                Vector2 futureDir = fv.FutureTrajectoryLocalDirections[i];
+                Vector2 futureDir = fv.FutureTrajectoryLocalDirection[i];
                 Vector3 futureDirWorld = characterRot * (new Vector3(futureDir.x, 0.0f, futureDir.y));
                 GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld * VectorLength, 0.25f * VectorLength);
             }

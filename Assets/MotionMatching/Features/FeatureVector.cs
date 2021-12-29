@@ -13,7 +13,7 @@ namespace MotionMatching
         // Vectors are local to the character
         // Trajectory ---
         public Vector2[] FutureTrajectoryLocalPosition; // 2D projected on the ground
-        public Vector2[] FutureTrajectoryLocalDirections; // 2D projected on the ground
+        public Vector2[] FutureTrajectoryLocalDirection; // 2D projected on the ground
         // Pose ---------
         public Vector3 LeftFootLocalPosition;
         public Vector3 RightFootLocalPosition;
