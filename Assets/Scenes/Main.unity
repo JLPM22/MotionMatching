@@ -522,7 +522,7 @@ MonoBehaviour:
   NumberPrediction: 3
   PredictionFrames: 20
   MaxSpeed: 1
-  HalfLife: 0.25
+  Responsiveness: 0.75
 --- !u!114 &922198740
 MonoBehaviour:
   m_ObjectHideFlags: 0
