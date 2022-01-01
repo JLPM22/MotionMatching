@@ -160,13 +160,13 @@ namespace MotionMatching
                 }
             }
             // DEBUG
-            Debug.Log(Time.frameCount + " --- ");
-            for (int i = 0; i < QueryFeature.FutureTrajectoryLocalPosition.Length; ++i)
-            {
-                Debug.Log(i + " - ");
-                Debug.Log(QueryFeature.FutureTrajectoryLocalPosition[0].ToString());
-                Debug.Log(FeatureSet.Features[minIndex].FutureTrajectoryLocalPosition[0].ToString());
-            }
+            // Debug.Log(Time.frameCount + " --- ");
+            // for (int i = 0; i < QueryFeature.FutureTrajectoryLocalPosition.Length; ++i)
+            // {
+            //     Debug.Log(i + " - ");
+            //     Debug.Log(QueryFeature.FutureTrajectoryLocalPosition[0].ToString());
+            //     Debug.Log(FeatureSet.Features[minIndex].FutureTrajectoryLocalPosition[0].ToString());
+            // }
             return minIndex;
         }
 
@@ -174,13 +174,20 @@ namespace MotionMatching
         {
             PoseVector pose = PoseSet.Poses[frameIndex];
             // Simulation Bone
-            transform.position += transform.TransformDirection(pose.RootVelocity);
-            transform.rotation = transform.rotation * pose.RootRotVelocity; // FIXME: rotation should be only around the Y axis
+            transform.position += transform.TransformDirection(pose.RootVelocity); // FIXME: RootVelocity should only have XZ displacement?
+            transform.rotation = transform.rotation * pose.RootRotVelocity;
+            // Fix Y Position
+            // Vector3 pos = transform.position;
+            // pos.y = pose.RootWorld.y;
+            // transform.position = pos;
+            Vector3 pos = transform.position;
+            pos.y = 0.0f;
+            transform.position = pos;
             // Joints
-            // for (int i = 0; i < pose.JointLocalRotations.Length; i++)
-            // {
-            //     SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
-            // }
+            for (int i = 0; i < pose.JointLocalRotations.Length; i++)
+            {
+                SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
+            }
         }
 
         private Vector2 GetPositionLocalCharacter(Vector2 worldPosition)

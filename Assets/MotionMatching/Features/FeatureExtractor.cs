@@ -51,7 +51,7 @@ namespace MotionMatching
             // Compute local features based on the projection of the hips in the ZX plane? (ground)
             // so hips and feet are local to a stable position with respect to the character
             // this solution only works for one type of skeleton
-            GetWorldOriginCharacter(pose.JointLocalPositions[0], pose.JointLocalRotations[0], out Vector3 characterOrigin, out Vector3 characterForward);
+            GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, out Vector3 characterOrigin, out Vector3 characterForward);
             FeatureVector feature = new FeatureVector();
             feature.Valid = true;
             // Left Foot
@@ -71,9 +71,9 @@ namespace MotionMatching
 
         private void GetTrajectoryFeatures(PoseVector pose, Vector3 characterOrigin, Vector3 characterForward, out Vector2 futureLocalPosition, out Vector2 futureLocalDirection)
         {
-            Vector3 futureLocalPosition3D = GetLocalPositionFromCharacter(pose.JointLocalPositions[0], characterOrigin, characterForward);
+            Vector3 futureLocalPosition3D = GetLocalPositionFromCharacter(pose.RootWorld, characterOrigin, characterForward);
             futureLocalPosition = new Vector2(futureLocalPosition3D.x, futureLocalPosition3D.z);
-            Vector3 futureLocalDirection3D = GetLocalDirectionFromCharacter(pose.JointLocalRotations[0] * Vector3.forward, characterForward);
+            Vector3 futureLocalDirection3D = GetLocalDirectionFromCharacter(pose.RootWorldRot * Vector3.forward, characterForward);
             futureLocalDirection = (new Vector2(futureLocalDirection3D.x, futureLocalDirection3D.z)).normalized;
         }
 
@@ -98,7 +98,7 @@ namespace MotionMatching
                 localToWorld = Matrix4x4.TRS(pose.JointLocalPositions[joint.ParentIndex], pose.JointLocalRotations[joint.ParentIndex], Vector3.one) * localToWorld;
                 joint = skeleton.GetParent(joint);
             }
-            localToWorld = Matrix4x4.TRS(pose.JointLocalPositions[0], pose.JointLocalRotations[0], Vector3.one) * localToWorld; // root
+            localToWorld = Matrix4x4.TRS(pose.RootWorld, pose.RootWorldRot, Vector3.one) * localToWorld; // root
             return localToWorld.MultiplyPoint3x4(localOffset);
         }
 

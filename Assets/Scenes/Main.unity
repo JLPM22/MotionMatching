@@ -575,7 +575,7 @@ MonoBehaviour:
   RightFootName: RightFoot
   HipsName: Hips
   SearchFrames: 10
-  NormalizeType: 0
+  NormalizeType: 1
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -703,7 +703,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &995313762
 Transform:
   m_ObjectHideFlags: 0
