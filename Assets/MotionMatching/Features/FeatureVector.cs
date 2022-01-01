@@ -20,5 +20,21 @@ namespace MotionMatching
         public Vector3 LeftFootLocalVelocity;
         public Vector3 RightFootLocalVelocity;
         public Vector3 HipsLocalVelocity;
+
+        public float SqrDistance(FeatureVector other)
+        {
+            float sum = 0.0f;
+            for (int i = 0; i < FutureTrajectoryLocalPosition.Length; i++)
+            {
+                sum += Vector2.SqrMagnitude(FutureTrajectoryLocalPosition[i] - other.FutureTrajectoryLocalPosition[i]);
+                // sum += Vector2.SqrMagnitude(FutureTrajectoryLocalDirection[i] - other.FutureTrajectoryLocalDirection[i]);
+            }
+            // sum += Vector3.SqrMagnitude(LeftFootLocalPosition - other.LeftFootLocalPosition);
+            // sum += Vector3.SqrMagnitude(RightFootLocalPosition - other.RightFootLocalPosition);
+            // sum += Vector3.SqrMagnitude(LeftFootLocalVelocity - other.LeftFootLocalVelocity);
+            // sum += Vector3.SqrMagnitude(RightFootLocalVelocity - other.RightFootLocalVelocity);
+            // sum += Vector3.SqrMagnitude(HipsLocalVelocity - other.HipsLocalVelocity);
+            return sum;
+        }
     }
 }

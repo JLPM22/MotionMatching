@@ -9,15 +9,17 @@ namespace MotionMatching
     /// </summary>
     public struct PoseVector
     {
-        public Vector3[] JointLocalPositions;
-        public Quaternion[] JointLocalRotations;
-        public Vector3 RootMotion; // World Space
+        public Vector3[] JointLocalPositions; // [0] contains root world information
+        public Quaternion[] JointLocalRotations; // [0] contains root world information
+        public Vector3 RootVelocity; // Local to character forward facing direction
+        public Quaternion RootRotVelocity; // Local to character forward facing direction
 
-        public PoseVector(Vector3[] jointLocalPositions, Quaternion[] jointLocalRotations, Vector3 rootMotion)
+        public PoseVector(Vector3[] jointLocalPositions, Quaternion[] jointLocalRotations, Vector3 rootVelocity, Quaternion rootRotVelocity)
         {
             JointLocalPositions = jointLocalPositions;
             JointLocalRotations = jointLocalRotations;
-            RootMotion = rootMotion;
+            RootVelocity = rootVelocity;
+            RootRotVelocity = rootRotVelocity;
         }
     }
 }

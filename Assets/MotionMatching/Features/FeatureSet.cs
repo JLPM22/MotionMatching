@@ -121,7 +121,10 @@ namespace MotionMatching
             }
             for (int i = 0; i < Features.Length; i++)
             {
-                NormalizeFeatureVector(ref Features[i]);
+                if (Features[i].Valid)
+                {
+                    NormalizeFeatureVector(ref Features[i]);
+                }
             }
         }
 

@@ -9,16 +9,22 @@ namespace MotionMatching
     // Read to improve correspondance between input and animation
     /* https://theorangeduck.com/page/code-vs-data-driven-displacement */
 
+    // TODO: Smooth change of direction as Daniel Holden in https://theorangeduck.com/page/code-vs-data-driven-displacement
+
     public class SpringCharacterController : MonoBehaviour
     {
+        public event Action<float> OnUpdate;
+
         public int NumberPrediction = 3;
         public int PredictionFrames = 20;
         public float MaxSpeed = 1.0f;
         [Range(0.0f, 1.0f)] public float Responsiveness = 0.75f;
+        public float MinimumVelocityClamp = 0.01f;
 
         private Vector2 InputMovement;
         private Vector2[] PredictedPosition;
         private Vector2 Velocity;
+        private Vector2 Direction;
         private Vector2[] PredictedVelocity;
         private Vector2 Acceleration;
         private Queue<float> LastDeltaTime = new Queue<float>();
@@ -29,6 +35,7 @@ namespace MotionMatching
             PredictedPosition = new Vector2[NumberPrediction];
             PredictedVelocity = new Vector2[NumberPrediction];
             for (int i = 0; i < NumberPrediction; ++i) PredictedPosition[i] = new Vector2(transform.position.x, transform.position.z);
+            Direction = new Vector2(transform.forward.x, transform.forward.z);
         }
 
         public void Movement(InputAction.CallbackContext value)
@@ -67,7 +74,13 @@ namespace MotionMatching
                     PredictedVelocity[j][i] = predictVel[j];
                 }
             }
-            transform.position = new Vector3(newPos.x, transform.position.y, newPos.y);
+            if (Velocity.sqrMagnitude > MinimumVelocityClamp * MinimumVelocityClamp)
+            {
+                transform.position = new Vector3(newPos.x, transform.position.y, newPos.y);
+                Direction = Velocity.normalized;
+            }
+
+            if (OnUpdate != null) OnUpdate(Time.deltaTime);
         }
 
         /* https://theorangeduck.com/page/spring-roll-call#controllers */
@@ -105,6 +118,37 @@ namespace MotionMatching
             return 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
         }
 
+        // public Vector2 GetLocalPredictedPosition(int index)
+        // {
+        //     Vector3 localPos = new Vector3(PredictedPosition[index].x, transform.position.y, PredictedPosition[index].y);
+        //     localPos -= transform.position;
+        //     localPos = Quaternion.Inverse(Quaternion.LookRotation(new Vector3(Direction.x, 0.0f, Direction.y), Vector3.up)) * localPos;
+        //     return new Vector2(localPos.x, localPos.z);
+        // }
+
+        // public Vector2 GetLocalPredictedDirection(int index)
+        // {
+        //     Vector3 localVel = new Vector3(PredictedVelocity[index].x, 0.0f, PredictedVelocity[index].y);
+        //     if (localVel.sqrMagnitude > MinimumVelocityClamp * MinimumVelocityClamp)
+        //     {
+        //         localVel = Quaternion.Inverse(Quaternion.LookRotation(new Vector3(Direction.x, 0.0f, Direction.y), Vector3.up)) * localVel;
+        //     }
+        //     else
+        //     {
+        //         localVel = Vector3.forward;
+        //     }
+        //     return (new Vector3(localVel.x, localVel.z)).normalized;
+        // }
+
+        public Vector2 GetWorldPredictedPosition(int index)
+        {
+            return PredictedPosition[index];
+        }
+
+        public Vector2 GetWorldPredictedDirection(int index)
+        {
+            return Direction;
+        }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()

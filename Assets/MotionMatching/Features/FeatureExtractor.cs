@@ -50,8 +50,8 @@ namespace MotionMatching
             PoseVector poseNext = poseSet.Poses[poseIndex + 1];
             // Compute local features based on the projection of the hips in the ZX plane? (ground)
             // so hips and feet are local to a stable position with respect to the character
-            // this solution only works for a type of skeleton
-            GetWorldOriginCharacter(pose, out Vector3 characterOrigin, out Vector3 characterForward);
+            // this solution only works for one type of skeleton
+            GetWorldOriginCharacter(pose.JointLocalPositions[0], pose.JointLocalRotations[0], out Vector3 characterOrigin, out Vector3 characterForward);
             FeatureVector feature = new FeatureVector();
             feature.Valid = true;
             // Left Foot
@@ -71,7 +71,7 @@ namespace MotionMatching
 
         private void GetTrajectoryFeatures(PoseVector pose, Vector3 characterOrigin, Vector3 characterForward, out Vector2 futureLocalPosition, out Vector2 futureLocalDirection)
         {
-            Vector3 futureLocalPosition3D = GetLocalPositionFromCharacter(pose.RootMotion, characterOrigin, characterForward);
+            Vector3 futureLocalPosition3D = GetLocalPositionFromCharacter(pose.JointLocalPositions[0], characterOrigin, characterForward);
             futureLocalPosition = new Vector2(futureLocalPosition3D.x, futureLocalPosition3D.z);
             Vector3 futureLocalDirection3D = GetLocalDirectionFromCharacter(pose.JointLocalRotations[0] * Vector3.forward, characterForward);
             futureLocalDirection = (new Vector2(futureLocalDirection3D.x, futureLocalDirection3D.z)).normalized;
@@ -98,15 +98,15 @@ namespace MotionMatching
                 localToWorld = Matrix4x4.TRS(pose.JointLocalPositions[joint.ParentIndex], pose.JointLocalRotations[joint.ParentIndex], Vector3.one) * localToWorld;
                 joint = skeleton.GetParent(joint);
             }
-            localToWorld = Matrix4x4.TRS(pose.RootMotion, pose.JointLocalRotations[0], Vector3.one) * localToWorld; // root
+            localToWorld = Matrix4x4.TRS(pose.JointLocalPositions[0], pose.JointLocalRotations[0], Vector3.one) * localToWorld; // root
             return localToWorld.MultiplyPoint3x4(localOffset);
         }
 
-        public static void GetWorldOriginCharacter(PoseVector pose, out Vector3 center, out Vector3 forward)
+        public static void GetWorldOriginCharacter(Vector3 worldHips, Quaternion worldRotHips, out Vector3 center, out Vector3 forward)
         {
             Plane ground = new Plane(Vector3.up, Vector3.zero);
-            center = ground.ClosestPointOnPlane(pose.RootMotion); // Projected hips
-            forward = Vector3.ProjectOnPlane(pose.JointLocalRotations[0] * Vector3.forward, Vector3.up); // Projected forward (hips)
+            center = ground.ClosestPointOnPlane(worldHips); // Projected hips
+            forward = Vector3.ProjectOnPlane(worldRotHips * Vector3.forward, Vector3.up); // Projected forward (hips)
             forward = forward.normalized;
         }
 
@@ -118,7 +118,7 @@ namespace MotionMatching
             return localPos;
         }
 
-        private Vector3 GetLocalDirectionFromCharacter(Vector3 worldDir, Vector3 forwardCharacter)
+        public static Vector3 GetLocalDirectionFromCharacter(Vector3 worldDir, Vector3 forwardCharacter)
         {
             Vector3 localDir = worldDir;
             localDir = Quaternion.Inverse(Quaternion.LookRotation(forwardCharacter, Vector3.up)) * localDir;

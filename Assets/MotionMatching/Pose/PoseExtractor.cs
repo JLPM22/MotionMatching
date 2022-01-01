@@ -29,6 +29,7 @@ namespace MotionMatching
         {
             BVHAnimation.Frame frame = bvhAnimation.Frames[frameIndex];
             int nJoints = bvhAnimation.Skeleton.Joints.Count;
+            // Joints
             Vector3[] jointLocalPositions = new Vector3[nJoints];
             Quaternion[] jointLocalRotations = new Quaternion[nJoints];
             for (int i = 0; i < nJoints; i++)
@@ -36,7 +37,20 @@ namespace MotionMatching
                 jointLocalPositions[i] = bvhAnimation.Skeleton.Joints[i].LocalOffset;
                 jointLocalRotations[i] = frame.LocalRotations[i];
             }
-            return new PoseVector(jointLocalPositions, jointLocalRotations, frame.RootMotion);
+            jointLocalPositions[0] = frame.RootMotion;
+            // Local Root Velocity
+            Vector3 hipsWorld = jointLocalPositions[0];
+            Quaternion hipsRotWorld = jointLocalRotations[0];
+            FeatureExtractor.GetWorldOriginCharacter(hipsWorld, hipsRotWorld, out _, out Vector3 characterForward);
+            Vector3 rootVelocity = Vector3.zero;
+            Quaternion rootRotVelocity = Quaternion.identity;
+            if (frameIndex > 0)
+            {
+                rootVelocity = hipsWorld - bvhAnimation.Frames[frameIndex - 1].RootMotion;
+                rootVelocity = FeatureExtractor.GetLocalDirectionFromCharacter(rootVelocity, characterForward);
+                rootRotVelocity = Quaternion.Inverse(bvhAnimation.Frames[frameIndex - 1].LocalRotations[0]) * hipsRotWorld;
+            }
+            return new PoseVector(jointLocalPositions, jointLocalRotations, rootVelocity, rootRotVelocity);
         }
     }
 }
