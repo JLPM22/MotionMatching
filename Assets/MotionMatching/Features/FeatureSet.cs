@@ -314,6 +314,7 @@ namespace MotionMatching
 
         public enum NormalizeType
         {
+            // FIXME: Magnitude normalization does not work well
             Magnitude, // Normalize the magnitude of each vector
             Component // Normalize per component
         }

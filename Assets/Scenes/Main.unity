@@ -568,14 +568,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterController: {fileID: 922198739}
-  BVH: {fileID: 4900000, guid: d7d0952e41a8c60429835cac9d2c63f3, type: 3}
-  SpheresRadius: 0.1
+  BVH: {fileID: 4900000, guid: c401d4eb91b477742913e0f4e20fa46c, type: 3}
+  SpheresRadius: 0.05
   LockFPS: 1
   LeftFootName: LeftFoot
   RightFootName: RightFoot
   HipsName: Hips
   SearchFrames: 10
+  Normalize: 0
   NormalizeType: 1
+  Responsiveness: 1
+  Quality: 1
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -623,7 +626,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   NumberPrediction: 3
   PredictionFrames: 20
-  MaxSpeed: 1
+  MaxSpeed: 3
   Responsiveness: 0.75
   MinimumVelocityClamp: 0.01
 --- !u!114 &922198740

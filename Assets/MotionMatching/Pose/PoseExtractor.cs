@@ -44,18 +44,19 @@ namespace MotionMatching
             hipsRotEuler.y = 0.0f;
             jointLocalRotations[0] = Quaternion.Euler(hipsRotEuler);
             // Local Root Velocity
-            Vector3 hipsWorld = frame.RootMotion;
-            FeatureExtractor.GetWorldOriginCharacter(hipsWorld, hipsRotWorld, out _, out Vector3 characterForward);
+            FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, out _, out Vector3 characterForward);
             Vector3 rootVelocity = Vector3.zero;
             Quaternion rootRotVelocity = Quaternion.identity;
             if (frameIndex > 0)
             {
-                rootVelocity = hipsWorld - bvhAnimation.Frames[frameIndex - 1].RootMotion;
+                Vector3 hipsWorldXZ = new Vector3(frame.RootMotion.x, 0.0f, frame.RootMotion.z);
+                Vector3 previousHipsWorldXZ = new Vector3(bvhAnimation.Frames[frameIndex - 1].RootMotion.x, 0.0f, bvhAnimation.Frames[frameIndex - 1].RootMotion.z);
+                rootVelocity = hipsWorldXZ - previousHipsWorldXZ;
                 rootVelocity = FeatureExtractor.GetLocalDirectionFromCharacter(rootVelocity, characterForward);
                 float yRotPrevious = bvhAnimation.Frames[frameIndex - 1].LocalRotations[0].eulerAngles.y;
                 rootRotVelocity = Quaternion.Inverse(Quaternion.Euler(0.0f, yRotPrevious, 0.0f)) * Quaternion.Euler(0.0f, yRot, 0.0f);
             }
-            return new PoseVector(jointLocalPositions, jointLocalRotations, rootVelocity, rootRotVelocity, hipsWorld, hipsRotWorld);
+            return new PoseVector(jointLocalPositions, jointLocalRotations, rootVelocity, rootRotVelocity, frame.RootMotion, hipsRotWorld);
         }
     }
 }

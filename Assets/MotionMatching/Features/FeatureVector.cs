@@ -21,19 +21,20 @@ namespace MotionMatching
         public Vector3 RightFootLocalVelocity;
         public Vector3 HipsLocalVelocity;
 
-        public float SqrDistance(FeatureVector other)
+        // TODO: Check property per property that they are correctly working and affecting the final result
+        public float SqrDistance(FeatureVector other, float responsiveness, float quality)
         {
             float sum = 0.0f;
             for (int i = 0; i < FutureTrajectoryLocalPosition.Length; i++)
             {
-                sum += Vector2.SqrMagnitude(FutureTrajectoryLocalPosition[i] - other.FutureTrajectoryLocalPosition[i]);
-                sum += Vector2.SqrMagnitude(FutureTrajectoryLocalDirection[i] - other.FutureTrajectoryLocalDirection[i]);
+                sum += Vector2.SqrMagnitude(FutureTrajectoryLocalPosition[i] - other.FutureTrajectoryLocalPosition[i]) * responsiveness;
+                sum += Vector2.SqrMagnitude(FutureTrajectoryLocalDirection[i] - other.FutureTrajectoryLocalDirection[i]) * responsiveness;
             }
-            sum += Vector3.SqrMagnitude(LeftFootLocalPosition - other.LeftFootLocalPosition);
-            sum += Vector3.SqrMagnitude(RightFootLocalPosition - other.RightFootLocalPosition);
-            sum += Vector3.SqrMagnitude(LeftFootLocalVelocity - other.LeftFootLocalVelocity);
-            sum += Vector3.SqrMagnitude(RightFootLocalVelocity - other.RightFootLocalVelocity);
-            sum += Vector3.SqrMagnitude(HipsLocalVelocity - other.HipsLocalVelocity);
+            sum += Vector3.SqrMagnitude(LeftFootLocalPosition - other.LeftFootLocalPosition) * quality;
+            sum += Vector3.SqrMagnitude(RightFootLocalPosition - other.RightFootLocalPosition) * quality;
+            sum += Vector3.SqrMagnitude(LeftFootLocalVelocity - other.LeftFootLocalVelocity) * quality;
+            sum += Vector3.SqrMagnitude(RightFootLocalVelocity - other.RightFootLocalVelocity) * quality;
+            sum += Vector3.SqrMagnitude(HipsLocalVelocity - other.HipsLocalVelocity) * quality;
             return sum;
         }
     }

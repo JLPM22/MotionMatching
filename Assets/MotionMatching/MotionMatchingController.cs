@@ -13,7 +13,10 @@ namespace MotionMatching
         public bool LockFPS = true;
         public string LeftFootName, RightFootName, HipsName;
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
+        public bool Normalize = false;
         public FeatureSet.NormalizeType NormalizeType = FeatureSet.NormalizeType.Magnitude;
+        [Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
+        [Range(0.0f, 1.0f)] public float Quality = 1.0f;
 
         private BVHAnimation Animation;
         private PoseSet PoseSet;
@@ -58,7 +61,7 @@ namespace MotionMatching
 
             FeatureExtractor featureExtractor = new FeatureExtractor();
             FeatureSet = featureExtractor.Extract(PoseSet);
-            // FeatureSet.NormalizeFeatures(NormalizeType);
+            if (Normalize) FeatureSet.NormalizeFeatures(NormalizeType);
 
             // Skeleton
             SkeletonTransforms = new Transform[Animation.Skeleton.Joints.Count];
@@ -142,7 +145,7 @@ namespace MotionMatching
             QueryFeature.RightFootLocalVelocity = current.RightFootLocalVelocity;
             QueryFeature.HipsLocalVelocity = current.HipsLocalVelocity;
             // Normalize
-            // FeatureSet.NormalizeFeatureVector(ref QueryFeature);
+            if (Normalize) FeatureSet.NormalizeFeatureVector(ref QueryFeature);
             // Search
             float min = float.MaxValue;
             int minIndex = -1;
@@ -151,7 +154,7 @@ namespace MotionMatching
                 FeatureVector feature = FeatureSet.Features[i];
                 if (feature.Valid)
                 {
-                    float dist = QueryFeature.SqrDistance(feature);
+                    float dist = QueryFeature.SqrDistance(feature, Responsiveness, Quality);
                     if (dist < min)
                     {
                         min = dist;
@@ -174,20 +177,15 @@ namespace MotionMatching
         {
             PoseVector pose = PoseSet.Poses[frameIndex];
             // Simulation Bone
-            transform.position += transform.TransformDirection(pose.RootVelocity); // FIXME: RootVelocity should only have XZ displacement?
+            transform.position += transform.TransformDirection(pose.RootVelocity);
             transform.rotation = transform.rotation * pose.RootRotVelocity;
-            // Fix Y Position
-            // Vector3 pos = transform.position;
-            // pos.y = pose.RootWorld.y;
-            // transform.position = pos;
-            Vector3 pos = transform.position;
-            pos.y = 0.0f;
-            transform.position = pos;
             // Joints
             for (int i = 0; i < pose.JointLocalRotations.Length; i++)
             {
                 SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
             }
+            // Root Y Position
+            SkeletonTransforms[0].localPosition = new Vector3(0, pose.RootWorld.y, 0);
         }
 
         private Vector2 GetPositionLocalCharacter(Vector2 worldPosition)
@@ -244,17 +242,26 @@ namespace MotionMatching
                 Vector3 leftFootWorld = characterOrigin + characterRot * fv.LeftFootLocalPosition;
                 Gizmos.DrawWireSphere(leftFootWorld, SpheresRadius);
                 Vector3 leftFootVelWorld = characterRot * fv.LeftFootLocalVelocity;
-                GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * leftFootVelWorld.magnitude * 0.1f);
+                if (leftFootVelWorld.magnitude > 0.001f)
+                {
+                    GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * leftFootVelWorld.magnitude * 0.1f);
+                }
                 // Right Foot
                 Gizmos.color = Color.yellow;
                 Vector3 rightFootWorld = characterOrigin + characterRot * fv.RightFootLocalPosition;
                 Gizmos.DrawWireSphere(rightFootWorld, SpheresRadius);
                 Vector3 rightFootVelWorld = characterRot * fv.RightFootLocalVelocity;
-                GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * rightFootVelWorld.magnitude * 0.1f);
+                if (rightFootVelWorld.magnitude > 0.001f)
+                {
+                    GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * rightFootVelWorld.magnitude * 0.1f);
+                }
                 // Hips
                 Gizmos.color = Color.green;
                 Vector3 hipsVelWorld = characterRot * fv.HipsLocalVelocity;
-                GizmosExtensions.DrawArrow(pose.JointLocalPositions[0], pose.JointLocalPositions[0] + hipsVelWorld * 0.1f, 0.25f * hipsVelWorld.magnitude * 0.1f);
+                if (hipsVelWorld.magnitude > 0.001f)
+                {
+                    GizmosExtensions.DrawArrow(SkeletonTransforms[0].position, SkeletonTransforms[0].position + hipsVelWorld * 0.1f, 0.25f * hipsVelWorld.magnitude * 0.1f);
+                }
                 // Trajectory
                 for (int i = 0; i < fv.FutureTrajectoryLocalPosition.Length; ++i)
                 {
