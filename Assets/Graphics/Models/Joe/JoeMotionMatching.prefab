@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7237784043714685404}
   m_Layer: 0
-  m_Name: mixamorig7:RightLeg
+  m_Name: RightLowerLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -42,7 +42,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8432779742837939859}
   m_Layer: 0
-  m_Name: mixamorig7:RightFoot
+  m_Name: RightFoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -318,7 +318,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4062754920749026339}
   m_Layer: 0
-  m_Name: mixamorig7:RightToeBase
+  m_Name: RightToes
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -350,7 +350,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5688388740252791277}
   m_Layer: 0
-  m_Name: mixamorig7:LeftUpLeg
+  m_Name: LeftUpperLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -564,7 +564,7 @@ GameObject:
   m_Component:
   - component: {fileID: 819673212834229241}
   m_Layer: 0
-  m_Name: mixamorig7:Hips
+  m_Name: Hips
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -852,7 +852,7 @@ GameObject:
   m_Component:
   - component: {fileID: 58054788206354570}
   m_Layer: 0
-  m_Name: mixamorig7:LeftFoot
+  m_Name: LeftFoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -884,7 +884,7 @@ GameObject:
   m_Component:
   - component: {fileID: 73118809244369360}
   m_Layer: 0
-  m_Name: mixamorig7:LeftToeBase
+  m_Name: LeftToes
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1044,7 +1044,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8812051010726395315}
   m_Layer: 0
-  m_Name: mixamorig7:Spine1
+  m_Name: Chest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1076,7 +1076,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9119196743260309456}
   m_Layer: 0
-  m_Name: mixamorig7:LeftForeArm
+  m_Name: LeftLowerArm
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1108,7 +1108,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1619120632536664235}
   m_Layer: 0
-  m_Name: mixamorig7:RightHand
+  m_Name: RightHand
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1239,7 +1239,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2987863365428512777}
   m_Layer: 0
-  m_Name: mixamorig7:RightForeArm
+  m_Name: RightLowerArm
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1326,7 +1326,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3040570763796455711}
   m_Layer: 0
-  m_Name: mixamorig7:LeftHand
+  m_Name: LeftHand
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1543,7 +1543,7 @@ GameObject:
   m_Component:
   - component: {fileID: 736580549623222111}
   m_Layer: 0
-  m_Name: mixamorig7:RightShoulder
+  m_Name: RightShoulder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1757,7 +1757,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8484471258609100640}
   m_Layer: 0
-  m_Name: mixamorig7:RightArm
+  m_Name: RightUpperArm
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1852,7 +1852,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5117805733947128936}
   m_Layer: 0
-  m_Name: mixamorig7:LeftArm
+  m_Name: LeftUpperArm
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2280,7 +2280,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6565847815189256648}
   m_Layer: 0
-  m_Name: mixamorig7:LeftLeg
+  m_Name: LeftLowerLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2312,7 +2312,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2495934219716258445}
   m_Layer: 0
-  m_Name: mixamorig7:LeftShoulder
+  m_Name: LeftShoulder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2905,7 +2905,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7313282163813573335}
   m_Layer: 0
-  m_Name: mixamorig7:Head
+  m_Name: Head
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3150,7 +3150,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6534402927308805039}
   m_Layer: 0
-  m_Name: mixamorig7:RightUpLeg
+  m_Name: RightUpperLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3214,7 +3214,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1595216724044489877}
   m_Layer: 0
-  m_Name: mixamorig7:Spine
+  m_Name: Spine
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3246,7 +3246,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3957655185745386783}
   m_Layer: 0
-  m_Name: mixamorig7:Spine2
+  m_Name: UpperChest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3312,7 +3312,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2810253927533305881}
   m_Layer: 0
-  m_Name: mixamorig7:Neck
+  m_Name: Neck
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

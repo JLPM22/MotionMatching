@@ -136,7 +136,7 @@ public class FeatureDebug : MonoBehaviour
         int currentFrame = CurrentFrame - 1; // OnDrawGizmos is called after Update
         if (currentFrame < 0) currentFrame = Animation.Frames.Length - 1;
         PoseVector pose = PoseSet.Poses[currentFrame];
-        FeatureExtractor.GetWorldOriginCharacter(pose.JointLocalPositions[0], pose.JointLocalRotations[0], out Vector3 characterOrigin, out Vector3 characterForward);
+        FeatureExtractor.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, out Vector3 characterOrigin, out Vector3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
         Gizmos.DrawWireSphere(characterOrigin, SpheresRadius);
         Debug.Assert(characterForward.magnitude > 0.99f && characterForward.magnitude < 1.01f, "characterForward.magnitude = " + characterForward.magnitude + " should be 1");
@@ -164,7 +164,7 @@ public class FeatureDebug : MonoBehaviour
             // Hips
             Gizmos.color = Color.green;
             Vector3 hipsVelWorld = characterRot * fv.HipsLocalVelocity;
-            GizmosExtensions.DrawArrow(pose.JointLocalPositions[0], pose.JointLocalPositions[0] + hipsVelWorld * 0.1f, 0.25f * hipsVelWorld.magnitude * 0.1f);
+            GizmosExtensions.DrawArrow(pose.RootWorld, pose.RootWorld + hipsVelWorld * 0.1f, 0.25f * hipsVelWorld.magnitude * 0.1f);
             // Trajectory
             for (int i = 0; i < fv.FutureTrajectoryLocalPosition.Length; ++i)
             {
