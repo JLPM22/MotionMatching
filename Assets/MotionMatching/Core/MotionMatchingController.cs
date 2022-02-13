@@ -28,8 +28,10 @@ namespace MotionMatching
 
         private void Awake()
         {
+            PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
             BVHImporter importer = new BVHImporter();
             Animation = importer.Import(BVH);
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
 
             // HARDCODED: hardcode name of important joints for the feature set
             for (int i = 0; i < Animation.Skeleton.Joints.Count; ++i)
@@ -52,16 +54,20 @@ namespace MotionMatching
                 }
             }
 
+            PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
             PoseExtractor poseExtractor = new PoseExtractor();
             PoseSet = new PoseSet();
             if (!poseExtractor.Extract(Animation, PoseSet))
             {
                 Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
             }
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Extract", true);
 
+            PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
             FeatureExtractor featureExtractor = new FeatureExtractor();
             FeatureSet = featureExtractor.Extract(PoseSet);
             if (Normalize) FeatureSet.NormalizeFeatures(NormalizeType);
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
 
             // Skeleton
             SkeletonTransforms = new Transform[Animation.Skeleton.Joints.Count];
@@ -107,10 +113,13 @@ namespace MotionMatching
 
         private void OnUpdate(float deltaTime)
         {
+            PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Total");
             if (SearchFrameCount == 0)
             {
                 // Motion Matching
+                PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Search");
                 int nextFrame = SearchMotionMatching();
+                PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
                 if (nextFrame != CurrentFrame)
                 {
                     CurrentFrame = nextFrame;
@@ -127,7 +136,8 @@ namespace MotionMatching
                 CurrentFrame += 1;
                 SearchFrameCount -= 1;
             }
-            UpdateFrame(CurrentFrame);
+            UpdateTransformAndSkeleton(CurrentFrame);
+            PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
         }
 
         private int SearchMotionMatching()
@@ -162,18 +172,10 @@ namespace MotionMatching
                     }
                 }
             }
-            // DEBUG
-            // Debug.Log(Time.frameCount + " --- ");
-            // for (int i = 0; i < QueryFeature.FutureTrajectoryLocalPosition.Length; ++i)
-            // {
-            //     Debug.Log(i + " - ");
-            //     Debug.Log(QueryFeature.FutureTrajectoryLocalPosition[0].ToString());
-            //     Debug.Log(FeatureSet.Features[minIndex].FutureTrajectoryLocalPosition[0].ToString());
-            // }
             return minIndex;
         }
 
-        private void UpdateFrame(int frameIndex)
+        private void UpdateTransformAndSkeleton(int frameIndex)
         {
             PoseVector pose = PoseSet.Poses[frameIndex];
             // Simulation Bone

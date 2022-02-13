@@ -15,10 +15,9 @@ namespace MotionMatching
     /// </summary>
     public class BVHImporter
     {
-        private List<AxisOrder> Channels = new List<AxisOrder>();
-
         public BVHAnimation Import(TextAsset bvh)
         {
+            List<AxisOrder> channels = new List<AxisOrder>();
             BVHAnimation animation = new BVHAnimation();
 
             Stack<int> parentIndexStack = new Stack<int>();
@@ -30,7 +29,7 @@ namespace MotionMatching
             Joint root = new Joint(words[w++], 0, 0, Vector3.zero);
             ReadLeftBracket(words, ref w);
             root.LocalOffset = ReadOffset(words, ref w);
-            ReadChannels(words, ref w, true);
+            ReadChannels(channels, words, ref w, true);
             animation.AddJoint(root);
             // JOINTS
             int brackets = 1;
@@ -47,7 +46,7 @@ namespace MotionMatching
                 parent = jointIndex - 1;
                 brackets += 1;
                 joint.LocalOffset = ReadOffset(words, ref w);
-                ReadChannels(words, ref w);
+                ReadChannels(channels, words, ref w);
                 animation.AddJoint(joint);
                 if (words[w] == "End")
                 {
@@ -77,7 +76,7 @@ namespace MotionMatching
             float frameTime = float.Parse(words[w++], CultureInfo.InvariantCulture);
             animation.SetFrameTime(frameTime);
             // Frames
-            int numberChannels = Channels.Count;
+            int numberChannels = channels.Count;
             for (int i = 0; i < numberFrames; i++)
             {
                 Vector3 rootMotion = new Vector3();
@@ -87,7 +86,7 @@ namespace MotionMatching
                     float v1 = float.Parse(words[w++], CultureInfo.InvariantCulture);
                     float v2 = float.Parse(words[w++], CultureInfo.InvariantCulture);
                     float v3 = float.Parse(words[w++], CultureInfo.InvariantCulture);
-                    AxisOrder axisOrder = Channels[j];
+                    AxisOrder axisOrder = channels[j];
                     if (j == 0)
                     {
                         rootMotion = BVHToUnityTranslation(v1, v2, v3, axisOrder);
@@ -128,19 +127,19 @@ namespace MotionMatching
             return offset;
         }
 
-        private void ReadChannels(string[] words, ref int w, bool root = false)
+        private void ReadChannels(List<AxisOrder> channels, string[] words, ref int w, bool root = false)
         {
             if (words[w++] != "CHANNELS") Debug.LogError("[BVHImporter] CHANNELS not found");
             if (root)
             {
                 if (int.Parse(words[w++]) != 6) Debug.LogError("[BVHImporter] root must have 6 channels");
-                Channels.Add(ReadChannelPosition(words, ref w));
+                channels.Add(ReadChannelPosition(words, ref w));
             }
             else
             {
                 if (int.Parse(words[w++]) != 3) Debug.LogError("[BVHImporter] all joints must have 3 channels");
             }
-            Channels.Add(ReadChannelRotation(words, ref w));
+            channels.Add(ReadChannelRotation(words, ref w));
         }
 
         private AxisOrder ReadChannelPosition(string[] words, ref int w)
