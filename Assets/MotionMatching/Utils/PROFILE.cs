@@ -67,7 +67,7 @@ namespace MotionMatching
 #if PROFILE_MOTION_MATCHING
             END_SAMPLE_PROFILING(tag, sampleMemory);
             Stopwatch stopwatch = Stopwatches[tag];
-            Debug.Log(tag + ": " + stopwatch.ElapsedMilliseconds + "ms" + " (" + stopwatch.ElapsedTicks + " ticks)");
+            Debug.Log("[PROFILER]" + tag + ": " + stopwatch.ElapsedMilliseconds + "ms" + "(" + stopwatch.ElapsedTicks + " ticks)");
 #endif
         }
         public static DATA GET_DATA(string tag)

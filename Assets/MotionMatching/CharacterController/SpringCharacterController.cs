@@ -38,9 +38,10 @@ namespace MotionMatching
             Direction = new Vector2(transform.forward.x, transform.forward.z);
         }
 
-        public void Movement(InputAction.CallbackContext value)
+        // Input a change in the movement direction
+        public void SetMovementDirection(Vector2 movementDirection)
         {
-            InputMovement = value.ReadValue<Vector2>();
+            InputMovement = movementDirection;
         }
 
         private void Update()

@@ -85,7 +85,7 @@ namespace MotionMatching
             if (LockFPS)
             {
                 Application.targetFrameRate = (int)(1.0f / Animation.FrameTime);
-                Debug.Log("[BVHDebug] Updated Target FPS: " + Application.targetFrameRate);
+                Debug.Log("[Motion Matching] Updated Target FPS: " + Application.targetFrameRate);
             }
             else
             {
