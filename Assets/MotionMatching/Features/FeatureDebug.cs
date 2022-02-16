@@ -146,7 +146,7 @@ public class FeatureDebug : MonoBehaviour
         // Feature Set
         if (FeatureSet == null) return;
 
-        FeatureVector fv = FeatureSet.Features[currentFrame];
+        FeatureVector fv = FeatureSet.GetFeature(currentFrame);
         if (fv.Valid)
         {
             quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
@@ -155,25 +155,25 @@ public class FeatureDebug : MonoBehaviour
             float3 leftFootWorld = characterOrigin + math.mul(characterRot, fv.LeftFootLocalPosition);
             Gizmos.DrawWireSphere(leftFootWorld, SpheresRadius);
             float3 leftFootVelWorld = math.mul(characterRot, fv.LeftFootLocalVelocity);
-            GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * math.length(leftFootVelWorld)* 0.1f);
+            GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * math.length(leftFootVelWorld) * 0.1f);
             // Right Foot
             Gizmos.color = Color.yellow;
             float3 rightFootWorld = characterOrigin + math.mul(characterRot, fv.RightFootLocalPosition);
             Gizmos.DrawWireSphere(rightFootWorld, SpheresRadius);
             float3 rightFootVelWorld = math.mul(characterRot, fv.RightFootLocalVelocity);
-            GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * math.length(rightFootVelWorld)* 0.1f);
+            GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * math.length(rightFootVelWorld) * 0.1f);
             // Hips
             Gizmos.color = Color.green;
             float3 hipsVelWorld = math.mul(characterRot, fv.HipsLocalVelocity);
-            GizmosExtensions.DrawArrow(pose.RootWorld, pose.RootWorld + hipsVelWorld * 0.1f, 0.25f * math.length(hipsVelWorld)* 0.1f);
+            GizmosExtensions.DrawArrow(pose.RootWorld, pose.RootWorld + hipsVelWorld * 0.1f, 0.25f * math.length(hipsVelWorld) * 0.1f);
             // Trajectory
-            for (int i = 0; i < fv.FutureTrajectoryLocalPosition.Length; ++i)
+            for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); ++i)
             {
-                Gizmos.color = Color.blue * (1.0f - (float)i / (fv.FutureTrajectoryLocalPosition.Length * 1.25f));
-                float2 futurePos = fv.FutureTrajectoryLocalPosition[i];
+                Gizmos.color = Color.blue * (1.0f - (float)i / (FeatureVector.GetFutureTrajectoryLength() * 1.25f));
+                float2 futurePos = fv.GetFutureTrajectoryLocalPosition(i);
                 float3 futureWorld = characterOrigin + math.mul(characterRot, (new float3(futurePos.x, 0.0f, futurePos.y)));
                 Gizmos.DrawWireSphere(futureWorld, SpheresRadius);
-                float2 futureDir = fv.FutureTrajectoryLocalDirection[i];
+                float2 futureDir = fv.GetFutureTrajectoryLocalDirection(i);
                 float3 futureDirWorld = math.mul(characterRot, (new float3(futureDir.x, 0.0f, futureDir.y)));
                 GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld * VectorLength, 0.25f * VectorLength);
             }

@@ -9,13 +9,14 @@ namespace MotionMatching
     /// <summary>
     /// Stores features of a pose for use in Motion Matching
     /// </summary>
-    public struct FeatureVector
+    public unsafe struct FeatureVector
     {
         public bool Valid;
         // Vectors are local to the character
         // Trajectory ---
-        public float2[] FutureTrajectoryLocalPosition; // 2D projected on the ground
-        public float2[] FutureTrajectoryLocalDirection; // 2D projected on the ground
+        // Using two floats instead of a float2 is slower in standard c#... it gets faster when using Burst (because it uses SIMD)
+        private fixed float FutureTrajectoryLocalPosition[6]; // 2D projected on the ground
+        private fixed float FutureTrajectoryLocalDirection[6]; // 2D projected on the ground
         // Pose ---------
         public float3 LeftFootLocalPosition;
         public float3 RightFootLocalPosition;
@@ -27,10 +28,10 @@ namespace MotionMatching
         public float SqrDistance(FeatureVector other, float responsiveness, float quality)
         {
             float sum = 0.0f;
-            for (int i = 0; i < FutureTrajectoryLocalPosition.Length; i++)
+            for (int i = 0; i < GetFutureTrajectoryLength(); i++)
             {
-                sum += lengthsq(FutureTrajectoryLocalPosition[i] - other.FutureTrajectoryLocalPosition[i]) * responsiveness;
-                sum += lengthsq(FutureTrajectoryLocalDirection[i] - other.FutureTrajectoryLocalDirection[i]) * responsiveness;
+                sum += lengthsq(GetFutureTrajectoryLocalPosition(i) - other.GetFutureTrajectoryLocalPosition(i)) * responsiveness;
+                sum += lengthsq(GetFutureTrajectoryLocalDirection(i) - other.GetFutureTrajectoryLocalDirection(i)) * responsiveness;
             }
             sum += lengthsq(LeftFootLocalPosition - other.LeftFootLocalPosition) * quality;
             sum += lengthsq(RightFootLocalPosition - other.RightFootLocalPosition) * quality;
@@ -38,6 +39,34 @@ namespace MotionMatching
             sum += lengthsq(RightFootLocalVelocity - other.RightFootLocalVelocity) * quality;
             sum += lengthsq(HipsLocalVelocity - other.HipsLocalVelocity) * quality;
             return sum;
+        }
+
+        public static int GetFutureTrajectoryLength()
+        {
+            return 3;
+        }
+
+        public float2 GetFutureTrajectoryLocalPosition(int index)
+        {
+            int offset = index * 2;
+            return new float2(FutureTrajectoryLocalPosition[offset], FutureTrajectoryLocalPosition[offset + 1]);
+        }
+        public float2 GetFutureTrajectoryLocalDirection(int index)
+        {
+            int offset = index * 2;
+            return new float2(FutureTrajectoryLocalDirection[offset], FutureTrajectoryLocalDirection[offset + 1]);
+        }
+        public void SetFutureTrajectoryLocalPosition(int index, float2 position)
+        {
+            int offset = index * 2;
+            FutureTrajectoryLocalPosition[offset] = position.x;
+            FutureTrajectoryLocalPosition[offset + 1] = position.y;
+        }
+        public void SetFutureTrajectoryLocalDirection(int index, float2 direction)
+        {
+            int offset = index * 2;
+            FutureTrajectoryLocalDirection[offset] = direction.x;
+            FutureTrajectoryLocalDirection[offset + 1] = direction.y;
         }
     }
 }

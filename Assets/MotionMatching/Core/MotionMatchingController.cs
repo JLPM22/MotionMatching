@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Collections;
+using Unity.Jobs;
 
 namespace MotionMatching
 {
@@ -26,6 +28,7 @@ namespace MotionMatching
         private int CurrentFrame;
         private int SearchFrameCount;
         private FeatureVector QueryFeature;
+        private NativeArray<int> SearchResult;
 
         private void Awake()
         {
@@ -92,6 +95,9 @@ namespace MotionMatching
             {
                 Application.targetFrameRate = -1;
             }
+
+            // Other initialization
+            SearchResult = new NativeArray<int>(1, Allocator.Persistent);
         }
 
         private void OnEnable()
@@ -108,8 +114,8 @@ namespace MotionMatching
         private void Start()
         {
             QueryFeature = new FeatureVector();
-            QueryFeature.FutureTrajectoryLocalDirection = new float2[CharacterController.NumberPrediction];
-            QueryFeature.FutureTrajectoryLocalPosition = new float2[CharacterController.NumberPrediction];
+            // QueryFeature.FutureTrajectoryLocalDirection = new float[CharacterController.NumberPrediction];
+            // QueryFeature.FutureTrajectoryLocalPosition = new float[CharacterController.NumberPrediction];
         }
 
         private void OnCharacterControllerUpdated(float deltaTime)
@@ -146,34 +152,28 @@ namespace MotionMatching
             // Init Query Vector
             for (int i = 0; i < CharacterController.NumberPrediction; ++i)
             {
-                QueryFeature.FutureTrajectoryLocalPosition[i] = GetPositionLocalCharacter(CharacterController.GetWorldPredictedPosition(i));
-                QueryFeature.FutureTrajectoryLocalDirection[i] = GetDirectionLocalCharacter(CharacterController.GetWorldPredictedDirection(i));
+                QueryFeature.SetFutureTrajectoryLocalPosition(i, GetPositionLocalCharacter(CharacterController.GetWorldPredictedPosition(i)));
+                QueryFeature.SetFutureTrajectoryLocalDirection(i, GetDirectionLocalCharacter(CharacterController.GetWorldPredictedDirection(i)));
             }
-            FeatureVector current = FeatureSet.Features[CurrentFrame];
+            FeatureVector current = FeatureSet.GetFeature(CurrentFrame);
             QueryFeature.LeftFootLocalPosition = current.LeftFootLocalPosition;
             QueryFeature.LeftFootLocalVelocity = current.LeftFootLocalVelocity;
             QueryFeature.RightFootLocalPosition = current.RightFootLocalPosition;
             QueryFeature.RightFootLocalVelocity = current.RightFootLocalVelocity;
             QueryFeature.HipsLocalVelocity = current.HipsLocalVelocity;
             // Normalize
-            if (Normalize) FeatureSet.NormalizeFeatureVector(ref QueryFeature);
+            if (Normalize) QueryFeature = FeatureSet.NormalizeFeatureVector(QueryFeature);
             // Search
-            float min = float.MaxValue;
-            int minIndex = -1;
-            for (int i = 0; i < FeatureSet.Features.Length; ++i)
+            var job = new LinearMotionMatchingSearchBurst
             {
-                FeatureVector feature = FeatureSet.Features[i];
-                if (feature.Valid)
-                {
-                    float dist = QueryFeature.SqrDistance(feature, Responsiveness, Quality);
-                    if (dist < min)
-                    {
-                        min = dist;
-                        minIndex = i;
-                    }
-                }
-            }
-            return minIndex;
+                Features = FeatureSet.GetFeatures(),
+                QueryFeature = QueryFeature,
+                Responsiveness = Responsiveness,
+                Quality = Quality,
+                BestIndex = SearchResult
+            };
+            job.Schedule().Complete();
+            return SearchResult[0];
         }
 
         private void UpdateTransformAndSkeleton(int frameIndex)
@@ -201,6 +201,18 @@ namespace MotionMatching
         {
             float3 localDir = transform.InverseTransformDirection(new float3(worldDir.x, 0.0f, worldDir.y));
             return new float2(localDir.x, localDir.z);
+        }
+
+        private void OnDestroy()
+        {
+            FeatureSet.Dispose();
+            if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
+        }
+
+        private void OnApplicationQuit()
+        {
+            FeatureSet.Dispose();
+            if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
         }
 
 #if UNITY_EDITOR
@@ -236,7 +248,7 @@ namespace MotionMatching
             // Feature Set
             if (FeatureSet == null) return;
 
-            FeatureVector fv = FeatureSet.Features[currentFrame];
+            FeatureVector fv = FeatureSet.GetFeature(currentFrame);
             if (fv.Valid)
             {
                 quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
@@ -266,13 +278,13 @@ namespace MotionMatching
                     GizmosExtensions.DrawArrow(SkeletonTransforms[0].position, SkeletonTransforms[0].position + (Vector3)(hipsVelWorld * 0.1f), 0.25f * math.length(hipsVelWorld) * 0.1f);
                 }
                 // Trajectory
-                for (int i = 0; i < fv.FutureTrajectoryLocalPosition.Length; ++i)
+                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); ++i)
                 {
-                    Gizmos.color = Color.blue * (1.0f - (float)i / (fv.FutureTrajectoryLocalPosition.Length * 1.25f));
-                    float2 futurePos = fv.FutureTrajectoryLocalPosition[i];
+                    Gizmos.color = Color.blue * (1.0f - (float)i / (FeatureVector.GetFutureTrajectoryLength() * 1.25f));
+                    float2 futurePos = fv.GetFutureTrajectoryLocalPosition(i);
                     float3 futureWorld = characterOrigin + math.mul(characterRot, (new float3(futurePos.x, 0.0f, futurePos.y)));
                     Gizmos.DrawSphere(futureWorld, SpheresRadius);
-                    float2 futureDir = fv.FutureTrajectoryLocalDirection[i];
+                    float2 futureDir = fv.GetFutureTrajectoryLocalDirection(i);
                     float3 futureDirWorld = math.mul(characterRot, (new float3(futureDir.x, 0.0f, futureDir.y)));
                     GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld);
                 }

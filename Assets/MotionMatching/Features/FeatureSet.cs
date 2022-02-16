@@ -12,7 +12,9 @@ namespace MotionMatching
     /// </summary>
     public class FeatureSet
     {
-        public FeatureVector[] Features { get; private set; }
+        public int NumberFeatures { get { return Features.Length; } }
+
+        private NativeArray<FeatureVector> Features;
         private float[] Mean;
         private float[] StandardDeviation;
         private NormalizeType NormType;
@@ -20,12 +22,21 @@ namespace MotionMatching
 
         public FeatureSet(FeatureVector[] features)
         {
-            // Features = new NativeArray<FeatureVector>(features.Length, Allocator.Persistent);
-            // for (int i = 0; i < features.Length; i++) Features[i] = features[i];
-            Features = features;
+            Features = new NativeArray<FeatureVector>(features.Length, Allocator.Persistent);
+            for (int i = 0; i < features.Length; i++) Features[i] = features[i];
         }
 
-        public void NormalizeFeatureVector(ref FeatureVector featureVector)
+        public FeatureVector GetFeature(int index)
+        {
+            return Features[index];
+        }
+
+        public NativeArray<FeatureVector> GetFeatures()
+        {
+            return Features;
+        }
+
+        public FeatureVector NormalizeFeatureVector(FeatureVector featureVector)
         {
             Debug.Assert(Mean != null, "Mean is not initialized");
             Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
@@ -33,17 +44,17 @@ namespace MotionMatching
             if (NormType == NormalizeType.Magnitude)
             {
                 // Trajectory
-                for (int i = 0; i < featureVector.FutureTrajectoryLocalPosition.Length; i++)
+                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); i++)
                 {
-                    float2 v = featureVector.FutureTrajectoryLocalPosition[i];
+                    float2 v = featureVector.GetFutureTrajectoryLocalPosition(i);
                     float2 unit = math.normalize(v);
-                    featureVector.FutureTrajectoryLocalPosition[i] = (v - unit * Mean[0]) / StandardDeviation[0];
+                    featureVector.SetFutureTrajectoryLocalPosition(i, (v - unit * Mean[0]) / StandardDeviation[0]);
                 }
-                for (int i = 0; i < featureVector.FutureTrajectoryLocalDirection.Length; i++)
+                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); i++)
                 {
-                    float2 v = featureVector.FutureTrajectoryLocalDirection[i];
+                    float2 v = featureVector.GetFutureTrajectoryLocalDirection(i);
                     float2 unit = math.normalize(v);
-                    featureVector.FutureTrajectoryLocalDirection[i] = (v - unit * Mean[1]) / StandardDeviation[1];
+                    featureVector.SetFutureTrajectoryLocalDirection(i, (v - unit * Mean[1]) / StandardDeviation[1]);
                 }
                 // Pose
                 {
@@ -72,15 +83,15 @@ namespace MotionMatching
             else if (NormType == NormalizeType.Component)
             {
                 // Trajectory
-                for (int i = 0; i < featureVector.FutureTrajectoryLocalPosition.Length; i++)
+                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); i++)
                 {
-                    featureVector.FutureTrajectoryLocalPosition[i].x = (featureVector.FutureTrajectoryLocalPosition[i].x - Mean[0]) / StandardDeviation[0];
-                    featureVector.FutureTrajectoryLocalPosition[i].y = (featureVector.FutureTrajectoryLocalPosition[i].y - Mean[1]) / StandardDeviation[1];
+                    featureVector.SetFutureTrajectoryLocalPosition(i, new float2((featureVector.GetFutureTrajectoryLocalPosition(i).x - Mean[0]) / StandardDeviation[0],
+                                                                                 (featureVector.GetFutureTrajectoryLocalPosition(i).y - Mean[1]) / StandardDeviation[1]));
                 }
-                for (int i = 0; i < featureVector.FutureTrajectoryLocalDirection.Length; i++)
+                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); i++)
                 {
-                    featureVector.FutureTrajectoryLocalDirection[i].x = (featureVector.FutureTrajectoryLocalDirection[i].x - Mean[2]) / StandardDeviation[2];
-                    featureVector.FutureTrajectoryLocalDirection[i].y = (featureVector.FutureTrajectoryLocalDirection[i].y - Mean[3]) / StandardDeviation[3];
+                    featureVector.SetFutureTrajectoryLocalDirection(i, new float2((featureVector.GetFutureTrajectoryLocalDirection(i).x - Mean[2]) / StandardDeviation[2],
+                                                                                  (featureVector.GetFutureTrajectoryLocalDirection(i).y - Mean[3]) / StandardDeviation[3]));
                 }
                 // Pose
                 {
@@ -106,6 +117,7 @@ namespace MotionMatching
                     featureVector.HipsLocalVelocity.z = (featureVector.HipsLocalVelocity.z - Mean[18]) / StandardDeviation[18];
                 }
             }
+            return featureVector;
         }
 
         /// <summary>
@@ -126,7 +138,7 @@ namespace MotionMatching
             {
                 if (Features[i].Valid)
                 {
-                    NormalizeFeatureVector(ref Features[i]);
+                    Features[i] = NormalizeFeatureVector(Features[i]);
                 }
             }
         }
@@ -142,23 +154,24 @@ namespace MotionMatching
             {
                 if (Features[i].Valid)
                 {
+                    // FIXME: No lo he revisado pero... por que solo miro FutureTrajectory 0 y 1 ????
                     // FutureTrajectoryLocalPosition
-                    Mean[0] += Features[i].FutureTrajectoryLocalPosition[0].x;
+                    Mean[0] += Features[i].GetFutureTrajectoryLocalPosition(0).x;
                     counts[0]++;
-                    Mean[0] += Features[i].FutureTrajectoryLocalPosition[1].x;
+                    Mean[0] += Features[i].GetFutureTrajectoryLocalPosition(1).x;
                     counts[0]++;
-                    Mean[1] += Features[i].FutureTrajectoryLocalPosition[0].y;
+                    Mean[1] += Features[i].GetFutureTrajectoryLocalPosition(0).y;
                     counts[1]++;
-                    Mean[1] += Features[i].FutureTrajectoryLocalPosition[1].y;
+                    Mean[1] += Features[i].GetFutureTrajectoryLocalPosition(1).y;
                     counts[1]++;
                     // FutureTrajectoryLocalDirection
-                    Mean[2] += Features[i].FutureTrajectoryLocalDirection[0].x;
+                    Mean[2] += Features[i].GetFutureTrajectoryLocalDirection(0).x;
                     counts[2]++;
-                    Mean[2] += Features[i].FutureTrajectoryLocalDirection[1].x;
+                    Mean[2] += Features[i].GetFutureTrajectoryLocalDirection(1).x;
                     counts[2]++;
-                    Mean[3] += Features[i].FutureTrajectoryLocalDirection[0].y;
+                    Mean[3] += Features[i].GetFutureTrajectoryLocalDirection(0).y;
                     counts[3]++;
-                    Mean[3] += Features[i].FutureTrajectoryLocalDirection[1].y;
+                    Mean[3] += Features[i].GetFutureTrajectoryLocalDirection(1).y;
                     counts[3]++;
                     // LeftFootLocalPosition
                     Mean[4] += Features[i].LeftFootLocalPosition.x;
@@ -206,16 +219,17 @@ namespace MotionMatching
             {
                 if (Features[i].Valid)
                 {
+                    // FIXME: No lo he revisado pero... por que solo miro FutureTrajectory 0 y 1 ????
                     // FutureTrajectoryLocalPosition
-                    StandardDeviation[0] += (Features[i].FutureTrajectoryLocalPosition[0].x - Mean[0]) * (Features[i].FutureTrajectoryLocalPosition[0].x - Mean[0]);
-                    StandardDeviation[0] += (Features[i].FutureTrajectoryLocalPosition[1].x - Mean[0]) * (Features[i].FutureTrajectoryLocalPosition[1].x - Mean[0]);
-                    StandardDeviation[1] += (Features[i].FutureTrajectoryLocalPosition[0].y - Mean[1]) * (Features[i].FutureTrajectoryLocalPosition[0].y - Mean[1]);
-                    StandardDeviation[1] += (Features[i].FutureTrajectoryLocalPosition[1].y - Mean[1]) * (Features[i].FutureTrajectoryLocalPosition[1].y - Mean[1]);
+                    StandardDeviation[0] += (Features[i].GetFutureTrajectoryLocalPosition(0).x - Mean[0]) * (Features[i].GetFutureTrajectoryLocalPosition(0).x - Mean[0]);
+                    StandardDeviation[0] += (Features[i].GetFutureTrajectoryLocalPosition(1).x - Mean[0]) * (Features[i].GetFutureTrajectoryLocalPosition(1).x - Mean[0]);
+                    StandardDeviation[1] += (Features[i].GetFutureTrajectoryLocalPosition(0).y - Mean[1]) * (Features[i].GetFutureTrajectoryLocalPosition(0).y - Mean[1]);
+                    StandardDeviation[1] += (Features[i].GetFutureTrajectoryLocalPosition(1).y - Mean[1]) * (Features[i].GetFutureTrajectoryLocalPosition(1).y - Mean[1]);
                     // FutureTrajectoryLocalDirection
-                    StandardDeviation[2] += (Features[i].FutureTrajectoryLocalDirection[0].x - Mean[2]) * (Features[i].FutureTrajectoryLocalDirection[0].x - Mean[2]);
-                    StandardDeviation[2] += (Features[i].FutureTrajectoryLocalDirection[1].x - Mean[2]) * (Features[i].FutureTrajectoryLocalDirection[1].x - Mean[2]);
-                    StandardDeviation[3] += (Features[i].FutureTrajectoryLocalDirection[0].y - Mean[3]) * (Features[i].FutureTrajectoryLocalDirection[0].y - Mean[3]);
-                    StandardDeviation[3] += (Features[i].FutureTrajectoryLocalDirection[1].y - Mean[3]) * (Features[i].FutureTrajectoryLocalDirection[1].y - Mean[3]);
+                    StandardDeviation[2] += (Features[i].GetFutureTrajectoryLocalDirection(0).x - Mean[2]) * (Features[i].GetFutureTrajectoryLocalDirection(0).x - Mean[2]);
+                    StandardDeviation[2] += (Features[i].GetFutureTrajectoryLocalDirection(1).x - Mean[2]) * (Features[i].GetFutureTrajectoryLocalDirection(1).x - Mean[2]);
+                    StandardDeviation[3] += (Features[i].GetFutureTrajectoryLocalDirection(0).y - Mean[3]) * (Features[i].GetFutureTrajectoryLocalDirection(0).y - Mean[3]);
+                    StandardDeviation[3] += (Features[i].GetFutureTrajectoryLocalDirection(1).y - Mean[3]) * (Features[i].GetFutureTrajectoryLocalDirection(1).y - Mean[3]);
                     // LeftFootLocalPosition
                     StandardDeviation[4] += (Features[i].LeftFootLocalPosition.x - Mean[4]) * (Features[i].LeftFootLocalPosition.x - Mean[4]);
                     StandardDeviation[5] += (Features[i].LeftFootLocalPosition.y - Mean[5]) * (Features[i].LeftFootLocalPosition.y - Mean[5]);
@@ -255,15 +269,16 @@ namespace MotionMatching
             {
                 if (Features[i].Valid)
                 {
+                    // FIXME: No lo he revisado pero... por que solo miro FutureTrajectory 0 y 1 ????
                     // FutureTrajectoryLocalPosition
-                    Mean[0] += math.length(Features[i].FutureTrajectoryLocalPosition[0]);
+                    Mean[0] += math.length(Features[i].GetFutureTrajectoryLocalPosition(0));
                     counts[0]++;
-                    Mean[0] += math.length(Features[i].FutureTrajectoryLocalPosition[1]);
+                    Mean[0] += math.length(Features[i].GetFutureTrajectoryLocalPosition(1));
                     counts[0]++;
                     // FutureTrajectoryLocalDirection
-                    Mean[1] += math.length(Features[i].FutureTrajectoryLocalDirection[0]);
+                    Mean[1] += math.length(Features[i].GetFutureTrajectoryLocalDirection(0));
                     counts[1]++;
-                    Mean[1] += math.length(Features[i].FutureTrajectoryLocalDirection[1]);
+                    Mean[1] += math.length(Features[i].GetFutureTrajectoryLocalDirection(1));
                     counts[1]++;
                     // LeftFootLocalPosition
                     Mean[2] += math.length(Features[i].LeftFootLocalPosition);
@@ -291,12 +306,13 @@ namespace MotionMatching
             {
                 if (Features[i].Valid)
                 {
+                    // FIXME: No lo he revisado pero... por que solo miro FutureTrajectory 0 y 1 ????
                     // FutureTrajectoryLocalPosition
-                    StandardDeviation[0] += (math.length(Features[i].FutureTrajectoryLocalPosition[0]) - Mean[0]) * (math.length(Features[i].FutureTrajectoryLocalPosition[0]) - Mean[0]);
-                    StandardDeviation[0] += (math.length(Features[i].FutureTrajectoryLocalPosition[1]) - Mean[0]) * (math.length(Features[i].FutureTrajectoryLocalPosition[1]) - Mean[0]);
+                    StandardDeviation[0] += (math.length(Features[i].GetFutureTrajectoryLocalPosition(0)) - Mean[0]) * (math.length(Features[i].GetFutureTrajectoryLocalPosition(0)) - Mean[0]);
+                    StandardDeviation[0] += (math.length(Features[i].GetFutureTrajectoryLocalPosition(1)) - Mean[0]) * (math.length(Features[i].GetFutureTrajectoryLocalPosition(1)) - Mean[0]);
                     // FutureTrajectoryLocalDirection
-                    StandardDeviation[1] += (math.length(Features[i].FutureTrajectoryLocalDirection[0]) - Mean[1]) * (math.length(Features[i].FutureTrajectoryLocalDirection[0]) - Mean[1]);
-                    StandardDeviation[1] += (math.length(Features[i].FutureTrajectoryLocalDirection[1]) - Mean[1]) * (math.length(Features[i].FutureTrajectoryLocalDirection[1]) - Mean[1]);
+                    StandardDeviation[1] += (math.length(Features[i].GetFutureTrajectoryLocalDirection(0)) - Mean[1]) * (math.length(Features[i].GetFutureTrajectoryLocalDirection(0)) - Mean[1]);
+                    StandardDeviation[1] += (math.length(Features[i].GetFutureTrajectoryLocalDirection(1)) - Mean[1]) * (math.length(Features[i].GetFutureTrajectoryLocalDirection(1)) - Mean[1]);
                     // LeftFootLocalPosition
                     StandardDeviation[2] += (math.length(Features[i].LeftFootLocalPosition) - Mean[2]) * (math.length(Features[i].LeftFootLocalPosition) - Mean[2]);
                     // RightFootLocalPosition
@@ -313,6 +329,11 @@ namespace MotionMatching
             {
                 StandardDeviation[i] = Mathf.Sqrt(StandardDeviation[i] / counts[i]);
             }
+        }
+
+        public void Dispose()
+        {
+            if (Features != null && Features.IsCreated) Features.Dispose();
         }
 
         public enum NormalizeType
