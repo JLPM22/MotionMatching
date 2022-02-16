@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace MotionMatching
 {
@@ -10,7 +12,6 @@ namespace MotionMatching
     /// </summary>
     public class FeatureSet
     {
-
         public FeatureVector[] Features { get; private set; }
         private float[] Mean;
         private float[] StandardDeviation;
@@ -19,6 +20,8 @@ namespace MotionMatching
 
         public FeatureSet(FeatureVector[] features)
         {
+            // Features = new NativeArray<FeatureVector>(features.Length, Allocator.Persistent);
+            // for (int i = 0; i < features.Length; i++) Features[i] = features[i];
             Features = features;
         }
 
@@ -32,37 +35,37 @@ namespace MotionMatching
                 // Trajectory
                 for (int i = 0; i < featureVector.FutureTrajectoryLocalPosition.Length; i++)
                 {
-                    Vector2 v = featureVector.FutureTrajectoryLocalPosition[i];
-                    Vector2 unit = v.normalized;
+                    float2 v = featureVector.FutureTrajectoryLocalPosition[i];
+                    float2 unit = math.normalize(v);
                     featureVector.FutureTrajectoryLocalPosition[i] = (v - unit * Mean[0]) / StandardDeviation[0];
                 }
                 for (int i = 0; i < featureVector.FutureTrajectoryLocalDirection.Length; i++)
                 {
-                    Vector2 v = featureVector.FutureTrajectoryLocalDirection[i];
-                    Vector2 unit = v.normalized;
+                    float2 v = featureVector.FutureTrajectoryLocalDirection[i];
+                    float2 unit = math.normalize(v);
                     featureVector.FutureTrajectoryLocalDirection[i] = (v - unit * Mean[1]) / StandardDeviation[1];
                 }
                 // Pose
                 {
                     // LeftFootLocalPosition
-                    Vector3 v = featureVector.LeftFootLocalPosition;
-                    Vector3 unit = v.normalized;
+                    float3 v = featureVector.LeftFootLocalPosition;
+                    float3 unit = math.normalize(v);
                     featureVector.LeftFootLocalPosition = (v - unit * Mean[2]) / StandardDeviation[2];
                     // RightFootLocalPosition
                     v = featureVector.RightFootLocalPosition;
-                    unit = v.normalized;
+                    unit = math.normalize(v);
                     featureVector.RightFootLocalPosition = (v - unit * Mean[3]) / StandardDeviation[3];
                     // LeftFootLocalVelocity
                     v = featureVector.LeftFootLocalVelocity;
-                    unit = v.normalized;
+                    unit = math.normalize(v);
                     featureVector.LeftFootLocalVelocity = (v - unit * Mean[4]) / StandardDeviation[4];
                     // RightFootLocalVelocity
                     v = featureVector.RightFootLocalVelocity;
-                    unit = v.normalized;
+                    unit = math.normalize(v);
                     featureVector.RightFootLocalVelocity = (v - unit * Mean[5]) / StandardDeviation[5];
                     // HipsLocalVelocity
                     v = featureVector.HipsLocalVelocity;
-                    unit = v.normalized;
+                    unit = math.normalize(v);
                     featureVector.HipsLocalVelocity = (v - unit * Mean[6]) / StandardDeviation[6];
                 }
             }
@@ -253,29 +256,29 @@ namespace MotionMatching
                 if (Features[i].Valid)
                 {
                     // FutureTrajectoryLocalPosition
-                    Mean[0] += Features[i].FutureTrajectoryLocalPosition[0].magnitude;
+                    Mean[0] += math.length(Features[i].FutureTrajectoryLocalPosition[0]);
                     counts[0]++;
-                    Mean[0] += Features[i].FutureTrajectoryLocalPosition[1].magnitude;
+                    Mean[0] += math.length(Features[i].FutureTrajectoryLocalPosition[1]);
                     counts[0]++;
                     // FutureTrajectoryLocalDirection
-                    Mean[1] += Features[i].FutureTrajectoryLocalDirection[0].magnitude;
+                    Mean[1] += math.length(Features[i].FutureTrajectoryLocalDirection[0]);
                     counts[1]++;
-                    Mean[1] += Features[i].FutureTrajectoryLocalDirection[1].magnitude;
+                    Mean[1] += math.length(Features[i].FutureTrajectoryLocalDirection[1]);
                     counts[1]++;
                     // LeftFootLocalPosition
-                    Mean[2] += Features[i].LeftFootLocalPosition.magnitude;
+                    Mean[2] += math.length(Features[i].LeftFootLocalPosition);
                     counts[2]++;
                     // RightFootLocalPosition
-                    Mean[3] += Features[i].RightFootLocalPosition.magnitude;
+                    Mean[3] += math.length(Features[i].RightFootLocalPosition);
                     counts[3]++;
                     // LeftFootLocalVelocity
-                    Mean[4] += Features[i].LeftFootLocalVelocity.magnitude;
+                    Mean[4] += math.length(Features[i].LeftFootLocalVelocity);
                     counts[4]++;
                     // RightFootLocalVelocity
-                    Mean[5] += Features[i].RightFootLocalVelocity.magnitude;
+                    Mean[5] += math.length(Features[i].RightFootLocalVelocity);
                     counts[5]++;
                     // HipsLocalVelocity
-                    Mean[6] += Features[i].HipsLocalVelocity.magnitude;
+                    Mean[6] += math.length(Features[i].HipsLocalVelocity);
                     counts[6]++;
                 }
             }
@@ -289,21 +292,21 @@ namespace MotionMatching
                 if (Features[i].Valid)
                 {
                     // FutureTrajectoryLocalPosition
-                    StandardDeviation[0] += (Features[i].FutureTrajectoryLocalPosition[0].magnitude - Mean[0]) * (Features[i].FutureTrajectoryLocalPosition[0].magnitude - Mean[0]);
-                    StandardDeviation[0] += (Features[i].FutureTrajectoryLocalPosition[1].magnitude - Mean[0]) * (Features[i].FutureTrajectoryLocalPosition[1].magnitude - Mean[0]);
+                    StandardDeviation[0] += (math.length(Features[i].FutureTrajectoryLocalPosition[0]) - Mean[0]) * (math.length(Features[i].FutureTrajectoryLocalPosition[0]) - Mean[0]);
+                    StandardDeviation[0] += (math.length(Features[i].FutureTrajectoryLocalPosition[1]) - Mean[0]) * (math.length(Features[i].FutureTrajectoryLocalPosition[1]) - Mean[0]);
                     // FutureTrajectoryLocalDirection
-                    StandardDeviation[1] += (Features[i].FutureTrajectoryLocalDirection[0].magnitude - Mean[1]) * (Features[i].FutureTrajectoryLocalDirection[0].magnitude - Mean[1]);
-                    StandardDeviation[1] += (Features[i].FutureTrajectoryLocalDirection[1].magnitude - Mean[1]) * (Features[i].FutureTrajectoryLocalDirection[1].magnitude - Mean[1]);
+                    StandardDeviation[1] += (math.length(Features[i].FutureTrajectoryLocalDirection[0]) - Mean[1]) * (math.length(Features[i].FutureTrajectoryLocalDirection[0]) - Mean[1]);
+                    StandardDeviation[1] += (math.length(Features[i].FutureTrajectoryLocalDirection[1]) - Mean[1]) * (math.length(Features[i].FutureTrajectoryLocalDirection[1]) - Mean[1]);
                     // LeftFootLocalPosition
-                    StandardDeviation[2] += (Features[i].LeftFootLocalPosition.magnitude - Mean[2]) * (Features[i].LeftFootLocalPosition.magnitude - Mean[2]);
+                    StandardDeviation[2] += (math.length(Features[i].LeftFootLocalPosition) - Mean[2]) * (math.length(Features[i].LeftFootLocalPosition) - Mean[2]);
                     // RightFootLocalPosition
-                    StandardDeviation[3] += (Features[i].RightFootLocalPosition.magnitude - Mean[3]) * (Features[i].RightFootLocalPosition.magnitude - Mean[3]);
+                    StandardDeviation[3] += (math.length(Features[i].RightFootLocalPosition) - Mean[3]) * (math.length(Features[i].RightFootLocalPosition) - Mean[3]);
                     // LeftFootLocalVelocity
-                    StandardDeviation[4] += (Features[i].LeftFootLocalVelocity.magnitude - Mean[4]) * (Features[i].LeftFootLocalVelocity.magnitude - Mean[4]);
+                    StandardDeviation[4] += (math.length(Features[i].LeftFootLocalVelocity) - Mean[4]) * (math.length(Features[i].LeftFootLocalVelocity) - Mean[4]);
                     // RightFootLocalVelocity
-                    StandardDeviation[5] += (Features[i].RightFootLocalVelocity.magnitude - Mean[5]) * (Features[i].RightFootLocalVelocity.magnitude - Mean[5]);
+                    StandardDeviation[5] += (math.length(Features[i].RightFootLocalVelocity) - Mean[5]) * (math.length(Features[i].RightFootLocalVelocity) - Mean[5]);
                     // HipsLocalVelocity
-                    StandardDeviation[6] += (Features[i].HipsLocalVelocity.magnitude - Mean[6]) * (Features[i].HipsLocalVelocity.magnitude - Mean[6]);
+                    StandardDeviation[6] += (math.length(Features[i].HipsLocalVelocity) - Mean[6]) * (math.length(Features[i].HipsLocalVelocity) - Mean[6]);
                 }
             }
             for (int i = 0; i < nFeatures; i++)

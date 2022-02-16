@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace MotionMatching
 {
@@ -107,8 +108,8 @@ namespace MotionMatching
         private void Start()
         {
             QueryFeature = new FeatureVector();
-            QueryFeature.FutureTrajectoryLocalDirection = new Vector2[CharacterController.NumberPrediction];
-            QueryFeature.FutureTrajectoryLocalPosition = new Vector2[CharacterController.NumberPrediction];
+            QueryFeature.FutureTrajectoryLocalDirection = new float2[CharacterController.NumberPrediction];
+            QueryFeature.FutureTrajectoryLocalPosition = new float2[CharacterController.NumberPrediction];
         }
 
         private void OnCharacterControllerUpdated(float deltaTime)
@@ -187,19 +188,19 @@ namespace MotionMatching
                 SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
             }
             // Root Y Position
-            SkeletonTransforms[0].localPosition = new Vector3(0, pose.RootWorld.y, 0);
+            SkeletonTransforms[0].localPosition = new float3(0, pose.RootWorld.y, 0);
         }
 
-        private Vector2 GetPositionLocalCharacter(Vector2 worldPosition)
+        private float2 GetPositionLocalCharacter(float2 worldPosition)
         {
-            Vector3 localPosition = transform.InverseTransformPoint(new Vector3(worldPosition.x, 0.0f, worldPosition.y));
-            return new Vector2(localPosition.x, localPosition.z);
+            float3 localPosition = transform.InverseTransformPoint(new float3(worldPosition.x, 0.0f, worldPosition.y));
+            return new float2(localPosition.x, localPosition.z);
         }
 
-        private Vector2 GetDirectionLocalCharacter(Vector2 worldDir)
+        private float2 GetDirectionLocalCharacter(float2 worldDir)
         {
-            Vector3 localDir = transform.InverseTransformDirection(new Vector3(worldDir.x, 0.0f, worldDir.y));
-            return new Vector2(localDir.x, localDir.z);
+            float3 localDir = transform.InverseTransformDirection(new float3(worldDir.x, 0.0f, worldDir.y));
+            return new float2(localDir.x, localDir.z);
         }
 
 #if UNITY_EDITOR
@@ -226,8 +227,8 @@ namespace MotionMatching
             int currentFrame = CurrentFrame - 1; // OnDrawGizmos is called after Update
             if (currentFrame < 0) currentFrame = Animation.Frames.Length - 1;
             PoseVector pose = PoseSet.Poses[currentFrame];
-            Vector3 characterOrigin = transform.position;
-            Vector3 characterForward = transform.forward;
+            float3 characterOrigin = transform.position;
+            float3 characterForward = transform.forward;
             Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
             Gizmos.DrawSphere(characterOrigin, SpheresRadius);
             GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward);
@@ -238,41 +239,41 @@ namespace MotionMatching
             FeatureVector fv = FeatureSet.Features[currentFrame];
             if (fv.Valid)
             {
-                Quaternion characterRot = Quaternion.LookRotation(characterForward, Vector3.up);
+                quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
                 // Left Foot
                 Gizmos.color = Color.cyan;
-                Vector3 leftFootWorld = characterOrigin + characterRot * fv.LeftFootLocalPosition;
+                float3 leftFootWorld = characterOrigin + math.mul(characterRot, fv.LeftFootLocalPosition);
                 Gizmos.DrawWireSphere(leftFootWorld, SpheresRadius);
-                Vector3 leftFootVelWorld = characterRot * fv.LeftFootLocalVelocity;
-                if (leftFootVelWorld.magnitude > 0.001f)
+                float3 leftFootVelWorld = math.mul(characterRot, fv.LeftFootLocalVelocity);
+                if (math.length(leftFootVelWorld) > 0.001f)
                 {
-                    GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * leftFootVelWorld.magnitude * 0.1f);
+                    GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * math.length(leftFootVelWorld) * 0.1f);
                 }
                 // Right Foot
                 Gizmos.color = Color.yellow;
-                Vector3 rightFootWorld = characterOrigin + characterRot * fv.RightFootLocalPosition;
+                float3 rightFootWorld = characterOrigin + math.mul(characterRot, fv.RightFootLocalPosition);
                 Gizmos.DrawWireSphere(rightFootWorld, SpheresRadius);
-                Vector3 rightFootVelWorld = characterRot * fv.RightFootLocalVelocity;
-                if (rightFootVelWorld.magnitude > 0.001f)
+                float3 rightFootVelWorld = math.mul(characterRot, fv.RightFootLocalVelocity);
+                if (math.length(rightFootVelWorld) > 0.001f)
                 {
-                    GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * rightFootVelWorld.magnitude * 0.1f);
+                    GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * math.length(rightFootVelWorld) * 0.1f);
                 }
                 // Hips
                 Gizmos.color = Color.green;
-                Vector3 hipsVelWorld = characterRot * fv.HipsLocalVelocity;
-                if (hipsVelWorld.magnitude > 0.001f)
+                float3 hipsVelWorld = math.mul(characterRot, fv.HipsLocalVelocity);
+                if (math.length(hipsVelWorld) > 0.001f)
                 {
-                    GizmosExtensions.DrawArrow(SkeletonTransforms[0].position, SkeletonTransforms[0].position + hipsVelWorld * 0.1f, 0.25f * hipsVelWorld.magnitude * 0.1f);
+                    GizmosExtensions.DrawArrow(SkeletonTransforms[0].position, SkeletonTransforms[0].position + (Vector3)(hipsVelWorld * 0.1f), 0.25f * math.length(hipsVelWorld) * 0.1f);
                 }
                 // Trajectory
                 for (int i = 0; i < fv.FutureTrajectoryLocalPosition.Length; ++i)
                 {
                     Gizmos.color = Color.blue * (1.0f - (float)i / (fv.FutureTrajectoryLocalPosition.Length * 1.25f));
-                    Vector2 futurePos = fv.FutureTrajectoryLocalPosition[i];
-                    Vector3 futureWorld = characterOrigin + characterRot * (new Vector3(futurePos.x, 0.0f, futurePos.y));
+                    float2 futurePos = fv.FutureTrajectoryLocalPosition[i];
+                    float3 futureWorld = characterOrigin + math.mul(characterRot, (new float3(futurePos.x, 0.0f, futurePos.y)));
                     Gizmos.DrawSphere(futureWorld, SpheresRadius);
-                    Vector2 futureDir = fv.FutureTrajectoryLocalDirection[i];
-                    Vector3 futureDirWorld = characterRot * (new Vector3(futureDir.x, 0.0f, futureDir.y));
+                    float2 futureDir = fv.FutureTrajectoryLocalDirection[i];
+                    float3 futureDirWorld = math.mul(characterRot, (new float3(futureDir.x, 0.0f, futureDir.y)));
                     GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld);
                 }
             }

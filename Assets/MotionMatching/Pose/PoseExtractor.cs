@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace MotionMatching
 {
@@ -30,8 +31,8 @@ namespace MotionMatching
             BVHAnimation.Frame frame = bvhAnimation.Frames[frameIndex];
             int nJoints = bvhAnimation.Skeleton.Joints.Count;
             // Joints
-            Vector3[] jointLocalPositions = new Vector3[nJoints];
-            Quaternion[] jointLocalRotations = new Quaternion[nJoints];
+            float3[] jointLocalPositions = new float3[nJoints];
+            quaternion[] jointLocalRotations = new quaternion[nJoints];
             for (int i = 0; i < nJoints; i++)
             {
                 jointLocalPositions[i] = bvhAnimation.Skeleton.Joints[i].LocalOffset;
@@ -39,18 +40,18 @@ namespace MotionMatching
             }
             // Root: remove Y world axis rotation
             Quaternion hipsRotWorld = jointLocalRotations[0];
-            Vector3 hipsRotEuler = hipsRotWorld.eulerAngles;
+            float3 hipsRotEuler = hipsRotWorld.eulerAngles;
             float yRot = hipsRotEuler.y;
             hipsRotEuler.y = 0.0f;
             jointLocalRotations[0] = Quaternion.Euler(hipsRotEuler);
             // Local Root Velocity
-            FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, out _, out Vector3 characterForward);
-            Vector3 rootVelocity = Vector3.zero;
-            Quaternion rootRotVelocity = Quaternion.identity;
+            FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, out _, out float3 characterForward);
+            float3 rootVelocity = float3.zero;
+            quaternion rootRotVelocity = Quaternion.identity;
             if (frameIndex > 0)
             {
-                Vector3 hipsWorldXZ = new Vector3(frame.RootMotion.x, 0.0f, frame.RootMotion.z);
-                Vector3 previousHipsWorldXZ = new Vector3(bvhAnimation.Frames[frameIndex - 1].RootMotion.x, 0.0f, bvhAnimation.Frames[frameIndex - 1].RootMotion.z);
+                float3 hipsWorldXZ = new float3(frame.RootMotion.x, 0.0f, frame.RootMotion.z);
+                float3 previousHipsWorldXZ = new float3(bvhAnimation.Frames[frameIndex - 1].RootMotion.x, 0.0f, bvhAnimation.Frames[frameIndex - 1].RootMotion.z);
                 rootVelocity = hipsWorldXZ - previousHipsWorldXZ;
                 rootVelocity = FeatureExtractor.GetLocalDirectionFromCharacter(rootVelocity, characterForward);
                 float yRotPrevious = bvhAnimation.Frames[frameIndex - 1].LocalRotations[0].eulerAngles.y;

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace MotionMatching
 {
@@ -48,10 +49,10 @@ namespace MotionMatching
             Debug.Assert(poseIndex < clip.End - 60, "poseIndex cannot be in the last 60 frames of a clip");
             PoseVector pose = poseSet.Poses[poseIndex];
             PoseVector poseNext = poseSet.Poses[poseIndex + 1];
-            // Compute local features based on the projection of the hips in the ZX plane? (ground)
+            // Compute local features based on the projection of the hips in the ZX plane (ground)
             // so hips and feet are local to a stable position with respect to the character
             // this solution only works for one type of skeleton
-            GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, out Vector3 characterOrigin, out Vector3 characterForward);
+            GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, out float3 characterOrigin, out float3 characterForward);
             FeatureVector feature = new FeatureVector();
             feature.Valid = true;
             // Left Foot
@@ -61,27 +62,27 @@ namespace MotionMatching
             // Hips
             GetJointFeatures(pose, poseNext, poseSet.Skeleton, hips, characterOrigin, characterForward, clip, out _, out feature.HipsLocalVelocity);
             // Trajectory
-            feature.FutureTrajectoryLocalPosition = new Vector2[3];
-            feature.FutureTrajectoryLocalDirection = new Vector2[3];
+            feature.FutureTrajectoryLocalPosition = new float2[3];
+            feature.FutureTrajectoryLocalDirection = new float2[3];
             GetTrajectoryFeatures(poseSet.Poses[poseIndex + 20], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[0], out feature.FutureTrajectoryLocalDirection[0]);
             GetTrajectoryFeatures(poseSet.Poses[poseIndex + 40], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[1], out feature.FutureTrajectoryLocalDirection[1]);
             GetTrajectoryFeatures(poseSet.Poses[poseIndex + 60], characterOrigin, characterForward, out feature.FutureTrajectoryLocalPosition[2], out feature.FutureTrajectoryLocalDirection[2]);
             return feature;
         }
 
-        private void GetTrajectoryFeatures(PoseVector pose, Vector3 characterOrigin, Vector3 characterForward, out Vector2 futureLocalPosition, out Vector2 futureLocalDirection)
+        private void GetTrajectoryFeatures(PoseVector pose, float3 characterOrigin, float3 characterForward, out float2 futureLocalPosition, out float2 futureLocalDirection)
         {
-            Vector3 futureLocalPosition3D = GetLocalPositionFromCharacter(pose.RootWorld, characterOrigin, characterForward);
-            futureLocalPosition = new Vector2(futureLocalPosition3D.x, futureLocalPosition3D.z);
-            Vector3 futureLocalDirection3D = GetLocalDirectionFromCharacter(pose.RootWorldRot * Vector3.forward, characterForward);
-            futureLocalDirection = (new Vector2(futureLocalDirection3D.x, futureLocalDirection3D.z)).normalized;
+            float3 futureLocalPosition3D = GetLocalPositionFromCharacter(pose.RootWorld, characterOrigin, characterForward);
+            futureLocalPosition = new float2(futureLocalPosition3D.x, futureLocalPosition3D.z);
+            float3 futureLocalDirection3D = GetLocalDirectionFromCharacter(math.mul(pose.RootWorldRot, new float3(0.0f, 0.0f, 1.0f)), characterForward);
+            futureLocalDirection = math.normalize(new float2(futureLocalDirection3D.x, futureLocalDirection3D.z));
         }
 
-        private void GetJointFeatures(PoseVector pose, PoseVector poseNext, Skeleton skeleton, Joint joint, Vector3 characterOrigin, Vector3 characterForward, AnimationClip clip,
-                                      out Vector3 localPosition, out Vector3 localVelocity)
+        private void GetJointFeatures(PoseVector pose, PoseVector poseNext, Skeleton skeleton, Joint joint, float3 characterOrigin, float3 characterForward, AnimationClip clip,
+                                      out float3 localPosition, out float3 localVelocity)
         {
-            Vector3 worldPosition = ForwardKinematics(skeleton, pose, joint);
-            Vector3 worldPositionNext = ForwardKinematics(skeleton, poseNext, joint);
+            float3 worldPosition = ForwardKinematics(skeleton, pose, joint);
+            float3 worldPositionNext = ForwardKinematics(skeleton, poseNext, joint);
             localPosition = GetLocalPositionFromCharacter(worldPosition, characterOrigin, characterForward);
             localVelocity = (GetLocalPositionFromCharacter(worldPositionNext, characterOrigin, characterForward) - localPosition) / clip.FrameTime;
         }
@@ -89,39 +90,40 @@ namespace MotionMatching
         /// <summary>
         /// Returns the position of the joint in world space after applying FK using the pose
         /// </summary>
-        private Vector3 ForwardKinematics(Skeleton skeleton, PoseVector pose, Joint joint)
+        private float3 ForwardKinematics(Skeleton skeleton, PoseVector pose, Joint joint)
         {
-            Vector3 localOffset = joint.LocalOffset;
+            float3 localOffset = joint.LocalOffset;
             Matrix4x4 localToWorld = Matrix4x4.identity;
             while (joint.ParentIndex != 0) // while not root
             {
-                localToWorld = Matrix4x4.TRS(pose.JointLocalPositions[joint.ParentIndex], pose.JointLocalRotations[joint.ParentIndex], Vector3.one) * localToWorld;
+                localToWorld = Matrix4x4.TRS(pose.JointLocalPositions[joint.ParentIndex], pose.JointLocalRotations[joint.ParentIndex], new float3(1.0f, 1.0f, 1.0f)) * localToWorld;
                 joint = skeleton.GetParent(joint);
             }
-            localToWorld = Matrix4x4.TRS(pose.RootWorld, pose.RootWorldRot, Vector3.one) * localToWorld; // root
+            localToWorld = Matrix4x4.TRS(pose.RootWorld, pose.RootWorldRot, new float3(1.0f, 1.0f, 1.0f)) * localToWorld; // root
             return localToWorld.MultiplyPoint3x4(localOffset);
         }
 
-        public static void GetWorldOriginCharacter(Vector3 worldHips, Quaternion worldRotHips, out Vector3 center, out Vector3 forward)
+        public static void GetWorldOriginCharacter(float3 worldHips, quaternion worldRotHips, out float3 center, out float3 forward)
         {
-            Plane ground = new Plane(Vector3.up, Vector3.zero);
-            center = ground.ClosestPointOnPlane(worldHips); // Projected hips
-            forward = Vector3.ProjectOnPlane(worldRotHips * Vector3.forward, Vector3.up); // Projected forward (hips)
-            forward = forward.normalized;
+            center = worldHips;
+            center.y = 0.0f; // Projected hips
+            forward = math.mul(worldRotHips, new float3(0.0f, 0.0f, 1.0f));
+            forward.y = 0.0f; // Projected forward (hips)
+            forward = math.normalize(forward);
         }
 
-        private Vector3 GetLocalPositionFromCharacter(Vector3 worldPos, Vector3 centerCharacter, Vector3 forwardCharacter)
+        private float3 GetLocalPositionFromCharacter(float3 worldPos, float3 centerCharacter, float3 forwardCharacter)
         {
-            Vector3 localPos = worldPos;
+            float3 localPos = worldPos;
             localPos -= centerCharacter;
-            localPos = Quaternion.Inverse(Quaternion.LookRotation(forwardCharacter, Vector3.up)) * localPos;
+            localPos = math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, new float3(0.0f, 1.0f, 0.0f))), localPos);
             return localPos;
         }
 
-        public static Vector3 GetLocalDirectionFromCharacter(Vector3 worldDir, Vector3 forwardCharacter)
+        public static float3 GetLocalDirectionFromCharacter(float3 worldDir, float3 forwardCharacter)
         {
-            Vector3 localDir = worldDir;
-            localDir = Quaternion.Inverse(Quaternion.LookRotation(forwardCharacter, Vector3.up)) * localDir;
+            float3 localDir = worldDir;
+            localDir = math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, new float3(0.0f, 1.0f, 0.0f))), localDir);
             return localDir;
         }
     }

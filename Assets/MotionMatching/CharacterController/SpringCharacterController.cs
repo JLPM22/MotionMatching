@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Mathematics;
 
 namespace MotionMatching
 {
@@ -26,25 +27,25 @@ namespace MotionMatching
         // [Range(0.0f, 1.0f)] public float RotationAdjustmentHalflife = 0.2f;
         [Range(0.0f, 1.0f)] public float MaxDistanceSimulationBoneAndObject = 0.1f; // Max distance between SimulationBone and SimulationObject
 
-        private Vector2 InputMovement;
-        private Vector2[] PredictedPosition;
-        private Vector2 Velocity;
-        private Vector2 Direction;
-        private Vector2[] PredictedVelocity;
-        private Vector2 Acceleration;
+        private float2 InputMovement;
+        private float2[] PredictedPosition;
+        private float2 Velocity;
+        private float2 Direction;
+        private float2[] PredictedVelocity;
+        private float2 Acceleration;
         private Queue<float> LastDeltaTime = new Queue<float>();
         private float SumDeltaTime;
 
         private void Start()
         {
-            PredictedPosition = new Vector2[NumberPrediction];
-            PredictedVelocity = new Vector2[NumberPrediction];
-            for (int i = 0; i < NumberPrediction; ++i) PredictedPosition[i] = new Vector2(transform.position.x, transform.position.z);
-            Direction = new Vector2(transform.forward.x, transform.forward.z);
+            PredictedPosition = new float2[NumberPrediction];
+            PredictedVelocity = new float2[NumberPrediction];
+            for (int i = 0; i < NumberPrediction; ++i) PredictedPosition[i] = new float2(transform.position.x, transform.position.z);
+            Direction = new float2(transform.forward.x, transform.forward.z);
         }
 
         // Input a change in the movement direction
-        public void SetMovementDirection(Vector2 movementDirection)
+        public void SetMovementDirection(float2 movementDirection)
         {
             InputMovement = movementDirection;
         }
@@ -58,8 +59,8 @@ namespace MotionMatching
             if (LastDeltaTime.Count == nAverageDeltaTime + 1) SumDeltaTime -= LastDeltaTime.Dequeue();
 
             // Positions
-            Vector2 speed = InputMovement * MaxSpeed;
-            Vector2 newPos = new Vector2(transform.position.x, transform.position.z);
+            float2 speed = InputMovement * MaxSpeed;
+            float2 newPos = new float2(transform.position.x, transform.position.z);
             for (int i = 0; i < 2; ++i)
             {
                 // Update Current Position
@@ -80,10 +81,10 @@ namespace MotionMatching
                     PredictedVelocity[j][i] = predictVel[j];
                 }
             }
-            if (Velocity.sqrMagnitude > MinimumVelocityClamp * MinimumVelocityClamp)
+            if (math.lengthsq(Velocity) > MinimumVelocityClamp * MinimumVelocityClamp)
             {
-                transform.position = new Vector3(newPos.x, transform.position.y, newPos.y);
-                Direction = Velocity.normalized;
+                transform.position = new float3(newPos.x, transform.position.y, newPos.y);
+                Direction = math.normalize(Velocity);
             }
 
             if (OnUpdate != null) OnUpdate(Time.deltaTime);
@@ -98,34 +99,34 @@ namespace MotionMatching
             //AdjustCharacterRotation();
 
             // Clamp Position
-            Vector3 simulationObject = transform.position;
-            Vector3 simulationBone = SimulationBone.transform.position;
-            if (Vector3.Distance(simulationObject, simulationBone) > MaxDistanceSimulationBoneAndObject)
+            float3 simulationObject = transform.position;
+            float3 simulationBone = SimulationBone.transform.position;
+            if (math.distance(simulationObject, simulationBone) > MaxDistanceSimulationBoneAndObject)
             {
-                SimulationBone.transform.position = MaxDistanceSimulationBoneAndObject * Vector3.Normalize(simulationBone - simulationObject) + simulationObject;
+                SimulationBone.transform.position = MaxDistanceSimulationBoneAndObject * math.normalize(simulationBone - simulationObject) + simulationObject;
             }
         }
 
         private void AdjustCharacterPosition()
         {
-            Vector3 simulationObject = transform.position;
-            Vector3 simulationBone = SimulationBone.transform.position;
-            Vector3 differencePosition = simulationObject - simulationBone;
+            float3 simulationObject = transform.position;
+            float3 simulationBone = SimulationBone.transform.position;
+            float3 differencePosition = simulationObject - simulationBone;
             // Damp the difference using the adjustment halflife and dt
-            Vector3 adjustmentPosition = DampAdjustmentImplicit(differencePosition, PositionAdjustmentHalflife, Time.deltaTime);
+            float3 adjustmentPosition = DampAdjustmentImplicit(differencePosition, PositionAdjustmentHalflife, Time.deltaTime);
             // Move the simulation bone towards the simulation object
             SimulationBone.transform.position = simulationBone + adjustmentPosition;
         }
 
         // private void AdjustCharacterRotation()
         // {
-        //     Quaternion simulationObject = transform.rotation;
-        //     Quaternion simulationBone = SimulationBone.transform.rotation;
+        //     quaternion simulationObject = transform.rotation;
+        //     quaternion simulationBone = SimulationBone.transform.rotation;
         //     // Find the difference in rotation (from character to simulation object)
-        //     // Note: if numerically unstable, try Quaternion.Normalize(Quaternion.Inverse(simulationObject) * simulationBone)
-        //     Quaternion differenceRotation = Quaternion.Inverse(simulationObject) * simulationBone;
+        //     // Note: if numerically unstable, try quaternion.Normalize(quaternion.Inverse(simulationObject) * simulationBone)
+        //     quaternion differenceRotation = quaternion.Inverse(simulationObject) * simulationBone;
         //     // Damp the difference using the adjustment halflife and dt
-        //     Quaternion adjustmentRotation = DampAdjustmentImplicit(differenceRotation, RotationAdjustmentHalflife, Time.deltaTime);
+        //     quaternion adjustmentRotation = DampAdjustmentImplicit(differenceRotation, RotationAdjustmentHalflife, Time.deltaTime);
         //     // Rotate the simulation bone towards the simulation object
         //     SimulationBone.transform.rotation = simulationBone * adjustmentRotation;
         // }
@@ -133,7 +134,7 @@ namespace MotionMatching
         /// <summary>
         /// Variation of the damper code that damps a point starting at zero moving toward the desired difference
         /// </summary>
-        private static Vector3 DampAdjustmentImplicit(Vector3 goal, float halfLife, float dt, float eps = 1e-5f)
+        private static float3 DampAdjustmentImplicit(float3 goal, float halfLife, float dt, float eps = 1e-5f)
         {
             const float LN2f = 0.69314718056f;
             return goal * (1.0f - FastNEgeExp((LN2f * dt) / (halfLife + eps)));
@@ -142,10 +143,10 @@ namespace MotionMatching
         // /// <summary>
         // /// Variation of the damper code that damps a rotation starting at the identity rotation toward the desired difference
         // /// </summary>
-        // private static Quaternion DampAdjustmentImplicit(Quaternion goal, float halfLife, float dt, float eps = 1e-5f)
+        // private static quaternion DampAdjustmentImplicit(quaternion goal, float halfLife, float dt, float eps = 1e-5f)
         // {
         //     const float LN2f = 0.69314718056f;
-        //     return Quaternion.Slerp(Quaternion.identity, goal, 1.0f - FastNEgeExp((LN2f * dt) / (halfLife + eps)));
+        //     return quaternion.Slerp(quaternion.identity, goal, 1.0f - FastNEgeExp((LN2f * dt) / (halfLife + eps)));
         // }
 
         /* https://theorangeduck.com/page/spring-roll-call#controllers */
@@ -184,34 +185,34 @@ namespace MotionMatching
             return 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
         }
 
-        // public Vector2 GetLocalPredictedPosition(int index)
+        // public float2 GetLocalPredictedPosition(int index)
         // {
-        //     Vector3 localPos = new Vector3(PredictedPosition[index].x, transform.position.y, PredictedPosition[index].y);
+        //     float3 localPos = new float3(PredictedPosition[index].x, transform.position.y, PredictedPosition[index].y);
         //     localPos -= transform.position;
-        //     localPos = Quaternion.Inverse(Quaternion.LookRotation(new Vector3(Direction.x, 0.0f, Direction.y), Vector3.up)) * localPos;
-        //     return new Vector2(localPos.x, localPos.z);
+        //     localPos = quaternion.Inverse(quaternion.LookRotation(new float3(Direction.x, 0.0f, Direction.y), float3.up)) * localPos;
+        //     return new float2(localPos.x, localPos.z);
         // }
 
-        // public Vector2 GetLocalPredictedDirection(int index)
+        // public float2 GetLocalPredictedDirection(int index)
         // {
-        //     Vector3 localVel = new Vector3(PredictedVelocity[index].x, 0.0f, PredictedVelocity[index].y);
+        //     float3 localVel = new float3(PredictedVelocity[index].x, 0.0f, PredictedVelocity[index].y);
         //     if (localVel.sqrMagnitude > MinimumVelocityClamp * MinimumVelocityClamp)
         //     {
-        //         localVel = Quaternion.Inverse(Quaternion.LookRotation(new Vector3(Direction.x, 0.0f, Direction.y), Vector3.up)) * localVel;
+        //         localVel = quaternion.Inverse(quaternion.LookRotation(new float3(Direction.x, 0.0f, Direction.y), float3.up)) * localVel;
         //     }
         //     else
         //     {
-        //         localVel = Vector3.forward;
+        //         localVel = float3.forward;
         //     }
-        //     return (new Vector3(localVel.x, localVel.z)).normalized;
+        //     return (new float3(localVel.x, localVel.z)).normalized;
         // }
 
-        public Vector2 GetWorldPredictedPosition(int index)
+        public float2 GetWorldPredictedPosition(int index)
         {
             return PredictedPosition[index];
         }
 
-        public Vector2 GetWorldPredictedDirection(int index)
+        public float2 GetWorldPredictedDirection(int index)
         {
             return Direction;
         }
@@ -224,7 +225,7 @@ namespace MotionMatching
             // Draw Current Position & Velocity
             Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
             Gizmos.DrawSphere(transform.position, radius);
-            Gizmos.DrawLine(transform.position, transform.position + (new Vector3(Velocity.x, 0.0f, Velocity.y)) * vectorReduction);
+            Gizmos.DrawLine(transform.position, transform.position + (Vector3)(new float3(Velocity.x, 0.0f, Velocity.y)) * vectorReduction);
 
             if (PredictedPosition == null || PredictedVelocity == null) return;
 
@@ -232,15 +233,15 @@ namespace MotionMatching
             Gizmos.color = new Color(0.6f, 0.3f, 0.8f, 1.0f);
             for (int i = 0; i < PredictedPosition.Length; ++i)
             {
-                Vector3 current = new Vector3(PredictedPosition[i].x, 0.0f, PredictedPosition[i].y);
-                Vector3 currentVelocity = new Vector3(PredictedVelocity[i].x, 0.0f, PredictedVelocity[i].y);
+                float3 current = new float3(PredictedPosition[i].x, 0.0f, PredictedPosition[i].y);
+                float3 currentVelocity = new float3(PredictedVelocity[i].x, 0.0f, PredictedVelocity[i].y);
                 Gizmos.DrawSphere(current, radius);
                 Gizmos.DrawLine(current, current + currentVelocity * vectorReduction);
             }
 
             // Draw Clamp Circle
             Gizmos.color = new Color(0.1f, 1.0f, 0.1f, 1.0f);
-            GizmosExtensions.DrawWireCircle(transform.position, MaxDistanceSimulationBoneAndObject, Quaternion.identity);
+            GizmosExtensions.DrawWireCircle(transform.position, MaxDistanceSimulationBoneAndObject, quaternion.identity);
         }
 #endif
     }
