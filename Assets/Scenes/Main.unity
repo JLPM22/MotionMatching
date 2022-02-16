@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2026.915, g: 1992.1484, b: 2397.6055, a: 1}
+  m_IndirectSpecularColor: {r: 2023.4258, g: 1989.5156, b: 2396.5156, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -630,6 +630,9 @@ MonoBehaviour:
   MaxSpeed: 3
   Responsiveness: 0.75
   MinimumVelocityClamp: 0.01
+  SimulationBone: {fileID: 845368627}
+  PositionAdjustmentHalflife: 0.1
+  MaxDistanceSimulationBoneAndObject: 0.2
 --- !u!4 &922198741
 Transform:
   m_ObjectHideFlags: 0

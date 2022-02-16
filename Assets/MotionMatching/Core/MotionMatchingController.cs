@@ -96,12 +96,12 @@ namespace MotionMatching
         private void OnEnable()
         {
             SearchFrameCount = 0;
-            CharacterController.OnUpdate += OnUpdate;
+            CharacterController.OnUpdate += OnCharacterControllerUpdated;
         }
 
         private void OnDisable()
         {
-            CharacterController.OnUpdate -= OnUpdate;
+            CharacterController.OnUpdate -= OnCharacterControllerUpdated;
         }
 
         private void Start()
@@ -111,7 +111,7 @@ namespace MotionMatching
             QueryFeature.FutureTrajectoryLocalPosition = new Vector2[CharacterController.NumberPrediction];
         }
 
-        private void OnUpdate(float deltaTime)
+        private void OnCharacterControllerUpdated(float deltaTime)
         {
             PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Total");
             if (SearchFrameCount == 0)
@@ -229,7 +229,7 @@ namespace MotionMatching
             Vector3 characterOrigin = transform.position;
             Vector3 characterForward = transform.forward;
             Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
-            Gizmos.DrawWireSphere(characterOrigin, SpheresRadius);
+            Gizmos.DrawSphere(characterOrigin, SpheresRadius);
             GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward);
 
             // Feature Set
@@ -270,7 +270,7 @@ namespace MotionMatching
                     Gizmos.color = Color.blue * (1.0f - (float)i / (fv.FutureTrajectoryLocalPosition.Length * 1.25f));
                     Vector2 futurePos = fv.FutureTrajectoryLocalPosition[i];
                     Vector3 futureWorld = characterOrigin + characterRot * (new Vector3(futurePos.x, 0.0f, futurePos.y));
-                    Gizmos.DrawWireSphere(futureWorld, SpheresRadius);
+                    Gizmos.DrawSphere(futureWorld, SpheresRadius);
                     Vector2 futureDir = fv.FutureTrajectoryLocalDirection[i];
                     Vector3 futureDirWorld = characterRot * (new Vector3(futureDir.x, 0.0f, futureDir.y));
                     GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld);
