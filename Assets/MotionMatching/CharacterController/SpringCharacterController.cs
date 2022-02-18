@@ -22,6 +22,7 @@ namespace MotionMatching
         [Range(0.0f, 1.0f)] public float Responsiveness = 0.75f;
         public float MinimumVelocityClamp = 0.01f;
         [Header("Adjustment")] // Move Simulation Bone towards the Simulation Object (motion matching towards character controller)
+        public bool DoAdjustment = true;
         public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
         [Range(0.0f, 1.0f)] public float PositionAdjustmentHalflife = 0.1f; // Time needed to move half of the distance between SimulationBone and SimulationObject
         // [Range(0.0f, 1.0f)] public float RotationAdjustmentHalflife = 0.2f;
@@ -90,7 +91,7 @@ namespace MotionMatching
             if (OnUpdate != null) OnUpdate(Time.deltaTime);
 
             // Adjust SimulationBone to pull the character (moving SimulationBone) towards the Simulation Object (character controller)
-            AdjustSimulationBone();
+            if (DoAdjustment) AdjustSimulationBone();
         }
 
         private void AdjustSimulationBone()

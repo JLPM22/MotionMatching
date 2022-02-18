@@ -15,18 +15,18 @@ namespace MotionMatching
         /// poseSet is not cleared, it will add bvhAnimation the the existing poses
         /// Returns true if the bvhAnimation was added to the poseSet, false otherwise
         /// </summary>
-        public bool Extract(BVHAnimation bvhAnimation, PoseSet poseSet)
+        public bool Extract(BVHAnimation bvhAnimation, PoseSet poseSet, float3 defaultHipsForward)
         {
             int nFrames = bvhAnimation.Frames.Length;
             PoseVector[] poses = new PoseVector[nFrames];
             for (int i = 0; i < nFrames; i++)
             {
-                poses[i] = ExtractPose(bvhAnimation, i);
+                poses[i] = ExtractPose(bvhAnimation, i, defaultHipsForward);
             }
             return poseSet.AddClip(bvhAnimation.Skeleton, poses, bvhAnimation.FrameTime);
         }
 
-        private PoseVector ExtractPose(BVHAnimation bvhAnimation, int frameIndex)
+        private PoseVector ExtractPose(BVHAnimation bvhAnimation, int frameIndex, float3 defaultHipsForward)
         {
             BVHAnimation.Frame frame = bvhAnimation.Frames[frameIndex];
             int nJoints = bvhAnimation.Skeleton.Joints.Count;
@@ -45,7 +45,7 @@ namespace MotionMatching
             hipsRotEuler.y = 0.0f;
             jointLocalRotations[0] = Quaternion.Euler(hipsRotEuler);
             // Local Root Velocity
-            FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, out _, out float3 characterForward);
+            FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, defaultHipsForward, out _, out float3 characterForward);
             float3 rootVelocity = float3.zero;
             quaternion rootRotVelocity = Quaternion.identity;
             if (frameIndex > 0)

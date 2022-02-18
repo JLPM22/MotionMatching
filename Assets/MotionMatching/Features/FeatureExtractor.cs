@@ -18,7 +18,7 @@ namespace MotionMatching
         /// <summary>
         /// Extract the feature vectors from poseSet and return a new FeatureSet
         /// </summary>
-        public FeatureSet Extract(PoseSet poseSet)
+        public FeatureSet Extract(PoseSet poseSet, float3 defaultHipsForward)
         {
             int nPoses = poseSet.Poses.Count;
             FeatureVector[] features = new FeatureVector[nPoses];
@@ -32,7 +32,7 @@ namespace MotionMatching
                 // HARDCODED: Trajectory we will use 20, 40 and 60 fps (60Hz) as the original paper
                 for (int clipIt = clip.Start; clipIt < clip.End - 60; clipIt++)
                 {
-                    features[i] = ExtractFeature(poseSet, clipIt, clip, leftFoot, rightFoot, hips);
+                    features[i] = ExtractFeature(poseSet, clipIt, clip, leftFoot, rightFoot, hips, defaultHipsForward);
                     i += 1;
                 }
             }
@@ -42,7 +42,7 @@ namespace MotionMatching
         /// <summary>
         /// Returns the feature vector of the pose at poseIndex, poseIndex cannot be at the end of a clip
         /// </summary>
-        private FeatureVector ExtractFeature(PoseSet poseSet, int poseIndex, AnimationClip clip, Joint leftFoot, Joint rightFoot, Joint hips)
+        private FeatureVector ExtractFeature(PoseSet poseSet, int poseIndex, AnimationClip clip, Joint leftFoot, Joint rightFoot, Joint hips, float3 defaultHipsForward)
         {
             // HARDCODED: Trajectory we will use 20, 40 and 60 fps (60Hz) as the original paper
             Debug.Assert(poseIndex >= clip.Start, "clip does not contain poseIndex");
@@ -52,7 +52,7 @@ namespace MotionMatching
             // Compute local features based on the projection of the hips in the ZX plane (ground)
             // so hips and feet are local to a stable position with respect to the character
             // this solution only works for one type of skeleton
-            GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, out float3 characterOrigin, out float3 characterForward);
+            GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, defaultHipsForward, out float3 characterOrigin, out float3 characterForward);
             FeatureVector feature = new FeatureVector();
             feature.Valid = true;
             // Left Foot
@@ -65,23 +65,23 @@ namespace MotionMatching
             // feature.FutureTrajectoryLocalPosition = new float2[3];
             // feature.FutureTrajectoryLocalDirection = new float2[3];
             float2 trajectoryLocalPos, trajectoryLocalDir;
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 20], characterOrigin, characterForward, out trajectoryLocalPos, out trajectoryLocalDir);
+            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 20], characterOrigin, characterForward, defaultHipsForward, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(0, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(0, trajectoryLocalDir);
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 40], characterOrigin, characterForward, out trajectoryLocalPos, out trajectoryLocalDir);
+            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 40], characterOrigin, characterForward, defaultHipsForward, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(1, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(1, trajectoryLocalDir);
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 60], characterOrigin, characterForward, out trajectoryLocalPos, out trajectoryLocalDir);
+            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 60], characterOrigin, characterForward, defaultHipsForward, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(2, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(2, trajectoryLocalDir);
             return feature;
         }
 
-        private void GetTrajectoryFeatures(PoseVector pose, float3 characterOrigin, float3 characterForward, out float2 futureLocalPosition, out float2 futureLocalDirection)
+        private void GetTrajectoryFeatures(PoseVector pose, float3 characterOrigin, float3 characterForward, float3 defaultHipsForward, out float2 futureLocalPosition, out float2 futureLocalDirection)
         {
             float3 futureLocalPosition3D = GetLocalPositionFromCharacter(pose.RootWorld, characterOrigin, characterForward);
             futureLocalPosition = new float2(futureLocalPosition3D.x, futureLocalPosition3D.z);
-            float3 futureLocalDirection3D = GetLocalDirectionFromCharacter(math.mul(pose.RootWorldRot, new float3(0.0f, 0.0f, 1.0f)), characterForward);
+            float3 futureLocalDirection3D = GetLocalDirectionFromCharacter(math.mul(pose.RootWorldRot, defaultHipsForward), characterForward);
             futureLocalDirection = math.normalize(new float2(futureLocalDirection3D.x, futureLocalDirection3D.z));
         }
 
@@ -110,16 +110,20 @@ namespace MotionMatching
             return localToWorld.MultiplyPoint3x4(localOffset);
         }
 
-        public static void GetWorldOriginCharacter(float3 worldHips, quaternion worldRotHips, out float3 center, out float3 forward)
+        /// <summary>
+        /// Returns the position and forward vector of the character in world space considering the hips position and rotation
+        /// </summary>
+        /// <param name="defaultHipsForward">forward vector of the hips in world space when in bind pose</param>
+        public static void GetWorldOriginCharacter(float3 worldHips, quaternion worldRotHips, float3 defaultHipsForward, out float3 center, out float3 forward)
         {
             center = worldHips;
             center.y = 0.0f; // Projected hips
-            forward = math.mul(worldRotHips, new float3(0.0f, 0.0f, 1.0f));
+            forward = math.mul(worldRotHips, defaultHipsForward);
             forward.y = 0.0f; // Projected forward (hips)
             forward = math.normalize(forward);
         }
 
-        private float3 GetLocalPositionFromCharacter(float3 worldPos, float3 centerCharacter, float3 forwardCharacter)
+        public static float3 GetLocalPositionFromCharacter(float3 worldPos, float3 centerCharacter, float3 forwardCharacter)
         {
             float3 localPos = worldPos;
             localPos -= centerCharacter;

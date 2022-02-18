@@ -16,6 +16,7 @@ public class FeatureDebug : MonoBehaviour
     public float VectorLength = 1.0f;
     public bool LockFPS = true;
     public string LeftFootName, RightFootName, HipsName;
+    public Vector3 DefaultHipsForward = new Vector3(0, 0, 1);
 
     private BVHAnimation Animation;
     private PoseSet PoseSet;
@@ -26,7 +27,7 @@ public class FeatureDebug : MonoBehaviour
     private void Awake()
     {
         BVHImporter importer = new BVHImporter();
-        Animation = importer.Import(BVH);
+        Animation = importer.Import(BVH, UnitScale);
 
         // HARDCODED: hardcode name of important joints for the feature set
         for (int i = 0; i < Animation.Skeleton.Joints.Count; ++i)
@@ -51,13 +52,13 @@ public class FeatureDebug : MonoBehaviour
 
         PoseExtractor poseExtractor = new PoseExtractor();
         PoseSet = new PoseSet();
-        if (!poseExtractor.Extract(Animation, PoseSet))
+        if (!poseExtractor.Extract(Animation, PoseSet, DefaultHipsForward))
         {
             Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
         }
 
         FeatureExtractor featureExtractor = new FeatureExtractor();
-        FeatureSet = featureExtractor.Extract(PoseSet);
+        FeatureSet = featureExtractor.Extract(PoseSet, DefaultHipsForward);
 
         // Skeleton
         SkeletonTransforms = new Transform[Animation.Skeleton.Joints.Count];
@@ -67,7 +68,7 @@ public class FeatureDebug : MonoBehaviour
             t.name = joint.Name;
             if (joint.Index == 0) t.SetParent(transform, false);
             else t.SetParent(SkeletonTransforms[joint.ParentIndex], false);
-            t.localPosition = joint.LocalOffset * UnitScale;
+            t.localPosition = joint.LocalOffset;
             SkeletonTransforms[joint.Index] = t;
         }
 
@@ -88,7 +89,7 @@ public class FeatureDebug : MonoBehaviour
         if (Play)
         {
             BVHAnimation.Frame frame = Animation.Frames[CurrentFrame];
-            SkeletonTransforms[0].localPosition = frame.RootMotion * UnitScale;
+            SkeletonTransforms[0].localPosition = frame.RootMotion;
             for (int i = 0; i < frame.LocalRotations.Length; i++)
             {
                 SkeletonTransforms[i].localRotation = frame.LocalRotations[i];
@@ -106,6 +107,17 @@ public class FeatureDebug : MonoBehaviour
         }
     }
 
+    private void OnDestroy()
+    {
+        FeatureSet.Dispose();
+    }
+
+    private void OnApplicationQuit()
+    {
+        FeatureSet.Dispose();
+    }
+
+
 #if UNITY_EDITOR
     private void OnDrawGizmos()
     {
@@ -121,7 +133,7 @@ public class FeatureDebug : MonoBehaviour
         foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
         {
             Transform t = SkeletonTransforms[endSite.ParentIndex];
-            Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset * UnitScale));
+            Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
         }
 
         // Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
@@ -137,7 +149,7 @@ public class FeatureDebug : MonoBehaviour
         int currentFrame = CurrentFrame - 1; // OnDrawGizmos is called after Update
         if (currentFrame < 0) currentFrame = Animation.Frames.Length - 1;
         PoseVector pose = PoseSet.Poses[currentFrame];
-        FeatureExtractor.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, out float3 characterOrigin, out float3 characterForward);
+        FeatureExtractor.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, DefaultHipsForward, out float3 characterOrigin, out float3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
         Gizmos.DrawWireSphere(characterOrigin, SpheresRadius);
         Debug.Assert(math.length(characterForward) > 0.99f && math.length(characterForward) < 1.01f, "characterForward.magnitude = " + math.length(characterForward) + " should be 1");

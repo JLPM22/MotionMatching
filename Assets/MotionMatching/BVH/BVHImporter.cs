@@ -15,7 +15,7 @@ namespace MotionMatching
     /// </summary>
     public class BVHImporter
     {
-        public BVHAnimation Import(TextAsset bvh)
+        public BVHAnimation Import(TextAsset bvh, float scale = 1.0f)
         {
             List<AxisOrder> channels = new List<AxisOrder>();
             BVHAnimation animation = new BVHAnimation();
@@ -28,7 +28,8 @@ namespace MotionMatching
             if (words[w++] != "ROOT") Debug.LogError("[BVHImporter] ROOT not found");
             Joint root = new Joint(words[w++], 0, 0, Vector3.zero);
             ReadLeftBracket(words, ref w);
-            root.LocalOffset = ReadOffset(words, ref w);
+            root.LocalOffset = ReadOffset(words, ref w) * scale;
+            root.LocalOffset = Vector3.zero; // even if we read the offset, it is not used... it should always be 0...
             ReadChannels(channels, words, ref w, true);
             animation.AddJoint(root);
             // JOINTS
@@ -45,7 +46,7 @@ namespace MotionMatching
                 parentIndexStack.Push(parent);
                 parent = jointIndex - 1;
                 brackets += 1;
-                joint.LocalOffset = ReadOffset(words, ref w);
+                joint.LocalOffset = ReadOffset(words, ref w) * scale;
                 ReadChannels(channels, words, ref w);
                 animation.AddJoint(joint);
                 if (words[w] == "End")
@@ -89,7 +90,7 @@ namespace MotionMatching
                     AxisOrder axisOrder = channels[j];
                     if (j == 0)
                     {
-                        rootMotion = BVHToUnityTranslation(v1, v2, v3, axisOrder);
+                        rootMotion = BVHToUnityTranslation(v1, v2, v3, axisOrder) * scale;
                     }
                     else
                     {

@@ -26,6 +26,7 @@ namespace MotionMatching
         {
             Gizmos.DrawLine(from, to);
             var direction = to - from;
+            if (direction.magnitude < 0.001f) return;
             var right = Quaternion.LookRotation(direction) * Quaternion.Euler(0, 180 + arrowHeadAngle, 0) * new Vector3(0, 0, 1);
             var left = Quaternion.LookRotation(direction) * Quaternion.Euler(0, 180 - arrowHeadAngle, 0) * new Vector3(0, 0, 1);
             Gizmos.DrawLine(to, to + right * arrowHeadLength);

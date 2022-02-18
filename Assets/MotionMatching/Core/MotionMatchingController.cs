@@ -12,9 +12,11 @@ namespace MotionMatching
     {
         public SpringCharacterController CharacterController;
         public TextAsset BVH;
+        public float UnitScale = 1.0f;
         public float SpheresRadius = 0.1f;
         public bool LockFPS = true;
         public string LeftFootName, RightFootName, HipsName;
+        public float3 DefaultHipsForward = new float3(0, 0, 1);
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
         public bool Normalize = false;
         public FeatureSet.NormalizeType NormalizeType = FeatureSet.NormalizeType.Magnitude;
@@ -32,9 +34,13 @@ namespace MotionMatching
 
         private void Awake()
         {
+            // Assertions
+            Debug.Assert(math.length(DefaultHipsForward) < 1.01f && math.length(DefaultHipsForward) > 0.99f, "DefaultHipsForward must be normalized");
+
+            // BVH
             PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
             BVHImporter importer = new BVHImporter();
-            Animation = importer.Import(BVH);
+            Animation = importer.Import(BVH, UnitScale);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
 
             // HARDCODED: hardcode name of important joints for the feature set
@@ -61,7 +67,7 @@ namespace MotionMatching
             PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
             PoseExtractor poseExtractor = new PoseExtractor();
             PoseSet = new PoseSet();
-            if (!poseExtractor.Extract(Animation, PoseSet))
+            if (!poseExtractor.Extract(Animation, PoseSet, DefaultHipsForward))
             {
                 Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
             }
@@ -69,7 +75,7 @@ namespace MotionMatching
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
             FeatureExtractor featureExtractor = new FeatureExtractor();
-            FeatureSet = featureExtractor.Extract(PoseSet);
+            FeatureSet = featureExtractor.Extract(PoseSet, DefaultHipsForward);
             if (Normalize) FeatureSet.NormalizeFeatures(NormalizeType);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
 
@@ -152,8 +158,10 @@ namespace MotionMatching
             // Init Query Vector
             for (int i = 0; i < CharacterController.NumberPrediction; ++i)
             {
-                QueryFeature.SetFutureTrajectoryLocalPosition(i, GetPositionLocalCharacter(CharacterController.GetWorldPredictedPosition(i)));
-                QueryFeature.SetFutureTrajectoryLocalDirection(i, GetDirectionLocalCharacter(CharacterController.GetWorldPredictedDirection(i)));
+                float2 worldPredictedPos = CharacterController.GetWorldPredictedPosition(i);
+                QueryFeature.SetFutureTrajectoryLocalPosition(i, GetPositionLocalCharacter(worldPredictedPos));
+                float2 worldPredictedDir = CharacterController.GetWorldPredictedDirection(i);
+                QueryFeature.SetFutureTrajectoryLocalDirection(i, GetDirectionLocalCharacter(worldPredictedDir));
             }
             FeatureVector current = FeatureSet.GetFeature(CurrentFrame);
             QueryFeature.LeftFootLocalPosition = current.LeftFootLocalPosition;
@@ -187,6 +195,12 @@ namespace MotionMatching
             {
                 SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
             }
+            // Correct Root Orientation to match the Simulation Bone
+            float3 characterForward = transform.forward;
+            characterForward.y = 0;
+            float3 hipsForward = math.mul(SkeletonTransforms[0].rotation, DefaultHipsForward);
+            hipsForward.y = 0;
+            SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward), SkeletonTransforms[0].rotation);
             // Root Y Position
             SkeletonTransforms[0].localPosition = new float3(0, pose.RootWorld.y, 0);
         }

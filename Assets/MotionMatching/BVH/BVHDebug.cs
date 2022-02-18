@@ -21,7 +21,7 @@ public class BVHDebug : MonoBehaviour
     private void Awake()
     {
         BVHImporter importer = new BVHImporter();
-        Animation = importer.Import(BVH);
+        Animation = importer.Import(BVH, UnitScale);
 
         Skeleton = new Transform[Animation.Skeleton.Joints.Count];
         foreach (Skeleton.Joint joint in Animation.Skeleton.Joints)
@@ -30,7 +30,7 @@ public class BVHDebug : MonoBehaviour
             t.name = joint.Name;
             if (joint.Index == 0) t.SetParent(transform, false);
             else t.SetParent(Skeleton[joint.ParentIndex], false);
-            t.localPosition = joint.LocalOffset * UnitScale;
+            t.localPosition = joint.LocalOffset;
             Skeleton[joint.Index] = t;
         }
 
@@ -50,7 +50,7 @@ public class BVHDebug : MonoBehaviour
         if (Play)
         {
             BVHAnimation.Frame frame = Animation.Frames[CurrentFrame];
-            Skeleton[0].localPosition = frame.RootMotion * UnitScale;
+            Skeleton[0].localPosition = frame.RootMotion;
             for (int i = 0; i < frame.LocalRotations.Length; i++)
             {
                 Skeleton[i].localRotation = frame.LocalRotations[i];
@@ -82,7 +82,7 @@ public class BVHDebug : MonoBehaviour
         foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
         {
             Transform t = Skeleton[endSite.ParentIndex];
-            Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset * UnitScale));
+            Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
         }
 
         Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
