@@ -7,42 +7,57 @@ using Unity.Mathematics;
 
 namespace MotionMatching
 {
-    // Read to improve correspondance between input and animation
+    // Adjustment between Character Controller and Motion Matching Character Entity
     /* https://theorangeduck.com/page/code-vs-data-driven-displacement */
-
-    // TODO: Smooth change of direction as Daniel Holden in https://theorangeduck.com/page/code-vs-data-driven-displacement
 
     public class SpringCharacterController : MonoBehaviour
     {
+        // Events -----------------------------------------------------------
         public event Action<float> OnUpdate;
 
+        // General ----------------------------------------------------------
         public int NumberPrediction = 3;
         public int PredictionFrames = 20;
         public float MaxSpeed = 1.0f;
         [Range(0.0f, 1.0f)] public float Responsiveness = 0.75f;
         public float MinimumVelocityClamp = 0.01f;
+        // Adjustment & Clamping --------------------------------------------
         [Header("Adjustment")] // Move Simulation Bone towards the Simulation Object (motion matching towards character controller)
         public bool DoAdjustment = true;
         public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
         [Range(0.0f, 1.0f)] public float PositionAdjustmentHalflife = 0.1f; // Time needed to move half of the distance between SimulationBone and SimulationObject
         // [Range(0.0f, 1.0f)] public float RotationAdjustmentHalflife = 0.2f;
+        public bool DoClamping = true;
         [Range(0.0f, 1.0f)] public float MaxDistanceSimulationBoneAndObject = 0.1f; // Max distance between SimulationBone and SimulationObject
+        // --------------------------------------------------------------------------
 
+        // PRIVATE ------------------------------------------------------------------
+        // Input --------------------------------------------------------------------
         private float2 InputMovement;
+        // Rotation and Predicted Rotation ------------------------------------------
+        private quaternion DesiredRotation; // Desired Rotation/Direction
+        private quaternion[] PredictedRotations;
+        private float3 AngularVelocity;
+        private float3[] PredictedAngularVelocities;
+        // Position and Predicted Position ------------------------------------------
         private float2[] PredictedPosition;
         private float2 Velocity;
-        private float2 Direction;
         private float2[] PredictedVelocity;
         private float2 Acceleration;
+        private float2[] PredictedAcceleration;
+        // Accumulated Delta Time --------------------------------------------------
         private Queue<float> LastDeltaTime = new Queue<float>();
         private float SumDeltaTime;
 
+        // FUNCTIONS ---------------------------------------------------------------
         private void Start()
         {
             PredictedPosition = new float2[NumberPrediction];
             PredictedVelocity = new float2[NumberPrediction];
-            for (int i = 0; i < NumberPrediction; ++i) PredictedPosition[i] = new float2(transform.position.x, transform.position.z);
-            Direction = new float2(transform.forward.x, transform.forward.z);
+            PredictedAcceleration = new float2[NumberPrediction];
+            DesiredRotation = quaternion.LookRotation(transform.forward, transform.up);
+            PredictedRotations = new quaternion[NumberPrediction];
+            PredictedAngularVelocities = new float3[NumberPrediction];
         }
 
         // Input a change in the movement direction
@@ -53,52 +68,99 @@ namespace MotionMatching
 
         private void Update()
         {
-            // Average DeltaTime
-            const int nAverageDeltaTime = 20;
-            SumDeltaTime += Time.deltaTime;
-            LastDeltaTime.Enqueue(Time.deltaTime);
-            if (LastDeltaTime.Count == nAverageDeltaTime + 1) SumDeltaTime -= LastDeltaTime.Dequeue();
+            // Average DeltaTime (for prediction... it is better to have a stable frame rate)
+            float averagedDeltaTime = GetAveragedDeltaTime();
+
+            // Rotations
+            quaternion currentRotation = transform.rotation;
+            PredictRotations(currentRotation, averagedDeltaTime);
+            // Update Current Rotation
+            quaternion newRot = ComputeNewRot(currentRotation);
 
             // Positions
-            float2 speed = InputMovement * MaxSpeed;
-            float2 newPos = new float2(transform.position.x, transform.position.z);
-            for (int i = 0; i < 2; ++i)
-            {
-                // Update Current Position
-                float newX = newPos[i], newVel = Velocity[i], newAcc = Acceleration[i];
-                SpringCharacterUpdate(ref newX, ref newVel, ref newAcc, speed[i], 1.0f - Responsiveness, Time.deltaTime);
-                newPos[i] = newX;
-                Velocity[i] = newVel;
-                Acceleration[i] = newAcc;
-                // Predict
-                Span<float> predictPos = stackalloc float[NumberPrediction];
-                Span<float> predictVel = stackalloc float[NumberPrediction];
-                SpringCharacterPredict(predictPos, predictVel,
-                                       NumberPrediction, newPos[i], Velocity[i], Acceleration[i], speed[i],
-                                       1.0f - Responsiveness, SumDeltaTime / nAverageDeltaTime);
-                for (int j = 0; j < NumberPrediction; ++j)
-                {
-                    PredictedPosition[j][i] = predictPos[j];
-                    PredictedVelocity[j][i] = predictVel[j];
-                }
-            }
+            float2 desiredSpeed = InputMovement * MaxSpeed;
+            float2 currentPos = new float2(transform.position.x, transform.position.z);
+            // Predict
+            PredictPositions(currentPos, desiredSpeed, averagedDeltaTime);
+            // Update Current Position
+            float2 newPos = ComputeNewPos(currentPos, desiredSpeed);
+
+            // Update Character Controller
             if (math.lengthsq(Velocity) > MinimumVelocityClamp * MinimumVelocityClamp)
             {
+                // Update Transform
                 transform.position = new float3(newPos.x, transform.position.y, newPos.y);
-                Direction = math.normalize(Velocity);
+                transform.rotation = newRot;
+                // Desired Rotation
+                float2 desiredDirection = math.normalize(Velocity);
+                DesiredRotation = quaternion.LookRotation(new float3(desiredDirection.x, 0.0f, desiredDirection.y), transform.up);
             }
-
-            if (OnUpdate != null) OnUpdate(Time.deltaTime);
 
             // Adjust SimulationBone to pull the character (moving SimulationBone) towards the Simulation Object (character controller)
             if (DoAdjustment) AdjustSimulationBone();
+            if (DoClamping) ClampSimulationBone();
+
+            // Update other components depending on the character controller
+            if (OnUpdate != null) OnUpdate(Time.deltaTime);
+        }
+
+        private void PredictRotations(quaternion currentRotation, float averagedDeltaTime)
+        {
+            for (int i = 0; i < NumberPrediction; i++)
+            {
+                // Init Predicted values
+                PredictedRotations[i] = currentRotation;
+                PredictedAngularVelocities[i] = AngularVelocity;
+                // Predict
+                Spring.SimpleSpringDamperImplicit(ref PredictedRotations[i], ref PredictedAngularVelocities[i],
+                                                  DesiredRotation, 1.0f - Responsiveness, (i + 1) * NumberPrediction * averagedDeltaTime);
+            }
+        }
+
+        /* https://theorangeduck.com/page/spring-roll-call#controllers */
+        private void PredictPositions(float2 currentPos, float2 desiredSpeed, float averagedDeltaTime)
+        {
+            for (int i = 0; i < NumberPrediction; ++i)
+            {
+                if (i == 0)
+                {
+                    PredictedPosition[i] = currentPos;
+                    PredictedVelocity[i] = Velocity;
+                    PredictedAcceleration[i] = Acceleration;
+                }
+                else
+                {
+                    PredictedPosition[i] = PredictedPosition[i - 1];
+                    PredictedVelocity[i] = PredictedVelocity[i - 1];
+                    PredictedAcceleration[i] = PredictedAcceleration[i - 1];
+                }
+                Spring.CharacterPositionUpdate(ref PredictedPosition[i], ref PredictedVelocity[i], ref PredictedAcceleration[i],
+                                               desiredSpeed, 1.0f - Responsiveness, PredictionFrames * averagedDeltaTime);
+            }
+        }
+
+        private quaternion ComputeNewRot(quaternion currentRotation)
+        {
+            quaternion newRotation = currentRotation;
+            Spring.SimpleSpringDamperImplicit(ref newRotation, ref AngularVelocity, DesiredRotation, 1.0f - Responsiveness, Time.deltaTime);
+            return newRotation;
+        }
+
+        private float2 ComputeNewPos(float2 currentPos, float2 desiredSpeed)
+        {
+            float2 newPos = currentPos;
+            Spring.CharacterPositionUpdate(ref newPos, ref Velocity, ref Acceleration, desiredSpeed, 1.0f - Responsiveness, Time.deltaTime);
+            return newPos;
         }
 
         private void AdjustSimulationBone()
         {
             AdjustCharacterPosition();
             //AdjustCharacterRotation();
+        }
 
+        private void ClampSimulationBone()
+        {
             // Clamp Position
             float3 simulationObject = transform.position;
             float3 simulationBone = SimulationBone.transform.position;
@@ -114,7 +176,7 @@ namespace MotionMatching
             float3 simulationBone = SimulationBone.transform.position;
             float3 differencePosition = simulationObject - simulationBone;
             // Damp the difference using the adjustment halflife and dt
-            float3 adjustmentPosition = DampAdjustmentImplicit(differencePosition, PositionAdjustmentHalflife, Time.deltaTime);
+            float3 adjustmentPosition = Spring.DampAdjustmentImplicit(differencePosition, PositionAdjustmentHalflife, Time.deltaTime);
             // Move the simulation bone towards the simulation object
             SimulationBone.transform.position = simulationBone + adjustmentPosition;
         }
@@ -127,86 +189,19 @@ namespace MotionMatching
         //     // Note: if numerically unstable, try quaternion.Normalize(quaternion.Inverse(simulationObject) * simulationBone)
         //     quaternion differenceRotation = quaternion.Inverse(simulationObject) * simulationBone;
         //     // Damp the difference using the adjustment halflife and dt
-        //     quaternion adjustmentRotation = DampAdjustmentImplicit(differenceRotation, RotationAdjustmentHalflife, Time.deltaTime);
+        //     quaternion adjustmentRotation = Spring.DampAdjustmentImplicit(differenceRotation, RotationAdjustmentHalflife, Time.deltaTime);
         //     // Rotate the simulation bone towards the simulation object
         //     SimulationBone.transform.rotation = simulationBone * adjustmentRotation;
         // }
 
-        /// <summary>
-        /// Variation of the damper code that damps a point starting at zero moving toward the desired difference
-        /// </summary>
-        private static float3 DampAdjustmentImplicit(float3 goal, float halfLife, float dt, float eps = 1e-5f)
+        private float GetAveragedDeltaTime()
         {
-            const float LN2f = 0.69314718056f;
-            return goal * (1.0f - FastNEgeExp((LN2f * dt) / (halfLife + eps)));
+            const int nAverageDeltaTime = 20;
+            SumDeltaTime += Time.deltaTime;
+            LastDeltaTime.Enqueue(Time.deltaTime);
+            if (LastDeltaTime.Count == nAverageDeltaTime + 1) SumDeltaTime -= LastDeltaTime.Dequeue();
+            return SumDeltaTime / nAverageDeltaTime;
         }
-
-        // /// <summary>
-        // /// Variation of the damper code that damps a rotation starting at the identity rotation toward the desired difference
-        // /// </summary>
-        // private static quaternion DampAdjustmentImplicit(quaternion goal, float halfLife, float dt, float eps = 1e-5f)
-        // {
-        //     const float LN2f = 0.69314718056f;
-        //     return quaternion.Slerp(quaternion.identity, goal, 1.0f - FastNEgeExp((LN2f * dt) / (halfLife + eps)));
-        // }
-
-        /* https://theorangeduck.com/page/spring-roll-call#controllers */
-        private void SpringCharacterPredict(Span<float> pPose, Span<float> pVelocity,
-                                            int count, float pos, float velocity, float acceleration, float velocityGoal,
-                                            float halfLife, float deltaTime)
-        {
-            for (int i = 0; i < count; ++i)
-            {
-                pPose[i] = pos;
-                pVelocity[i] = velocity;
-                float a = acceleration;
-                SpringCharacterUpdate(ref pPose[i], ref pVelocity[i], ref a, velocityGoal, halfLife, (i + 1) * PredictionFrames * deltaTime);
-            }
-        }
-        private void SpringCharacterUpdate(ref float pos, ref float velocity, ref float acceleration,
-                                           float velocityGoal, float halfLife, float deltaTime)
-        {
-            float y = HalfLifeToDamping(halfLife) / 2.0f; // this could be precomputed
-            float j0 = velocity - velocityGoal;
-            float j1 = acceleration + j0 * y;
-            float eyedt = FastNEgeExp(y * deltaTime); // this could be precomputed if several agents use it the same frame
-
-            pos = eyedt * (((-j1) / (y * y)) + ((-j0 - j1 * deltaTime) / y)) +
-                  (j1 / (y * y)) + j0 / y + velocityGoal * deltaTime + pos;
-            velocity = eyedt * (j0 + j1 * deltaTime) + velocityGoal;
-            acceleration = eyedt * (acceleration - j1 * y * deltaTime);
-        }
-        private static float HalfLifeToDamping(float halfLife, float eps = 1e-5f)
-        {
-            const float LN2f = 0.69314718056f;
-            return (4.0f * LN2f) / (halfLife + eps);
-        }
-        private static float FastNEgeExp(float x)
-        {
-            return 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
-        }
-
-        // public float2 GetLocalPredictedPosition(int index)
-        // {
-        //     float3 localPos = new float3(PredictedPosition[index].x, transform.position.y, PredictedPosition[index].y);
-        //     localPos -= transform.position;
-        //     localPos = quaternion.Inverse(quaternion.LookRotation(new float3(Direction.x, 0.0f, Direction.y), float3.up)) * localPos;
-        //     return new float2(localPos.x, localPos.z);
-        // }
-
-        // public float2 GetLocalPredictedDirection(int index)
-        // {
-        //     float3 localVel = new float3(PredictedVelocity[index].x, 0.0f, PredictedVelocity[index].y);
-        //     if (localVel.sqrMagnitude > MinimumVelocityClamp * MinimumVelocityClamp)
-        //     {
-        //         localVel = quaternion.Inverse(quaternion.LookRotation(new float3(Direction.x, 0.0f, Direction.y), float3.up)) * localVel;
-        //     }
-        //     else
-        //     {
-        //         localVel = float3.forward;
-        //     }
-        //     return (new float3(localVel.x, localVel.z)).normalized;
-        // }
 
         public float2 GetWorldPredictedPosition(int index)
         {
@@ -215,7 +210,8 @@ namespace MotionMatching
 
         public float2 GetWorldPredictedDirection(int index)
         {
-            return Direction;
+            float3 dir = math.mul(PredictedRotations[index], new float3(0, 0, 1));
+            return math.normalize(new float2(dir.x, dir.z));
         }
 
 #if UNITY_EDITOR
@@ -226,23 +222,27 @@ namespace MotionMatching
             // Draw Current Position & Velocity
             Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
             Gizmos.DrawSphere(transform.position, radius);
-            Gizmos.DrawLine(transform.position, transform.position + (Vector3)(new float3(Velocity.x, 0.0f, Velocity.y)) * vectorReduction);
+            Gizmos.DrawLine(transform.position, transform.position + transform.forward * vectorReduction);
 
-            if (PredictedPosition == null || PredictedVelocity == null) return;
+            if (PredictedPosition == null || PredictedRotations == null) return;
 
             // Draw Predicted Position & Velocity
             Gizmos.color = new Color(0.6f, 0.3f, 0.8f, 1.0f);
             for (int i = 0; i < PredictedPosition.Length; ++i)
             {
-                float3 current = new float3(PredictedPosition[i].x, 0.0f, PredictedPosition[i].y);
-                float3 currentVelocity = new float3(PredictedVelocity[i].x, 0.0f, PredictedVelocity[i].y);
-                Gizmos.DrawSphere(current, radius);
-                Gizmos.DrawLine(current, current + currentVelocity * vectorReduction);
+                float3 predictedPos = new float3(PredictedPosition[i].x, 0.0f, PredictedPosition[i].y);
+                float2 predictedDir = GetWorldPredictedDirection(i);
+                float3 predictedDir3D = new float3(predictedDir.x, 0.0f, predictedDir.y);
+                Gizmos.DrawSphere(predictedPos, radius);
+                Gizmos.DrawLine(predictedPos, predictedPos + predictedDir3D * vectorReduction);
             }
 
             // Draw Clamp Circle
-            Gizmos.color = new Color(0.1f, 1.0f, 0.1f, 1.0f);
-            GizmosExtensions.DrawWireCircle(transform.position, MaxDistanceSimulationBoneAndObject, quaternion.identity);
+            if (DoClamping)
+            {
+                Gizmos.color = new Color(0.1f, 1.0f, 0.1f, 1.0f);
+                GizmosExtensions.DrawWireCircle(transform.position, MaxDistanceSimulationBoneAndObject, quaternion.identity);
+            }
         }
 #endif
     }

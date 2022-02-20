@@ -117,7 +117,7 @@ namespace MotionMatching
 #if PROFILE_MOTION_MATCHING
         public class DATA
         {
-            private static readonly int NumberSamplesToAverage = 600;
+            private static readonly int NumberSamplesToAverage = 60;
 
             public float MinTicks, MinMs;
             public float MaxTicks, MaxMs;

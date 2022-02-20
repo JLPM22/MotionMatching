@@ -28,5 +28,53 @@ namespace MotionMatching
                 axis: math.normalize(math.cross(from, to))
             );
         }
+
+        /// <summary>
+        /// Quaternion absolute forces the quaternion to take the shortest path
+        /// </summary>
+        public static quaternion Absolute(quaternion q)
+        {
+            return q.value.w < 0.0f ? new quaternion(-q.value.x, -q.value.y, -q.value.z, -q.value.w) : q;
+        }
+
+        /* https://theorangeduck.com/page/exponential-map-angle-axis-angular-velocity */
+        public static float3 QuaternionToScaledAngleAxis(quaternion q, float eps = 1e-8f)
+        {
+            return 2.0f * Log(q, eps);
+        }
+
+        public static quaternion QuaternionFromScaledAngleAxis(float3 angleAxis, float eps = 1e-8f)
+        {
+            return Exp(angleAxis * 0.5f, eps);
+        }
+
+        public static float3 Log(quaternion q, float eps = 1e-8f)
+        {
+            float length = math.sqrt(q.value.x * q.value.x + q.value.y * q.value.y + q.value.z * q.value.z);
+            if (length < eps)
+            {
+                return new float3(q.value.x, q.value.y, q.value.z);
+            }
+            else
+            {
+                float halfangle = math.acos(math.clamp(q.value.w, -1f, 1f));
+                return halfangle * (new float3(q.value.x, q.value.y, q.value.z) / length);
+            }
+        }
+
+        public static quaternion Exp(float3 angleAxis, float eps = 1e-8f)
+        {
+            float halfangle = math.sqrt(angleAxis.x * angleAxis.x + angleAxis.y * angleAxis.y + angleAxis.z * angleAxis.z);
+            if (halfangle < eps)
+            {
+                return math.normalize(new quaternion(angleAxis.x, angleAxis.y, angleAxis.z, 1f));
+            }
+            else
+            {
+                float c = math.cos(halfangle);
+                float s = math.sin(halfangle) / halfangle;
+                return new quaternion(s * angleAxis.x, s * angleAxis.y, s * angleAxis.z, c);
+            }
+        }
     }
 }
