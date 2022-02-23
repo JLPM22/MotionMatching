@@ -99,11 +99,13 @@ namespace MotionMatching
         {
             SearchFrameCount = 0;
             CharacterController.OnUpdate += OnCharacterControllerUpdated;
+            CharacterController.OnInputChangedQuickly += OnInputChangedQuickly;
         }
 
         private void OnDisable()
         {
             CharacterController.OnUpdate -= OnCharacterControllerUpdated;
+            CharacterController.OnInputChangedQuickly -= OnInputChangedQuickly;
         }
 
         private void Start()
@@ -138,6 +140,11 @@ namespace MotionMatching
             }
             UpdateTransformAndSkeleton(CurrentFrame);
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
+        }
+
+        private void OnInputChangedQuickly()
+        {
+            SearchFrameCount = 0; // Force search
         }
 
         private int SearchMotionMatching()

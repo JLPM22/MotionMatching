@@ -14,6 +14,7 @@ namespace MotionMatching
     {
         // Events -----------------------------------------------------------
         public event Action<float> OnUpdate;
+        public event Action OnInputChangedQuickly;
 
         // General ----------------------------------------------------------
         public int NumberPrediction = 3;
@@ -21,6 +22,8 @@ namespace MotionMatching
         public float MaxSpeed = 1.0f;
         [Range(0.0f, 1.0f)] public float Responsiveness = 0.75f;
         public float MinimumVelocityClamp = 0.01f;
+        [Tooltip("Controls when to consider that the input has suddenly changed. Used to recompute MotionMatching. -1.0f: Never. 1.0f: Always")]
+        [Range(-1.0f, 1.0f)] public float InputBigChangeThreshold = 0.5f;
         // Adjustment & Clamping --------------------------------------------
         [Header("Adjustment")] // Move Simulation Bone towards the Simulation Object (motion matching towards character controller)
         public bool DoAdjustment = true;
@@ -67,7 +70,13 @@ namespace MotionMatching
         // Input a change in the movement direction
         public void SetMovementDirection(float2 movementDirection)
         {
+            float2 prevInputMovement = InputMovement;
             InputMovement = movementDirection;
+            if (math.dot(prevInputMovement, InputMovement) < InputBigChangeThreshold &&
+                OnInputChangedQuickly != null)
+            {
+                OnInputChangedQuickly.Invoke();
+            }
         }
 
         private void Update()
