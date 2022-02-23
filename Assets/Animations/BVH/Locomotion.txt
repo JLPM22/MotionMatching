@@ -5,7 +5,7 @@ ROOT Hips
 	CHANNELS 6 Xposition Yposition Zposition Zrotation Xrotation Yrotation
 	JOINT LeftUpperLeg
 	{
-		OFFSET -0.087263 -0.053932 -0.004454
+		OFFSET -0.087263 -0.053932 0.004454
 		CHANNELS 3 Zrotation Xrotation Yrotation
 		JOINT LeftLowerLeg
 		{
@@ -29,7 +29,7 @@ ROOT Hips
 	}
 	JOINT RightUpperLeg
 	{
-		OFFSET 0.087263 -0.053932 -0.004589
+		OFFSET 0.087263 -0.053932 0.004589
 		CHANNELS 3 Zrotation Xrotation Yrotation
 		JOINT RightLowerLeg
 		{
@@ -53,7 +53,7 @@ ROOT Hips
 	}
 	JOINT Spine
 	{
-		OFFSET 0.000000 0.096944 -0.011097
+		OFFSET 0.000000 0.096944 0.011097
 		CHANNELS 3 Zrotation Xrotation Yrotation
 		JOINT Chest
 		{
@@ -65,7 +65,7 @@ ROOT Hips
 				CHANNELS 3 Zrotation Xrotation Yrotation
 				JOINT LeftShoulder
 				{
-					OFFSET -0.066813 0.128876 -0.001573
+					OFFSET -0.066813 0.128876 0.001573
 					CHANNELS 3 Zrotation Xrotation Yrotation
 					JOINT LeftUpperArm
 					{
@@ -93,17 +93,17 @@ ROOT Hips
 					CHANNELS 3 Zrotation Xrotation Yrotation
 					JOINT Head
 					{
-						OFFSET 0.000000 0.069443 0.019825
+						OFFSET 0.000000 0.069443 -0.019825
 						CHANNELS 3 Zrotation Xrotation Yrotation
 						End Site
 						{
-							OFFSET 0.000000 0.096158 0.027452
+							OFFSET 0.000000 0.096158 -0.027452
 						}
 					}
 				}
 				JOINT RightShoulder
 				{
-					OFFSET 0.066813 0.128973 -0.002420
+					OFFSET 0.066813 0.128973 0.002420
 					CHANNELS 3 Zrotation Xrotation Yrotation
 					JOINT RightUpperArm
 					{

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -10,6 +11,8 @@ namespace MotionMatching
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
+        public event Action<Skeleton, Transform[]> OnSkeletonTransformUpdated;
+
         public SpringCharacterController CharacterController;
         public MotionMatchingData MMData;
         public float SpheresRadius = 0.1f;
@@ -187,6 +190,8 @@ namespace MotionMatching
             SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward), SkeletonTransforms[0].rotation);
             // Root Y Position
             SkeletonTransforms[0].localPosition = new float3(0, pose.RootWorld.y, 0);
+
+            if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke(Animation.Skeleton, SkeletonTransforms);
         }
 
         private float2 GetPositionLocalCharacter(float2 worldPosition)
@@ -207,6 +212,22 @@ namespace MotionMatching
         public int GetCurrentFrame()
         {
             return CurrentFrame;
+        }
+
+        /// <summary>
+        /// Returns the skeleton used by Motion Matching
+        /// </summary>
+        public Skeleton GetSkeleton()
+        {
+            return Animation.Skeleton;
+        }
+
+        /// <summary>
+        /// Returns the transforms used by Motion Matching to simulate the skeleton
+        /// </summary>
+        public Transform[] GetSkeletonTransforms()
+        {
+            return SkeletonTransforms;
         }
 
         private void OnDestroy()

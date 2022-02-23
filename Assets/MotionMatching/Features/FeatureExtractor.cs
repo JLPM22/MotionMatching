@@ -21,9 +21,9 @@ namespace MotionMatching
         {
             int nPoses = poseSet.Poses.Count;
             FeatureVector[] features = new FeatureVector[nPoses];
-            Joint leftFoot = poseSet.Skeleton.Find(HumanBodyBones.LeftFoot);
-            Joint rightFoot = poseSet.Skeleton.Find(HumanBodyBones.RightFoot);
-            Joint hips = poseSet.Skeleton.Find(HumanBodyBones.Hips);
+            if (!poseSet.Skeleton.Find(HumanBodyBones.LeftFoot, out Joint leftFoot)) Debug.Assert(false, "The skeleton does not contain any joint of type HumanBodyBones.LeftFoot");
+            if (!poseSet.Skeleton.Find(HumanBodyBones.RightFoot, out Joint rightFoot)) Debug.Assert(false, "The skeleton does not contain any joint of type HumanBodyBones.RightFoot");
+            if (!poseSet.Skeleton.Find(HumanBodyBones.Hips, out Joint hips)) Debug.Assert(false, "The skeleton does not contain any joint of type HumanBodyBones.Hips");
             int i = 0;
             for (int c = 0; c < poseSet.Clips.Count; c++)
             {

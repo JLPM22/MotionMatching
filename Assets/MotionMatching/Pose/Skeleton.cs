@@ -31,14 +31,18 @@ namespace MotionMatching
             return true;
         }
 
-        public Joint Find(HumanBodyBones type)
+        public bool Find(HumanBodyBones type, out Joint joint)
         {
             for (int i = 0; i < Joints.Count; i++)
             {
-                if (Joints[i].Type == type) return Joints[i];
+                if (Joints[i].Type == type)
+                {
+                    joint = Joints[i];
+                    return true;
+                }
             }
-            Debug.Assert(false, "This skeleton does not contain any joint of type " + type);
-            return new Joint();
+            joint = new Joint();
+            return false;
         }
 
         public bool Find(string jointName, out Joint joint)
