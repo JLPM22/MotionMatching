@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2026.0645, g: 1991.6074, b: 2397.1562, a: 1}
+  m_IndirectSpecularColor: {r: 2025.7764, g: 1991.3262, b: 2396.914, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -154,9 +154,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ad29054695640e4f8c6ab662737ae84, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  BVH: {fileID: 4900000, guid: c401d4eb91b477742913e0f4e20fa46c, type: 3}
+  MMData: {fileID: 11400000, guid: 184d0c04ed7e84b43af0af9fc048633c, type: 2}
   Play: 0
-  UnitScale: 1
   SpheresRadius: 0.05
   LockFPS: 1
 --- !u!4 &5524512
@@ -568,8 +567,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterController: {fileID: 922198739}
-  BVH: {fileID: 4900000, guid: c401d4eb91b477742913e0f4e20fa46c, type: 3}
-  UnitScale: 1
+  MMData: {fileID: 11400000, guid: 184d0c04ed7e84b43af0af9fc048633c, type: 2}
   SpheresRadius: 0.05
   LockFPS: 1
   LeftFootName: LeftFoot
@@ -1004,9 +1002,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b202464d618fda64a9e4a8cb8516acc6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  BVH: {fileID: 4900000, guid: c401d4eb91b477742913e0f4e20fa46c, type: 3}
+  MMData: {fileID: 11400000, guid: 184d0c04ed7e84b43af0af9fc048633c, type: 2}
   Play: 0
-  UnitScale: 1
   SpheresRadius: 0.05
   VectorLength: 1
   LockFPS: 1

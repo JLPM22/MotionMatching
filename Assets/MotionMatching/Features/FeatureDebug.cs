@@ -9,13 +9,11 @@ using Unity.Mathematics;
 /// </summary>
 public class FeatureDebug : MonoBehaviour
 {
-    public TextAsset BVH;
+    public MotionMatchingData MMData;
     public bool Play;
-    public float UnitScale = 1;
     public float SpheresRadius = 0.1f;
     public float VectorLength = 1.0f;
     public bool LockFPS = true;
-    public string LeftFootName, RightFootName, HipsName;
     public Vector3 DefaultHipsForward = new Vector3(0, 0, 1);
 
     private BVHAnimation Animation;
@@ -27,28 +25,10 @@ public class FeatureDebug : MonoBehaviour
     private void Awake()
     {
         BVHImporter importer = new BVHImporter();
-        Animation = importer.Import(BVH, UnitScale);
+        Animation = importer.Import(MMData.BVH, MMData.UnitScale);
 
-        // HARDCODED: hardcode name of important joints for the feature set
-        for (int i = 0; i < Animation.Skeleton.Joints.Count; ++i)
-        {
-            Skeleton.Joint j = Animation.Skeleton.Joints[i];
-            if (j.Name == LeftFootName)
-            {
-                j.Type = Skeleton.JointType.LeftFoot;
-                Animation.Skeleton.Joints[i] = j;
-            }
-            else if (j.Name == RightFootName)
-            {
-                j.Type = Skeleton.JointType.RightFoot;
-                Animation.Skeleton.Joints[i] = j;
-            }
-            else if (j.Name == HipsName)
-            {
-                j.Type = Skeleton.JointType.Hips;
-                Animation.Skeleton.Joints[i] = j;
-            }
-        }
+        // Add Mecanim mapping information
+        Animation.UpdateMecanimInformation(MMData);
 
         PoseExtractor poseExtractor = new PoseExtractor();
         PoseSet = new PoseSet();

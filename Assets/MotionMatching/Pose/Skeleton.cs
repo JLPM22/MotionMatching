@@ -31,7 +31,7 @@ namespace MotionMatching
             return true;
         }
 
-        public Joint Find(JointType type)
+        public Joint Find(HumanBodyBones type)
         {
             for (int i = 0; i < Joints.Count; i++)
             {
@@ -39,6 +39,20 @@ namespace MotionMatching
             }
             Debug.Assert(false, "This skeleton does not contain any joint of type " + type);
             return new Joint();
+        }
+
+        public bool Find(string jointName, out Joint joint)
+        {
+            for (int i = 0; i < Joints.Count; i++)
+            {
+                if (Joints[i].Name == jointName)
+                {
+                    joint = Joints[i];
+                    return true;
+                }
+            }
+            joint = new Joint();
+            return true;
         }
 
         public Joint GetParent(Joint joint)
@@ -52,7 +66,7 @@ namespace MotionMatching
             public int Index;
             public int ParentIndex; // 0 - Root
             public Vector3 LocalOffset;
-            public JointType Type;
+            public HumanBodyBones Type;
 
             public Joint(string name, int index, int parentIndex, Vector3 localOffset)
             {
@@ -60,21 +74,13 @@ namespace MotionMatching
                 Index = index;
                 ParentIndex = parentIndex;
                 LocalOffset = localOffset;
-                Type = JointType.Other;
+                Type = HumanBodyBones.LastBone;
             }
 
             public bool Equals(Joint other)
             {
                 return Name == other.Name && Index == other.Index && ParentIndex == other.ParentIndex && LocalOffset == other.LocalOffset && Type == other.Type;
             }
-        }
-
-        public enum JointType
-        {
-            Hips,
-            LeftFoot,
-            RightFoot,
-            Other
         }
     }
 }

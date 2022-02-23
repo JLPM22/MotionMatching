@@ -7,7 +7,6 @@ using Unity.Mathematics;
 namespace MotionMatching
 {
     using Joint = Skeleton.Joint;
-    using JointType = Skeleton.JointType;
     using AnimationClip = PoseSet.AnimationClip;
 
     /// <summary>
@@ -22,9 +21,9 @@ namespace MotionMatching
         {
             int nPoses = poseSet.Poses.Count;
             FeatureVector[] features = new FeatureVector[nPoses];
-            Joint leftFoot = poseSet.Skeleton.Find(JointType.LeftFoot);
-            Joint rightFoot = poseSet.Skeleton.Find(JointType.RightFoot);
-            Joint hips = poseSet.Skeleton.Find(JointType.Hips);
+            Joint leftFoot = poseSet.Skeleton.Find(HumanBodyBones.LeftFoot);
+            Joint rightFoot = poseSet.Skeleton.Find(HumanBodyBones.RightFoot);
+            Joint hips = poseSet.Skeleton.Find(HumanBodyBones.Hips);
             int i = 0;
             for (int c = 0; c < poseSet.Clips.Count; c++)
             {
@@ -62,8 +61,6 @@ namespace MotionMatching
             // Hips
             GetJointFeatures(pose, poseNext, poseSet.Skeleton, hips, characterOrigin, characterForward, clip, out _, out feature.HipsLocalVelocity);
             // Trajectory
-            // feature.FutureTrajectoryLocalPosition = new float2[3];
-            // feature.FutureTrajectoryLocalDirection = new float2[3];
             float2 trajectoryLocalPos, trajectoryLocalDir;
             GetTrajectoryFeatures(poseSet.Poses[poseIndex + 20], characterOrigin, characterForward, defaultHipsForward, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(0, trajectoryLocalPos);

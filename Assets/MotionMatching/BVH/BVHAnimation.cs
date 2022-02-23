@@ -47,6 +47,19 @@ namespace MotionMatching
             EndSites.Add(endSite);
         }
 
+        public void UpdateMecanimInformation(MotionMatchingData motionMatchingData)
+        {
+            for (int i = 0; i < Skeleton.Joints.Count; i++)
+            {
+                Joint joint = Skeleton.Joints[i];
+                if (motionMatchingData.GetMecanimBone(joint.Name, out HumanBodyBones bone))
+                {
+                    joint.Type = bone;
+                    Skeleton.Joints[i] = joint;
+                }
+            }
+        }
+
         public struct EndSite
         {
             public int ParentIndex;

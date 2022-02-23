@@ -11,11 +11,9 @@ namespace MotionMatching
     public class MotionMatchingController : MonoBehaviour
     {
         public SpringCharacterController CharacterController;
-        public TextAsset BVH;
-        public float UnitScale = 1.0f;
+        public MotionMatchingData MMData;
         public float SpheresRadius = 0.1f;
         public bool LockFPS = true;
-        public string LeftFootName, RightFootName, HipsName;
         public float3 DefaultHipsForward = new float3(0, 0, 1);
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
         public bool Normalize = false;
@@ -46,29 +44,11 @@ namespace MotionMatching
             // BVH
             PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
             BVHImporter importer = new BVHImporter();
-            Animation = importer.Import(BVH, UnitScale);
+            Animation = importer.Import(MMData.BVH, MMData.UnitScale);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
 
-            // HARDCODED: hardcode name of important joints for the feature set
-            for (int i = 0; i < Animation.Skeleton.Joints.Count; ++i)
-            {
-                Skeleton.Joint j = Animation.Skeleton.Joints[i];
-                if (j.Name == LeftFootName)
-                {
-                    j.Type = Skeleton.JointType.LeftFoot;
-                    Animation.Skeleton.Joints[i] = j;
-                }
-                else if (j.Name == RightFootName)
-                {
-                    j.Type = Skeleton.JointType.RightFoot;
-                    Animation.Skeleton.Joints[i] = j;
-                }
-                else if (j.Name == HipsName)
-                {
-                    j.Type = Skeleton.JointType.Hips;
-                    Animation.Skeleton.Joints[i] = j;
-                }
-            }
+            // Add Mecanim mapping information
+            Animation.UpdateMecanimInformation(MMData);
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
             PoseExtractor poseExtractor = new PoseExtractor();
@@ -126,8 +106,6 @@ namespace MotionMatching
         private void Start()
         {
             QueryFeature = new FeatureVector();
-            // QueryFeature.FutureTrajectoryLocalDirection = new float[CharacterController.NumberPrediction];
-            // QueryFeature.FutureTrajectoryLocalPosition = new float[CharacterController.NumberPrediction];
         }
 
         private void OnCharacterControllerUpdated(float deltaTime)
