@@ -29,6 +29,10 @@ namespace MotionMatching
         // [Range(0.0f, 1.0f)] public float RotationAdjustmentHalflife = 0.2f;
         public bool DoClamping = true;
         [Range(0.0f, 1.0f)] public float MaxDistanceSimulationBoneAndObject = 0.1f; // Max distance between SimulationBone and SimulationObject
+        [Header("DEBUG")]
+        public bool DebugCurrent = true;
+        public bool DebugPrediction = true;
+        public bool DebugClamping = true;
         // --------------------------------------------------------------------------
 
         // PRIVATE ------------------------------------------------------------------
@@ -219,29 +223,40 @@ namespace MotionMatching
         {
             const float radius = 0.05f;
             const float vectorReduction = 0.5f;
-            // Draw Current Position & Velocity
-            Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
-            Gizmos.DrawSphere(transform.position, radius);
-            Gizmos.DrawLine(transform.position, transform.position + transform.forward * vectorReduction);
+            const float verticalOffset = 0.05f;
+            Vector3 transformPos = transform.position + Vector3.up * verticalOffset;
+            if (DebugCurrent)
+            {
+                // Draw Current Position & Velocity
+                Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
+                Gizmos.DrawSphere(transformPos, radius);
+                Gizmos.DrawLine(transformPos, transformPos + transform.forward * vectorReduction);
+            }
 
             if (PredictedPosition == null || PredictedRotations == null) return;
 
-            // Draw Predicted Position & Velocity
-            Gizmos.color = new Color(0.6f, 0.3f, 0.8f, 1.0f);
-            for (int i = 0; i < PredictedPosition.Length; ++i)
+            if (DebugPrediction)
             {
-                float3 predictedPos = new float3(PredictedPosition[i].x, 0.0f, PredictedPosition[i].y);
-                float2 predictedDir = GetWorldPredictedDirection(i);
-                float3 predictedDir3D = new float3(predictedDir.x, 0.0f, predictedDir.y);
-                Gizmos.DrawSphere(predictedPos, radius);
-                Gizmos.DrawLine(predictedPos, predictedPos + predictedDir3D * vectorReduction);
+                // Draw Predicted Position & Velocity
+                Gizmos.color = new Color(0.6f, 0.3f, 0.8f, 1.0f);
+                for (int i = 0; i < PredictedPosition.Length; ++i)
+                {
+                    float3 predictedPos = new float3(PredictedPosition[i].x, verticalOffset, PredictedPosition[i].y);
+                    float2 predictedDir = GetWorldPredictedDirection(i);
+                    float3 predictedDir3D = new float3(predictedDir.x, 0.0f, predictedDir.y);
+                    Gizmos.DrawSphere(predictedPos, radius);
+                    Gizmos.DrawLine(predictedPos, predictedPos + predictedDir3D * vectorReduction);
+                }
             }
 
-            // Draw Clamp Circle
-            if (DoClamping)
+            if (DebugClamping)
             {
-                Gizmos.color = new Color(0.1f, 1.0f, 0.1f, 1.0f);
-                GizmosExtensions.DrawWireCircle(transform.position, MaxDistanceSimulationBoneAndObject, quaternion.identity);
+                // Draw Clamp Circle
+                if (DoClamping)
+                {
+                    Gizmos.color = new Color(0.1f, 1.0f, 0.1f, 1.0f);
+                    GizmosExtensions.DrawWireCircle(transformPos, MaxDistanceSimulationBoneAndObject, quaternion.identity);
+                }
             }
         }
 #endif

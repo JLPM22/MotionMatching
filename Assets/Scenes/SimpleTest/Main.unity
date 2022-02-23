@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2029.6143, g: 2000.1465, b: 2416.7031, a: 1}
+  m_IndirectSpecularColor: {r: 2026.0645, g: 1991.6074, b: 2397.1562, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -569,16 +569,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CharacterController: {fileID: 922198739}
   BVH: {fileID: 4900000, guid: c401d4eb91b477742913e0f4e20fa46c, type: 3}
+  UnitScale: 1
   SpheresRadius: 0.05
   LockFPS: 1
   LeftFootName: LeftFoot
   RightFootName: RightFoot
   HipsName: Hips
+  DefaultHipsForward:
+    x: 0
+    y: 0
+    z: 1
   SearchFrames: 10
   Normalize: 0
   NormalizeType: 1
   Responsiveness: 1
   Quality: 1
+  DebugSkeleton: 1
+  DebugCurrent: 1
+  DebugJoints: 1
+  DebugTrajectory: 1
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -630,9 +639,14 @@ MonoBehaviour:
   MaxSpeed: 3
   Responsiveness: 0.75
   MinimumVelocityClamp: 0.01
+  DoAdjustment: 1
   SimulationBone: {fileID: 845368627}
   PositionAdjustmentHalflife: 0.1
-  MaxDistanceSimulationBoneAndObject: 0.2
+  DoClamping: 1
+  MaxDistanceSimulationBoneAndObject: 0.4
+  DebugCurrent: 1
+  DebugPrediction: 1
+  DebugClamping: 1
 --- !u!4 &922198741
 Transform:
   m_ObjectHideFlags: 0
@@ -644,8 +658,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1823688467}
+  m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -815,13 +828,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1823688464}
-  m_LocalRotation: {x: 0.2588191, y: 0, z: 0, w: 0.9659258}
-  m_LocalPosition: {x: 0, y: 2.5, z: -3}
+  m_LocalRotation: {x: 0.38379046, y: -0.0000000019152242, z: -3.3994269e-10, w: 0.92342025}
+  m_LocalPosition: {x: -0.038111396, y: 4.5905247, z: -3.9240885}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 922198741}
-  m_RootOrder: 0
+  m_Father: {fileID: 0}
+  m_RootOrder: 8
   m_LocalEulerAnglesHint: {x: 30, y: 0, z: 0}
 --- !u!114 &1823688468
 MonoBehaviour:
@@ -1000,6 +1013,7 @@ MonoBehaviour:
   LeftFootName: LeftFoot
   RightFootName: RightFoot
   HipsName: Hips
+  DefaultHipsForward: {x: 0, y: 0, z: 1}
 --- !u!1 &2013410473
 GameObject:
   m_ObjectHideFlags: 1

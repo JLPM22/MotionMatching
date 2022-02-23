@@ -12,8 +12,13 @@ namespace MotionMatching
         /// </summary>
         public static quaternion FromToRotationSafe(float3 from, float3 to)
         {
+            float dotFT = math.dot(math.normalize(from), math.normalize(to));
+            if (dotFT > 0.99999f)
+            {
+                return quaternion.identity;
+            }
             return quaternion.AxisAngle(
-                angle: math.acos(math.clamp(math.dot(math.normalize(from), math.normalize(to)), -1f, 1f)),
+                angle: math.acos(math.clamp(dotFT, -1f, 1f)),
                 axis: math.normalize(math.cross(from, to))
             );
         }
@@ -23,8 +28,13 @@ namespace MotionMatching
         /// </summary>
         public static quaternion FromToRotation(float3 from, float3 to)
         {
+            float dotFT = math.dot(from, to);
+            if (dotFT > 0.99999f)
+            {
+                return quaternion.identity;
+            }
             return quaternion.AxisAngle(
-                angle: math.acos(math.clamp(math.dot(from, to), -1f, 1f)),
+                angle: math.acos(math.clamp(dotFT, -1f, 1f)),
                 axis: math.normalize(math.cross(from, to))
             );
         }

@@ -22,6 +22,12 @@ namespace MotionMatching
         public FeatureSet.NormalizeType NormalizeType = FeatureSet.NormalizeType.Magnitude;
         [Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Range(0.0f, 1.0f)] public float Quality = 1.0f;
+        [Header("Debug")]
+        public bool DebugSkeleton = true;
+        public bool DebugCurrent = true;
+        public bool DebugJoints = true;
+        public bool DebugTrajectory = true;
+
 
         private BVHAnimation Animation;
         private PoseSet PoseSet;
@@ -197,9 +203,9 @@ namespace MotionMatching
             }
             // Correct Root Orientation to match the Simulation Bone
             float3 characterForward = transform.forward;
-            characterForward.y = 0;
+            characterForward = math.normalize(new float3(characterForward.x, 0, characterForward.z));
             float3 hipsForward = math.mul(SkeletonTransforms[0].rotation, DefaultHipsForward);
-            hipsForward.y = 0;
+            hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
             SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward), SkeletonTransforms[0].rotation);
             // Root Y Position
             SkeletonTransforms[0].localPosition = new float3(0, pose.RootWorld.y, 0);
@@ -215,6 +221,14 @@ namespace MotionMatching
         {
             float3 localDir = transform.InverseTransformDirection(new float3(worldDir.x, 0.0f, worldDir.y));
             return new float2(localDir.x, localDir.z);
+        }
+
+        /// <summary>
+        /// Returns the current frame index in the pose set
+        /// </summary>
+        public int GetCurrentFrame()
+        {
+            return CurrentFrame;
         }
 
         private void OnDestroy()
@@ -235,29 +249,35 @@ namespace MotionMatching
             // Skeleton
             if (SkeletonTransforms == null || Animation == null || Animation.EndSites == null) return;
 
-            Gizmos.color = Color.red;
-            for (int i = 1; i < SkeletonTransforms.Length; i++)
+            if (DebugSkeleton)
             {
-                Transform t = SkeletonTransforms[i];
-                Gizmos.DrawLine(t.parent.position, t.position);
-            }
-            foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
-            {
-                Transform t = SkeletonTransforms[endSite.ParentIndex];
-                Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
+                Gizmos.color = Color.red;
+                for (int i = 1; i < SkeletonTransforms.Length; i++)
+                {
+                    Transform t = SkeletonTransforms[i];
+                    Gizmos.DrawLine(t.parent.position, t.position);
+                }
+                foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
+                {
+                    Transform t = SkeletonTransforms[endSite.ParentIndex];
+                    Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
+                }
             }
 
             // Character
             if (PoseSet == null) return;
 
-            int currentFrame = CurrentFrame - 1; // OnDrawGizmos is called after Update
+            int currentFrame = CurrentFrame;
             if (currentFrame < 0) currentFrame = Animation.Frames.Length - 1;
             PoseVector pose = PoseSet.Poses[currentFrame];
             float3 characterOrigin = transform.position;
             float3 characterForward = transform.forward;
-            Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
-            Gizmos.DrawSphere(characterOrigin, SpheresRadius);
-            GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward);
+            if (DebugCurrent)
+            {
+                Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
+                Gizmos.DrawSphere(characterOrigin, SpheresRadius);
+                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward);
+            }
 
             // Feature Set
             if (FeatureSet == null) return;
@@ -266,41 +286,47 @@ namespace MotionMatching
             if (fv.Valid)
             {
                 quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
-                // Left Foot
-                Gizmos.color = Color.cyan;
-                float3 leftFootWorld = characterOrigin + math.mul(characterRot, fv.LeftFootLocalPosition);
-                Gizmos.DrawWireSphere(leftFootWorld, SpheresRadius);
-                float3 leftFootVelWorld = math.mul(characterRot, fv.LeftFootLocalVelocity);
-                if (math.length(leftFootVelWorld) > 0.001f)
+                if (DebugJoints)
                 {
-                    GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * math.length(leftFootVelWorld) * 0.1f);
+                    // Left Foot
+                    Gizmos.color = Color.cyan;
+                    float3 leftFootWorld = characterOrigin + math.mul(characterRot, fv.LeftFootLocalPosition);
+                    Gizmos.DrawWireSphere(leftFootWorld, SpheresRadius);
+                    float3 leftFootVelWorld = math.mul(characterRot, fv.LeftFootLocalVelocity);
+                    if (math.length(leftFootVelWorld) > 0.001f)
+                    {
+                        GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * math.length(leftFootVelWorld) * 0.1f);
+                    }
+                    // Right Foot
+                    Gizmos.color = Color.yellow;
+                    float3 rightFootWorld = characterOrigin + math.mul(characterRot, fv.RightFootLocalPosition);
+                    Gizmos.DrawWireSphere(rightFootWorld, SpheresRadius);
+                    float3 rightFootVelWorld = math.mul(characterRot, fv.RightFootLocalVelocity);
+                    if (math.length(rightFootVelWorld) > 0.001f)
+                    {
+                        GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * math.length(rightFootVelWorld) * 0.1f);
+                    }
+                    // Hips
+                    Gizmos.color = Color.green;
+                    float3 hipsVelWorld = math.mul(characterRot, fv.HipsLocalVelocity);
+                    if (math.length(hipsVelWorld) > 0.001f)
+                    {
+                        GizmosExtensions.DrawArrow(SkeletonTransforms[0].position, SkeletonTransforms[0].position + (Vector3)(hipsVelWorld * 0.1f), 0.25f * math.length(hipsVelWorld) * 0.1f);
+                    }
                 }
-                // Right Foot
-                Gizmos.color = Color.yellow;
-                float3 rightFootWorld = characterOrigin + math.mul(characterRot, fv.RightFootLocalPosition);
-                Gizmos.DrawWireSphere(rightFootWorld, SpheresRadius);
-                float3 rightFootVelWorld = math.mul(characterRot, fv.RightFootLocalVelocity);
-                if (math.length(rightFootVelWorld) > 0.001f)
+                if (DebugTrajectory)
                 {
-                    GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * math.length(rightFootVelWorld) * 0.1f);
-                }
-                // Hips
-                Gizmos.color = Color.green;
-                float3 hipsVelWorld = math.mul(characterRot, fv.HipsLocalVelocity);
-                if (math.length(hipsVelWorld) > 0.001f)
-                {
-                    GizmosExtensions.DrawArrow(SkeletonTransforms[0].position, SkeletonTransforms[0].position + (Vector3)(hipsVelWorld * 0.1f), 0.25f * math.length(hipsVelWorld) * 0.1f);
-                }
-                // Trajectory
-                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); ++i)
-                {
-                    Gizmos.color = Color.blue * (1.0f - (float)i / (FeatureVector.GetFutureTrajectoryLength() * 1.25f));
-                    float2 futurePos = fv.GetFutureTrajectoryLocalPosition(i);
-                    float3 futureWorld = characterOrigin + math.mul(characterRot, (new float3(futurePos.x, 0.0f, futurePos.y)));
-                    Gizmos.DrawSphere(futureWorld, SpheresRadius);
-                    float2 futureDir = fv.GetFutureTrajectoryLocalDirection(i);
-                    float3 futureDirWorld = math.mul(characterRot, (new float3(futureDir.x, 0.0f, futureDir.y)));
-                    GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld);
+                    // Trajectory
+                    for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); ++i)
+                    {
+                        Gizmos.color = Color.blue * (1.0f - (float)i / (FeatureVector.GetFutureTrajectoryLength() * 1.25f));
+                        float2 futurePos = fv.GetFutureTrajectoryLocalPosition(i);
+                        float3 futureWorld = characterOrigin + math.mul(characterRot, (new float3(futurePos.x, 0.0f, futurePos.y)));
+                        Gizmos.DrawSphere(futureWorld, SpheresRadius);
+                        float2 futureDir = fv.GetFutureTrajectoryLocalDirection(i);
+                        float3 futureDirWorld = math.mul(characterRot, (new float3(futureDir.x, 0.0f, futureDir.y)));
+                        GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld);
+                    }
                 }
             }
         }
