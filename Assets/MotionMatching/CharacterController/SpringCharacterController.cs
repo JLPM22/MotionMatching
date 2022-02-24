@@ -41,6 +41,7 @@ namespace MotionMatching
         // PRIVATE ------------------------------------------------------------------
         // Input --------------------------------------------------------------------
         private float2 InputMovement;
+        private bool OrientationFixed;
         // Rotation and Predicted Rotation ------------------------------------------
         private quaternion DesiredRotation; // Desired Rotation/Direction
         private quaternion[] PredictedRotations;
@@ -79,6 +80,11 @@ namespace MotionMatching
             }
         }
 
+        public void SwapFixOrientation()
+        {
+            OrientationFixed = !OrientationFixed;
+        }
+
         private void Update()
         {
             // Average DeltaTime (for prediction... it is better to have a stable frame rate)
@@ -105,8 +111,11 @@ namespace MotionMatching
                 transform.position = new float3(newPos.x, transform.position.y, newPos.y);
                 transform.rotation = newRot;
                 // Desired Rotation
-                float2 desiredDirection = math.normalize(Velocity);
-                DesiredRotation = quaternion.LookRotation(new float3(desiredDirection.x, 0.0f, desiredDirection.y), transform.up);
+                if (!OrientationFixed)
+                {
+                    float2 desiredDirection = math.normalize(Velocity);
+                    DesiredRotation = quaternion.LookRotation(new float3(desiredDirection.x, 0.0f, desiredDirection.y), transform.up);
+                }
             }
 
             // Adjust SimulationBone to pull the character (moving SimulationBone) towards the Simulation Object (character controller)
