@@ -11,8 +11,6 @@ namespace MotionMatching
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
-        public event Action<Skeleton, Transform[]> OnSkeletonTransformUpdated;
-
         public SpringCharacterController CharacterController;
         public MotionMatchingData MMData;
         public float SpheresRadius = 0.1f;
@@ -20,7 +18,6 @@ namespace MotionMatching
         public float3 DefaultHipsForward = new float3(0, 0, 1);
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
         public bool Normalize = false;
-        public FeatureSet.NormalizeType NormalizeType = FeatureSet.NormalizeType.Magnitude;
         [Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Range(0.0f, 1.0f)] public float Quality = 1.0f;
         [Header("Debug")]
@@ -65,7 +62,7 @@ namespace MotionMatching
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
             FeatureExtractor featureExtractor = new FeatureExtractor();
             FeatureSet = featureExtractor.Extract(PoseSet, DefaultHipsForward);
-            if (Normalize) FeatureSet.NormalizeFeatures(NormalizeType);
+            if (Normalize) FeatureSet.NormalizeFeatures();
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
 
             // Skeleton
@@ -163,8 +160,8 @@ namespace MotionMatching
             QueryFeature.RightFootLocalPosition = current.RightFootLocalPosition;
             QueryFeature.RightFootLocalVelocity = current.RightFootLocalVelocity;
             QueryFeature.HipsLocalVelocity = current.HipsLocalVelocity;
-            // Normalize
-            if (Normalize) QueryFeature = FeatureSet.NormalizeFeatureVector(QueryFeature);
+            // Normalize (only trajectory... because current FeatureVector is already normalized)
+            if (Normalize) QueryFeature = FeatureSet.NormalizeTrajectory(QueryFeature);
             // Search
             var job = new LinearMotionMatchingSearchBurst
             {
@@ -197,8 +194,6 @@ namespace MotionMatching
             SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward), SkeletonTransforms[0].rotation);
             // Root Y Position
             SkeletonTransforms[0].localPosition = new float3(0, pose.RootWorld.y, 0);
-
-            if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke(Animation.Skeleton, SkeletonTransforms);
         }
 
         private float2 GetPositionLocalCharacter(float2 worldPosition)
@@ -289,6 +284,7 @@ namespace MotionMatching
             if (FeatureSet == null) return;
 
             FeatureVector fv = FeatureSet.GetFeature(currentFrame);
+            if (Normalize) fv = FeatureSet.DenormalizeFeatureVector(fv);
             if (fv.Valid)
             {
                 quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));

@@ -576,9 +576,8 @@ MonoBehaviour:
     z: 1
   SearchFrames: 10
   Normalize: 0
-  NormalizeType: 1
   Responsiveness: 1
-  Quality: 1
+  Quality: 0.386
   DebugSkeleton: 1
   DebugCurrent: 1
   DebugJoints: 1
@@ -634,6 +633,7 @@ MonoBehaviour:
   MaxSpeed: 3
   Responsiveness: 0.75
   MinimumVelocityClamp: 0.01
+  InputBigChangeThreshold: 0.5
   DoAdjustment: 1
   SimulationBone: {fileID: 845368627}
   PositionAdjustmentHalflife: 0.1

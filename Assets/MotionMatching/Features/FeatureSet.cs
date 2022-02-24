@@ -17,8 +17,6 @@ namespace MotionMatching
         private NativeArray<FeatureVector> Features;
         private float[] Mean;
         private float[] StandardDeviation;
-        private NormalizeType NormType;
-
 
         public FeatureSet(FeatureVector[] features)
         {
@@ -36,104 +34,210 @@ namespace MotionMatching
             return Features;
         }
 
+        /// <summary>
+        /// Returns a copty of the feature vector with only the trajectory features normalized
+        /// </summary>
+        public FeatureVector NormalizeTrajectory(FeatureVector featureVector)
+        {
+            Debug.Assert(Mean != null, "Mean is not initialized");
+            Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
+
+            const int nTrajectoryDimensions = 6;
+
+            FeatureVector normalizedFeatureVector = new FeatureVector();
+            normalizedFeatureVector.Valid = featureVector.Valid;
+            normalizedFeatureVector.LeftFootLocalPosition = featureVector.LeftFootLocalPosition;
+            normalizedFeatureVector.RightFootLocalPosition = featureVector.RightFootLocalPosition;
+            normalizedFeatureVector.LeftFootLocalVelocity = featureVector.LeftFootLocalVelocity;
+            normalizedFeatureVector.RightFootLocalVelocity = featureVector.RightFootLocalVelocity;
+            normalizedFeatureVector.HipsLocalVelocity = featureVector.HipsLocalVelocity;
+
+            int offset = 0;
+            // FutureTrajectoryLocalPosition
+            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
+            {
+                float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
+                value.x = (value.x - Mean[offset + float2Index]) / StandardDeviation[offset + float2Index];
+                value.y = (value.y - Mean[offset + float2Index + 1]) / StandardDeviation[offset + float2Index + 1];
+                normalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
+            }
+            offset += nTrajectoryDimensions;
+            // FutureTrajectoryLocalDirection
+            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
+            {
+                float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
+                value.x = (value.x - Mean[offset + float2Index]) / StandardDeviation[offset + float2Index];
+                value.y = (value.y - Mean[offset + float2Index + 1]) / StandardDeviation[offset + float2Index + 1];
+                normalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
+            }
+            // offset += nTrajectoryDimensions;
+
+            return normalizedFeatureVector;
+        }
+
+        /// <summary>
+        /// Returns a copy of the feature vector with normalized features
+        /// </summary>
         public FeatureVector NormalizeFeatureVector(FeatureVector featureVector)
         {
             Debug.Assert(Mean != null, "Mean is not initialized");
             Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
 
-            if (NormType == NormalizeType.Magnitude)
+            const int nTrajectoryDimensions = 6;
+            const int nPosAndVelDimensions = 3;
+
+            FeatureVector normalizedFeatureVector = new FeatureVector();
+            normalizedFeatureVector.Valid = featureVector.Valid;
+
+            int offset = 0;
+            // FutureTrajectoryLocalPosition
+            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
             {
-                // Trajectory
-                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); i++)
-                {
-                    float2 v = featureVector.GetFutureTrajectoryLocalPosition(i);
-                    float2 unit = math.normalize(v);
-                    featureVector.SetFutureTrajectoryLocalPosition(i, (v - unit * Mean[0]) / StandardDeviation[0]);
-                }
-                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); i++)
-                {
-                    float2 v = featureVector.GetFutureTrajectoryLocalDirection(i);
-                    float2 unit = math.normalize(v);
-                    featureVector.SetFutureTrajectoryLocalDirection(i, (v - unit * Mean[1]) / StandardDeviation[1]);
-                }
-                // Pose
-                {
-                    // LeftFootLocalPosition
-                    float3 v = featureVector.LeftFootLocalPosition;
-                    float3 unit = math.normalize(v);
-                    featureVector.LeftFootLocalPosition = (v - unit * Mean[2]) / StandardDeviation[2];
-                    // RightFootLocalPosition
-                    v = featureVector.RightFootLocalPosition;
-                    unit = math.normalize(v);
-                    featureVector.RightFootLocalPosition = (v - unit * Mean[3]) / StandardDeviation[3];
-                    // LeftFootLocalVelocity
-                    v = featureVector.LeftFootLocalVelocity;
-                    unit = math.normalize(v);
-                    featureVector.LeftFootLocalVelocity = (v - unit * Mean[4]) / StandardDeviation[4];
-                    // RightFootLocalVelocity
-                    v = featureVector.RightFootLocalVelocity;
-                    unit = math.normalize(v);
-                    featureVector.RightFootLocalVelocity = (v - unit * Mean[5]) / StandardDeviation[5];
-                    // HipsLocalVelocity
-                    v = featureVector.HipsLocalVelocity;
-                    unit = math.normalize(v);
-                    featureVector.HipsLocalVelocity = (v - unit * Mean[6]) / StandardDeviation[6];
-                }
+                float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
+                value.x = (value.x - Mean[offset + float2Index]) / StandardDeviation[offset + float2Index];
+                value.y = (value.y - Mean[offset + float2Index + 1]) / StandardDeviation[offset + float2Index + 1];
+                normalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
             }
-            else if (NormType == NormalizeType.Component)
+            offset += nTrajectoryDimensions;
+            // FutureTrajectoryLocalDirection
+            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
             {
-                // Trajectory
-                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); i++)
-                {
-                    featureVector.SetFutureTrajectoryLocalPosition(i, new float2((featureVector.GetFutureTrajectoryLocalPosition(i).x - Mean[0]) / StandardDeviation[0],
-                                                                                 (featureVector.GetFutureTrajectoryLocalPosition(i).y - Mean[1]) / StandardDeviation[1]));
-                }
-                for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); i++)
-                {
-                    featureVector.SetFutureTrajectoryLocalDirection(i, new float2((featureVector.GetFutureTrajectoryLocalDirection(i).x - Mean[2]) / StandardDeviation[2],
-                                                                                  (featureVector.GetFutureTrajectoryLocalDirection(i).y - Mean[3]) / StandardDeviation[3]));
-                }
-                // Pose
-                {
-                    // LeftFootLocalPosition
-                    featureVector.LeftFootLocalPosition.x = (featureVector.LeftFootLocalPosition.x - Mean[4]) / StandardDeviation[4];
-                    featureVector.LeftFootLocalPosition.y = (featureVector.LeftFootLocalPosition.y - Mean[5]) / StandardDeviation[5];
-                    featureVector.LeftFootLocalPosition.z = (featureVector.LeftFootLocalPosition.z - Mean[6]) / StandardDeviation[6];
-                    // RightFootLocalPosition
-                    featureVector.RightFootLocalPosition.x = (featureVector.RightFootLocalPosition.x - Mean[7]) / StandardDeviation[7];
-                    featureVector.RightFootLocalPosition.y = (featureVector.RightFootLocalPosition.y - Mean[8]) / StandardDeviation[8];
-                    featureVector.RightFootLocalPosition.z = (featureVector.RightFootLocalPosition.z - Mean[9]) / StandardDeviation[9];
-                    // LeftFootLocalVelocity
-                    featureVector.LeftFootLocalVelocity.x = (featureVector.LeftFootLocalVelocity.x - Mean[10]) / StandardDeviation[10];
-                    featureVector.LeftFootLocalVelocity.y = (featureVector.LeftFootLocalVelocity.y - Mean[11]) / StandardDeviation[11];
-                    featureVector.LeftFootLocalVelocity.z = (featureVector.LeftFootLocalVelocity.z - Mean[12]) / StandardDeviation[12];
-                    // RightFootLocalVelocity
-                    featureVector.RightFootLocalVelocity.x = (featureVector.RightFootLocalVelocity.x - Mean[13]) / StandardDeviation[13];
-                    featureVector.RightFootLocalVelocity.y = (featureVector.RightFootLocalVelocity.y - Mean[14]) / StandardDeviation[14];
-                    featureVector.RightFootLocalVelocity.z = (featureVector.RightFootLocalVelocity.z - Mean[15]) / StandardDeviation[15];
-                    // HipsLocalVelocity
-                    featureVector.HipsLocalVelocity.x = (featureVector.HipsLocalVelocity.x - Mean[16]) / StandardDeviation[16];
-                    featureVector.HipsLocalVelocity.y = (featureVector.HipsLocalVelocity.y - Mean[17]) / StandardDeviation[17];
-                    featureVector.HipsLocalVelocity.z = (featureVector.HipsLocalVelocity.z - Mean[18]) / StandardDeviation[18];
-                }
+                float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
+                value.x = (value.x - Mean[offset + float2Index]) / StandardDeviation[offset + float2Index];
+                value.y = (value.y - Mean[offset + float2Index + 1]) / StandardDeviation[offset + float2Index + 1];
+                normalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
             }
-            return featureVector;
+            offset += nTrajectoryDimensions;
+            // LeftFootLocalPosition
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.LeftFootLocalPosition[j];
+                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
+                normalizedFeatureVector.LeftFootLocalPosition[j] = value;
+            }
+            offset += nPosAndVelDimensions;
+            // RightFootLocalPosition
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.RightFootLocalPosition[j];
+                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
+                normalizedFeatureVector.RightFootLocalPosition[j] = value;
+            }
+            offset += nPosAndVelDimensions;
+            // LeftFootLocalVelocity
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.LeftFootLocalVelocity[j];
+                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
+                normalizedFeatureVector.LeftFootLocalVelocity[j] = value;
+            }
+            offset += nPosAndVelDimensions;
+            // RightFootLocalVelocity
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.RightFootLocalVelocity[j];
+                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
+                normalizedFeatureVector.RightFootLocalVelocity[j] = value;
+            }
+            offset += nPosAndVelDimensions;
+            // HipsLocalVelocity
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.HipsLocalVelocity[j];
+                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
+                normalizedFeatureVector.HipsLocalVelocity[j] = value;
+            }
+            // offset += nPosAndVelDimensions;
+
+            return normalizedFeatureVector;
         }
 
         /// <summary>
-        /// Normalizes the features by subtracting mean and dividing by standard deviation
+        /// Returns a copy of the feature vector with the features before normalization
         /// </summary>
-        public void NormalizeFeatures(NormalizeType normType)
+        public FeatureVector DenormalizeFeatureVector(FeatureVector featureVector)
         {
-            NormType = normType;
-            if (NormType == NormalizeType.Magnitude)
+            Debug.Assert(Mean != null, "Mean is not initialized");
+            Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
+
+            const int nTrajectoryDimensions = 6;
+            const int nPosAndVelDimensions = 3;
+
+            FeatureVector denormalizedFeatureVector = new FeatureVector();
+            denormalizedFeatureVector.Valid = featureVector.Valid;
+
+            int offset = 0;
+            // FutureTrajectoryLocalPosition
+            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
             {
-                ComputeMeanAndStandardDeviationMagnitude();
+                float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
+                value.x = value.x * StandardDeviation[offset + float2Index] + Mean[offset + float2Index];
+                value.y = value.y * StandardDeviation[offset + float2Index + 1] + Mean[offset + float2Index + 1];
+                denormalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
             }
-            else if (NormType == NormalizeType.Component)
+            offset += nTrajectoryDimensions;
+            // FutureTrajectoryLocalDirection
+            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
             {
-                ComputeMeanAndStandardDeviationComponent();
+                float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
+                value.x = value.x * StandardDeviation[offset + float2Index] + Mean[offset + float2Index];
+                value.y = value.y * StandardDeviation[offset + float2Index + 1] + Mean[offset + float2Index + 1];
+                denormalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
             }
+            offset += nTrajectoryDimensions;
+            // LeftFootLocalPosition
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.LeftFootLocalPosition[j];
+                value = value * StandardDeviation[offset + j] + Mean[offset + j];
+                denormalizedFeatureVector.LeftFootLocalPosition[j] = value;
+            }
+            offset += nPosAndVelDimensions;
+            // RightFootLocalPosition
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.RightFootLocalPosition[j];
+                value = value * StandardDeviation[offset + j] + Mean[offset + j];
+                denormalizedFeatureVector.RightFootLocalPosition[j] = value;
+            }
+            offset += nPosAndVelDimensions;
+            // LeftFootLocalVelocity
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.LeftFootLocalVelocity[j];
+                value = value * StandardDeviation[offset + j] + Mean[offset + j];
+                denormalizedFeatureVector.LeftFootLocalVelocity[j] = value;
+            }
+            offset += nPosAndVelDimensions;
+            // RightFootLocalVelocity
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.RightFootLocalVelocity[j];
+                value = value * StandardDeviation[offset + j] + Mean[offset + j];
+                denormalizedFeatureVector.RightFootLocalVelocity[j] = value;
+            }
+            offset += nPosAndVelDimensions;
+            // HipsLocalVelocity
+            for (int j = 0; j < nPosAndVelDimensions; j++)
+            {
+                float value = featureVector.HipsLocalVelocity[j];
+                value = value * StandardDeviation[offset + j] + Mean[offset + j];
+                denormalizedFeatureVector.HipsLocalVelocity[j] = value;
+            }
+            // offset += nPosAndVelDimensions;
+
+            return denormalizedFeatureVector;
+        }
+
+        /// <summary>
+        /// Normalizes the features by subtracting mean and dividing by the standard deviation
+        /// </summary>
+        public void NormalizeFeatures()
+        {
+            // Compute Mean and Standard Deviation
+            ComputeMeanAndStandardDeviation();
+
+            // Normalize all feature vectors
             for (int i = 0; i < Features.Length; i++)
             {
                 if (Features[i].Valid)
@@ -143,204 +247,190 @@ namespace MotionMatching
             }
         }
 
-        private void ComputeMeanAndStandardDeviationComponent()
+        private void ComputeMeanAndStandardDeviation()
         {
-            const int nFeatures = 19;
-            Mean = new float[nFeatures];
-            StandardDeviation = new float[nFeatures];
-            // Compute Means
-            Span<int> counts = stackalloc int[nFeatures];
-            for (int i = 0; i < nFeatures; i++)
-            {
-                if (Features[i].Valid)
-                {
-                    // FIXME: No lo he revisado pero... por que solo miro FutureTrajectory 0 y 1 ????
-                    // FutureTrajectoryLocalPosition
-                    Mean[0] += Features[i].GetFutureTrajectoryLocalPosition(0).x;
-                    counts[0]++;
-                    Mean[0] += Features[i].GetFutureTrajectoryLocalPosition(1).x;
-                    counts[0]++;
-                    Mean[1] += Features[i].GetFutureTrajectoryLocalPosition(0).y;
-                    counts[1]++;
-                    Mean[1] += Features[i].GetFutureTrajectoryLocalPosition(1).y;
-                    counts[1]++;
-                    // FutureTrajectoryLocalDirection
-                    Mean[2] += Features[i].GetFutureTrajectoryLocalDirection(0).x;
-                    counts[2]++;
-                    Mean[2] += Features[i].GetFutureTrajectoryLocalDirection(1).x;
-                    counts[2]++;
-                    Mean[3] += Features[i].GetFutureTrajectoryLocalDirection(0).y;
-                    counts[3]++;
-                    Mean[3] += Features[i].GetFutureTrajectoryLocalDirection(1).y;
-                    counts[3]++;
-                    // LeftFootLocalPosition
-                    Mean[4] += Features[i].LeftFootLocalPosition.x;
-                    counts[4]++;
-                    Mean[5] += Features[i].LeftFootLocalPosition.y;
-                    counts[5]++;
-                    Mean[6] += Features[i].LeftFootLocalPosition.z;
-                    counts[6]++;
-                    // RightFootLocalPosition
-                    Mean[7] += Features[i].RightFootLocalPosition.x;
-                    counts[7]++;
-                    Mean[8] += Features[i].RightFootLocalPosition.y;
-                    counts[8]++;
-                    Mean[9] += Features[i].RightFootLocalPosition.z;
-                    counts[9]++;
-                    // LeftFootLocalVelocity
-                    Mean[10] += Features[i].LeftFootLocalVelocity.x;
-                    counts[10]++;
-                    Mean[11] += Features[i].LeftFootLocalVelocity.y;
-                    counts[11]++;
-                    Mean[12] += Features[i].LeftFootLocalVelocity.z;
-                    counts[12]++;
-                    // RightFootLocalVelocity
-                    Mean[13] += Features[i].RightFootLocalVelocity.x;
-                    counts[13]++;
-                    Mean[14] += Features[i].RightFootLocalVelocity.y;
-                    counts[14]++;
-                    Mean[15] += Features[i].RightFootLocalVelocity.z;
-                    counts[15]++;
-                    // HipsLocalVelocity
-                    Mean[16] += Features[i].HipsLocalVelocity.x;
-                    counts[16]++;
-                    Mean[17] += Features[i].HipsLocalVelocity.y;
-                    counts[17]++;
-                    Mean[18] += Features[i].HipsLocalVelocity.z;
-                    counts[18]++;
-                }
-            }
-            for (int i = 0; i < nFeatures; i++)
-            {
-                Mean[i] /= counts[i];
-            }
-            // Compute Standard Deviations - std = sqrt(sum((x - mean)^2) / n)
-            for (int i = 0; i < Features.Length; i++)
-            {
-                if (Features[i].Valid)
-                {
-                    // FIXME: No lo he revisado pero... por que solo miro FutureTrajectory 0 y 1 ????
-                    // FutureTrajectoryLocalPosition
-                    StandardDeviation[0] += (Features[i].GetFutureTrajectoryLocalPosition(0).x - Mean[0]) * (Features[i].GetFutureTrajectoryLocalPosition(0).x - Mean[0]);
-                    StandardDeviation[0] += (Features[i].GetFutureTrajectoryLocalPosition(1).x - Mean[0]) * (Features[i].GetFutureTrajectoryLocalPosition(1).x - Mean[0]);
-                    StandardDeviation[1] += (Features[i].GetFutureTrajectoryLocalPosition(0).y - Mean[1]) * (Features[i].GetFutureTrajectoryLocalPosition(0).y - Mean[1]);
-                    StandardDeviation[1] += (Features[i].GetFutureTrajectoryLocalPosition(1).y - Mean[1]) * (Features[i].GetFutureTrajectoryLocalPosition(1).y - Mean[1]);
-                    // FutureTrajectoryLocalDirection
-                    StandardDeviation[2] += (Features[i].GetFutureTrajectoryLocalDirection(0).x - Mean[2]) * (Features[i].GetFutureTrajectoryLocalDirection(0).x - Mean[2]);
-                    StandardDeviation[2] += (Features[i].GetFutureTrajectoryLocalDirection(1).x - Mean[2]) * (Features[i].GetFutureTrajectoryLocalDirection(1).x - Mean[2]);
-                    StandardDeviation[3] += (Features[i].GetFutureTrajectoryLocalDirection(0).y - Mean[3]) * (Features[i].GetFutureTrajectoryLocalDirection(0).y - Mean[3]);
-                    StandardDeviation[3] += (Features[i].GetFutureTrajectoryLocalDirection(1).y - Mean[3]) * (Features[i].GetFutureTrajectoryLocalDirection(1).y - Mean[3]);
-                    // LeftFootLocalPosition
-                    StandardDeviation[4] += (Features[i].LeftFootLocalPosition.x - Mean[4]) * (Features[i].LeftFootLocalPosition.x - Mean[4]);
-                    StandardDeviation[5] += (Features[i].LeftFootLocalPosition.y - Mean[5]) * (Features[i].LeftFootLocalPosition.y - Mean[5]);
-                    StandardDeviation[6] += (Features[i].LeftFootLocalPosition.z - Mean[6]) * (Features[i].LeftFootLocalPosition.z - Mean[6]);
-                    // RightFootLocalPosition
-                    StandardDeviation[7] += (Features[i].RightFootLocalPosition.x - Mean[7]) * (Features[i].RightFootLocalPosition.x - Mean[7]);
-                    StandardDeviation[8] += (Features[i].RightFootLocalPosition.y - Mean[8]) * (Features[i].RightFootLocalPosition.y - Mean[8]);
-                    StandardDeviation[9] += (Features[i].RightFootLocalPosition.z - Mean[9]) * (Features[i].RightFootLocalPosition.z - Mean[9]);
-                    // LeftFootLocalVelocity
-                    StandardDeviation[10] += (Features[i].LeftFootLocalVelocity.x - Mean[10]) * (Features[i].LeftFootLocalVelocity.x - Mean[10]);
-                    StandardDeviation[11] += (Features[i].LeftFootLocalVelocity.y - Mean[11]) * (Features[i].LeftFootLocalVelocity.y - Mean[11]);
-                    StandardDeviation[12] += (Features[i].LeftFootLocalVelocity.z - Mean[12]) * (Features[i].LeftFootLocalVelocity.z - Mean[12]);
-                    // RightFootLocalVelocity
-                    StandardDeviation[13] += (Features[i].RightFootLocalVelocity.x - Mean[13]) * (Features[i].RightFootLocalVelocity.x - Mean[13]);
-                    StandardDeviation[14] += (Features[i].RightFootLocalVelocity.y - Mean[14]) * (Features[i].RightFootLocalVelocity.y - Mean[14]);
-                    StandardDeviation[15] += (Features[i].RightFootLocalVelocity.z - Mean[15]) * (Features[i].RightFootLocalVelocity.z - Mean[15]);
-                    // HipsLocalVelocity
-                    StandardDeviation[16] += (Features[i].HipsLocalVelocity.x - Mean[16]) * (Features[i].HipsLocalVelocity.x - Mean[16]);
-                    StandardDeviation[17] += (Features[i].HipsLocalVelocity.y - Mean[17]) * (Features[i].HipsLocalVelocity.y - Mean[17]);
-                    StandardDeviation[18] += (Features[i].HipsLocalVelocity.z - Mean[18]) * (Features[i].HipsLocalVelocity.z - Mean[18]);
-                }
-            }
-            for (int i = 0; i < nFeatures; i++)
-            {
-                StandardDeviation[i] = Mathf.Sqrt(StandardDeviation[i] / counts[i]);
-            }
-        }
+            const int nFeaturesTrajectory = 2;
+            const int nFeaturesPosAndVel = 5;
+            const int nTrajectoryDimensions = 6;
+            const int nPosAndVelDimensions = 3;
+            const int nTotalDimensions = nFeaturesTrajectory * nTrajectoryDimensions + nFeaturesPosAndVel * nPosAndVelDimensions;
+            // Mean for each dimension
+            Mean = new float[nTotalDimensions];
+            // Variance for each dimension
+            Span<float> variance = stackalloc float[nTotalDimensions];
+            // Standard Deviation for each dimension
+            StandardDeviation = new float[nTotalDimensions];
 
-        private void ComputeMeanAndStandardDeviationMagnitude()
-        {
-            const int nFeatures = 7;
-            Mean = new float[nFeatures];
-            StandardDeviation = new float[nFeatures];
-            // Compute Means
-            Span<int> counts = stackalloc int[nFeatures];
+            // Compute Means for each dimension of each feature
+            Span<int> counts = stackalloc int[nTotalDimensions]; // counts is only updated in the first loop (then the values are always the same)
+            int offset = 0;
             for (int i = 0; i < Features.Length; i++)
             {
                 if (Features[i].Valid)
                 {
-                    // FIXME: No lo he revisado pero... por que solo miro FutureTrajectory 0 y 1 ????
-                    // FutureTrajectoryLocalPosition
-                    Mean[0] += math.length(Features[i].GetFutureTrajectoryLocalPosition(0));
-                    counts[0]++;
-                    Mean[0] += math.length(Features[i].GetFutureTrajectoryLocalPosition(1));
-                    counts[0]++;
-                    // FutureTrajectoryLocalDirection
-                    Mean[1] += math.length(Features[i].GetFutureTrajectoryLocalDirection(0));
-                    counts[1]++;
-                    Mean[1] += math.length(Features[i].GetFutureTrajectoryLocalDirection(1));
-                    counts[1]++;
-                    // LeftFootLocalPosition
-                    Mean[2] += math.length(Features[i].LeftFootLocalPosition);
-                    counts[2]++;
-                    // RightFootLocalPosition
-                    Mean[3] += math.length(Features[i].RightFootLocalPosition);
-                    counts[3]++;
-                    // LeftFootLocalVelocity
-                    Mean[4] += math.length(Features[i].LeftFootLocalVelocity);
-                    counts[4]++;
-                    // RightFootLocalVelocity
-                    Mean[5] += math.length(Features[i].RightFootLocalVelocity);
-                    counts[5]++;
-                    // HipsLocalVelocity
-                    Mean[6] += math.length(Features[i].HipsLocalVelocity);
-                    counts[6]++;
+                    // Future Trajectory Local Position
+                    for (int j = 0; j < nTrajectoryDimensions; j++)
+                    {
+                        int float2Index = j / 2;
+                        int floatIndex = j % 2;
+                        Mean[offset + j] += Features[i].GetFutureTrajectoryLocalPosition(float2Index)[floatIndex];
+                        counts[offset + j]++;
+                    }
+                    offset += nTrajectoryDimensions;
+                    // Future Trajectory Local Direction
+                    for (int j = 0; j < nTrajectoryDimensions; j++)
+                    {
+                        int float2Index = j / 2;
+                        int floatIndex = j % 2;
+                        Mean[offset + j] += Features[i].GetFutureTrajectoryLocalDirection(float2Index)[floatIndex];
+                        counts[offset + j]++;
+                    }
+                    offset += nTrajectoryDimensions;
+                    // Left Foot Local Position
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        Mean[offset + j] += Features[i].LeftFootLocalPosition[j];
+                        counts[offset + j]++;
+                    }
+                    offset += nPosAndVelDimensions;
+                    // Right Foot Local Position
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        Mean[offset + j] += Features[i].RightFootLocalPosition[j];
+                        counts[offset + j]++;
+                    }
+                    offset += nPosAndVelDimensions;
+                    // Left Foot Local Velocity
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        Mean[offset + j] += Features[i].LeftFootLocalVelocity[j];
+                        counts[offset + j]++;
+                    }
+                    offset += nPosAndVelDimensions;
+                    // Right Foot Local Velocity
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        Mean[offset + j] += Features[i].RightFootLocalVelocity[j];
+                        counts[offset + j]++;
+                    }
+                    offset += nPosAndVelDimensions;
+                    // Hips Local Velocity
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        Mean[offset + j] += Features[i].HipsLocalVelocity[j];
+                        counts[offset + j]++;
+                    }
+                    offset = 0;
                 }
             }
-            for (int i = 0; i < nFeatures; i++)
+            for (int i = 0; i < nTotalDimensions; i++)
             {
                 Mean[i] /= counts[i];
             }
-            // Compute Standard Deviations - std = sqrt(sum((x - mean)^2) / n)
+
+            // Compute Variance for each dimension of each feature - variance = (x - mean)^2 / n
+            offset = 0;
             for (int i = 0; i < Features.Length; i++)
             {
                 if (Features[i].Valid)
                 {
-                    // FIXME: No lo he revisado pero... por que solo miro FutureTrajectory 0 y 1 ????
-                    // FutureTrajectoryLocalPosition
-                    StandardDeviation[0] += (math.length(Features[i].GetFutureTrajectoryLocalPosition(0)) - Mean[0]) * (math.length(Features[i].GetFutureTrajectoryLocalPosition(0)) - Mean[0]);
-                    StandardDeviation[0] += (math.length(Features[i].GetFutureTrajectoryLocalPosition(1)) - Mean[0]) * (math.length(Features[i].GetFutureTrajectoryLocalPosition(1)) - Mean[0]);
-                    // FutureTrajectoryLocalDirection
-                    StandardDeviation[1] += (math.length(Features[i].GetFutureTrajectoryLocalDirection(0)) - Mean[1]) * (math.length(Features[i].GetFutureTrajectoryLocalDirection(0)) - Mean[1]);
-                    StandardDeviation[1] += (math.length(Features[i].GetFutureTrajectoryLocalDirection(1)) - Mean[1]) * (math.length(Features[i].GetFutureTrajectoryLocalDirection(1)) - Mean[1]);
-                    // LeftFootLocalPosition
-                    StandardDeviation[2] += (math.length(Features[i].LeftFootLocalPosition) - Mean[2]) * (math.length(Features[i].LeftFootLocalPosition) - Mean[2]);
-                    // RightFootLocalPosition
-                    StandardDeviation[3] += (math.length(Features[i].RightFootLocalPosition) - Mean[3]) * (math.length(Features[i].RightFootLocalPosition) - Mean[3]);
-                    // LeftFootLocalVelocity
-                    StandardDeviation[4] += (math.length(Features[i].LeftFootLocalVelocity) - Mean[4]) * (math.length(Features[i].LeftFootLocalVelocity) - Mean[4]);
-                    // RightFootLocalVelocity
-                    StandardDeviation[5] += (math.length(Features[i].RightFootLocalVelocity) - Mean[5]) * (math.length(Features[i].RightFootLocalVelocity) - Mean[5]);
-                    // HipsLocalVelocity
-                    StandardDeviation[6] += (math.length(Features[i].HipsLocalVelocity) - Mean[6]) * (math.length(Features[i].HipsLocalVelocity) - Mean[6]);
+                    // Future Trajectory Local Position
+                    for (int j = 0; j < nTrajectoryDimensions; j++)
+                    {
+                        int float2Index = j / 2;
+                        int floatIndex = j % 2;
+                        float x = Features[i].GetFutureTrajectoryLocalPosition(float2Index)[floatIndex] - Mean[offset + j];
+                        variance[offset + j] += x * x;
+                    }
+                    offset += nTrajectoryDimensions;
+                    // Future Trajectory Local Direction
+                    for (int j = 0; j < nTrajectoryDimensions; j++)
+                    {
+                        int float2Index = j / 2;
+                        int floatIndex = j % 2;
+                        float x = Features[i].GetFutureTrajectoryLocalDirection(float2Index)[floatIndex] - Mean[offset + j];
+                        variance[offset + j] += x * x;
+                    }
+                    offset += nTrajectoryDimensions;
+                    // Left Foot Local Position
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        float x = Features[i].LeftFootLocalPosition[j] - Mean[offset + j];
+                        variance[offset + j] += x * x;
+                    }
+                    offset += nPosAndVelDimensions;
+                    // Right Foot Local Position
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        float x = Features[i].RightFootLocalPosition[j] - Mean[offset + j];
+                        variance[offset + j] += x * x;
+                    }
+                    offset += nPosAndVelDimensions;
+                    // Left Foot Local Velocity
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        float x = Features[i].LeftFootLocalVelocity[j] - Mean[offset + j];
+                        variance[offset + j] += x * x;
+                    }
+                    offset += nPosAndVelDimensions;
+                    // Right Foot Local Velocity
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        float x = Features[i].RightFootLocalVelocity[j] - Mean[offset + j];
+                        variance[offset + j] += x * x;
+                    }
+                    offset += nPosAndVelDimensions;
+                    // Hips Local Velocity
+                    for (int j = 0; j < nPosAndVelDimensions; j++)
+                    {
+                        float x = Features[i].HipsLocalVelocity[j] - Mean[offset + j];
+                        variance[offset + j] += x * x;
+                    }
+                    offset = 0;
                 }
             }
-            for (int i = 0; i < nFeatures; i++)
+            for (int i = 0; i < nTotalDimensions; i++)
             {
-                StandardDeviation[i] = Mathf.Sqrt(StandardDeviation[i] / counts[i]);
+                variance[i] /= counts[i];
+            }
+
+            // Compute Standard Deviations of a feature as the average std across all dimensions - std = sqrt(variance)
+            offset = 0;
+            for (int i = 0; i < nFeaturesTrajectory; i++)
+            {
+                float std = 0;
+                for (int j = 0; j < nTrajectoryDimensions; j++)
+                {
+                    std += math.sqrt(variance[offset + j]);
+                }
+                std /= nTrajectoryDimensions;
+                Debug.Assert(std > 0, "Standard deviation is zero, feature with no variation is probably a bug");
+                for (int j = 0; j < nTrajectoryDimensions; j++)
+                {
+                    StandardDeviation[offset + j] = std;
+                }
+                offset += nTrajectoryDimensions;
+            }
+            for (int i = 0; i < nFeaturesPosAndVel; i++)
+            {
+                float std = 0;
+                for (int j = 0; j < nPosAndVelDimensions; j++)
+                {
+                    std += math.sqrt(variance[offset + j]);
+                }
+                std /= nPosAndVelDimensions;
+                Debug.Assert(std > 0, "Standard deviation is zero, feature with no variation is probably a bug");
+                for (int j = 0; j < nPosAndVelDimensions; j++)
+                {
+                    StandardDeviation[offset + j] = std;
+                }
+                offset += nPosAndVelDimensions;
             }
         }
 
         public void Dispose()
         {
             if (Features != null && Features.IsCreated) Features.Dispose();
-        }
-
-        public enum NormalizeType
-        {
-            // FIXME: Magnitude normalization does not work well
-            Magnitude, // Normalize the magnitude of each vector
-            Component // Normalize per component
         }
     }
 }
