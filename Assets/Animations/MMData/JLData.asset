@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d0bb4b3a7b78d847be4e6490640196f, type: 3}
+  m_Name: JLData
+  m_EditorClassIdentifier: 
+  BVH: {fileID: 4900000, guid: 1861b3ddede746946859c5bbc1daaad8, type: 3}
+  UnitScale: 0.01
+  DefaultHipsForward:
+    x: 0
+    y: 0
+    z: -1
+  SkeletonToMecanim:
+  - Name: Hips
+    MecanimBone: 0
+  - Name: Chest
+    MecanimBone: 7
+  - Name: Chest2
+    MecanimBone: 8
+  - Name: Chest3
+    MecanimBone: 54
+  - Name: Chest4
+    MecanimBone: 55
+  - Name: Neck
+    MecanimBone: 9
+  - Name: Head
+    MecanimBone: 10
+  - Name: RightCollar
+    MecanimBone: 12
+  - Name: RightShoulder
+    MecanimBone: 14
+  - Name: RightElbow
+    MecanimBone: 16
+  - Name: RightWrist
+    MecanimBone: 18
+  - Name: LeftCollar
+    MecanimBone: 11
+  - Name: LeftShoulder
+    MecanimBone: 13
+  - Name: LeftElbow
+    MecanimBone: 15
+  - Name: LeftWrist
+    MecanimBone: 17
+  - Name: RightHip
+    MecanimBone: 2
+  - Name: RightKnee
+    MecanimBone: 4
+  - Name: RightAnkle
+    MecanimBone: 6
+  - Name: RightToe
+    MecanimBone: 20
+  - Name: LeftHip
+    MecanimBone: 1
+  - Name: LeftKnee
+    MecanimBone: 3
+  - Name: LeftAnkle
+    MecanimBone: 5
+  - Name: LeftToe
+    MecanimBone: 19

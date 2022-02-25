@@ -15,7 +15,6 @@ namespace MotionMatching
         public MotionMatchingData MMData;
         public float SpheresRadius = 0.1f;
         public bool LockFPS = true;
-        public float3 DefaultHipsForward = new float3(0, 0, 1);
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
         public bool Normalize = false;
         [Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
@@ -38,9 +37,6 @@ namespace MotionMatching
 
         private void Awake()
         {
-            // Assertions
-            Debug.Assert(math.length(DefaultHipsForward) < 1.01f && math.length(DefaultHipsForward) > 0.99f, "DefaultHipsForward must be normalized");
-
             // BVH
             PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
             BVHImporter importer = new BVHImporter();
@@ -53,7 +49,7 @@ namespace MotionMatching
             PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
             PoseExtractor poseExtractor = new PoseExtractor();
             PoseSet = new PoseSet();
-            if (!poseExtractor.Extract(Animation, PoseSet, DefaultHipsForward))
+            if (!poseExtractor.Extract(Animation, PoseSet, MMData.DefaultHipsForward))
             {
                 Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
             }
@@ -61,7 +57,7 @@ namespace MotionMatching
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
             FeatureExtractor featureExtractor = new FeatureExtractor();
-            FeatureSet = featureExtractor.Extract(PoseSet, DefaultHipsForward);
+            FeatureSet = featureExtractor.Extract(PoseSet, MMData.DefaultHipsForward);
             if (Normalize) FeatureSet.NormalizeFeatures();
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
 
@@ -189,7 +185,7 @@ namespace MotionMatching
             // Correct Root Orientation to match the Simulation Bone
             float3 characterForward = transform.forward;
             characterForward = math.normalize(new float3(characterForward.x, 0, characterForward.z));
-            float3 hipsForward = math.mul(SkeletonTransforms[0].rotation, DefaultHipsForward);
+            float3 hipsForward = math.mul(SkeletonTransforms[0].rotation, MMData.DefaultHipsForward);
             hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
             SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward), SkeletonTransforms[0].rotation);
             // Root Y Position

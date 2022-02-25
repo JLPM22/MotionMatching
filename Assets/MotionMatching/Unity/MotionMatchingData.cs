@@ -1,7 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
+using Unity.Mathematics;
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -19,11 +20,12 @@ namespace MotionMatching
     {
         // TODO: add a way to add multiple animation clips (BVHs)
 
-        // TODO: DefaultHipsForward move here... detect/suggest automatically? try to fix automatically at BVHAnimation level? 
+        // TODO: DefaultHipsForward... detect/suggest automatically? try to fix automatically at BVHAnimation level? 
         // (if it is fixed some code can be deleted... all code related to DefaultHipsForward and in the UpdateTransform() when correcting the hips forward)
 
         public TextAsset BVH;
         public float UnitScale = 1.0f;
+        public float3 DefaultHipsForward = new float3(0, 0, 1);
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
 
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
@@ -81,8 +83,16 @@ namespace MotionMatching
             data.BVH = (TextAsset)EditorGUILayout.ObjectField("BVH", data.BVH, typeof(TextAsset), false);
             if (data.BVH == null) return;
             data.UnitScale = EditorGUILayout.FloatField("Unit Scale", data.UnitScale);
+            data.DefaultHipsForward = EditorGUILayout.Vector3Field("Default Hips Forward", data.DefaultHipsForward);
+            if (math.abs(math.length(data.DefaultHipsForward) - 1.0f) > 1E-6f)
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.HelpBox("Default Hips Forward should be normalized", MessageType.Warning);
+                if (GUILayout.Button("Fix")) data.DefaultHipsForward = math.normalize(data.DefaultHipsForward);
+                EditorGUILayout.EndHorizontal();
+            }
 
-            if (GUILayout.Button("Process BVH"))
+            if (GUILayout.Button("Read Skeleton from BVH"))
             {
                 BVHImporter importer = new BVHImporter();
                 BVHAnimation animation = importer.Import(data.BVH, data.UnitScale);
