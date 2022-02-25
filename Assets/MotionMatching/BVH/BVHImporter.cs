@@ -54,7 +54,7 @@ namespace MotionMatching
                     w += 1;
                     if (words[w++] != "Site") Debug.LogError("[BVHImporter] End Site not found");
                     ReadLeftBracket(words, ref w);
-                    Vector3 offset = ReadOffset(words, ref w);
+                    Vector3 offset = ReadOffset(words, ref w) * scale;
                     EndSite endSite = new EndSite(parent, offset);
                     animation.AddEndSite(endSite);
                     if (!ReadRightBracket(words, ref w)) Debug.LogError("[BVHImporter] End Site right bracket not found");
