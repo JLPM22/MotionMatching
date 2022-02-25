@@ -11,7 +11,7 @@ namespace MotionMatching
     /// </summary>
     public unsafe struct FeatureVector
     {
-        public bool Valid;
+        public bool IsValid;
         // Vectors are local to the character
         // Trajectory ---
         // Using two floats instead of a float2 is slower in standard c#... it gets faster when using Burst (because it uses SIMD)

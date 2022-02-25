@@ -53,7 +53,7 @@ namespace MotionMatching
             // this solution only works for one type of skeleton
             GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, defaultHipsForward, out float3 characterOrigin, out float3 characterForward);
             FeatureVector feature = new FeatureVector();
-            feature.Valid = true;
+            feature.IsValid = true;
             // Left Foot
             GetJointFeatures(pose, poseNext, poseSet.Skeleton, leftFoot, characterOrigin, characterForward, clip, out feature.LeftFootLocalPosition, out feature.LeftFootLocalVelocity);
             // Right Foot

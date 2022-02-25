@@ -138,7 +138,7 @@ public class FeatureDebug : MonoBehaviour
         if (FeatureSet == null) return;
 
         FeatureVector fv = FeatureSet.GetFeature(currentFrame);
-        if (fv.Valid)
+        if (fv.IsValid)
         {
             quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
             // Left Foot

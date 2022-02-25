@@ -45,7 +45,7 @@ namespace MotionMatching
             const int nTrajectoryDimensions = 6;
 
             FeatureVector normalizedFeatureVector = new FeatureVector();
-            normalizedFeatureVector.Valid = featureVector.Valid;
+            normalizedFeatureVector.IsValid = featureVector.IsValid;
             normalizedFeatureVector.LeftFootLocalPosition = featureVector.LeftFootLocalPosition;
             normalizedFeatureVector.RightFootLocalPosition = featureVector.RightFootLocalPosition;
             normalizedFeatureVector.LeftFootLocalVelocity = featureVector.LeftFootLocalVelocity;
@@ -87,7 +87,7 @@ namespace MotionMatching
             const int nPosAndVelDimensions = 3;
 
             FeatureVector normalizedFeatureVector = new FeatureVector();
-            normalizedFeatureVector.Valid = featureVector.Valid;
+            normalizedFeatureVector.IsValid = featureVector.IsValid;
 
             int offset = 0;
             // FutureTrajectoryLocalPosition
@@ -164,7 +164,7 @@ namespace MotionMatching
             const int nPosAndVelDimensions = 3;
 
             FeatureVector denormalizedFeatureVector = new FeatureVector();
-            denormalizedFeatureVector.Valid = featureVector.Valid;
+            denormalizedFeatureVector.IsValid = featureVector.IsValid;
 
             int offset = 0;
             // FutureTrajectoryLocalPosition
@@ -240,7 +240,7 @@ namespace MotionMatching
             // Normalize all feature vectors
             for (int i = 0; i < Features.Length; i++)
             {
-                if (Features[i].Valid)
+                if (Features[i].IsValid)
                 {
                     Features[i] = NormalizeFeatureVector(Features[i]);
                 }
@@ -266,7 +266,7 @@ namespace MotionMatching
             int offset = 0;
             for (int i = 0; i < Features.Length; i++)
             {
-                if (Features[i].Valid)
+                if (Features[i].IsValid)
                 {
                     // Future Trajectory Local Position
                     for (int j = 0; j < nTrajectoryDimensions; j++)
@@ -332,7 +332,7 @@ namespace MotionMatching
             offset = 0;
             for (int i = 0; i < Features.Length; i++)
             {
-                if (Features[i].Valid)
+                if (Features[i].IsValid)
                 {
                     // Future Trajectory Local Position
                     for (int j = 0; j < nTrajectoryDimensions; j++)

@@ -86,6 +86,15 @@ namespace MotionMatching
 
             // Other initialization
             SearchResult = new NativeArray<int>(1, Allocator.Persistent);
+            // Search first Frame valid (to start with a valid pose)
+            for (int i = 0; i < FeatureSet.GetFeatures().Length; i++)
+            {
+                if (FeatureSet.GetFeature(i).IsValid)
+                {
+                    CurrentFrame = i;
+                    break;
+                }
+            }
         }
 
         private void OnEnable()
@@ -281,7 +290,7 @@ namespace MotionMatching
 
             FeatureVector fv = FeatureSet.GetFeature(currentFrame);
             if (Normalize) fv = FeatureSet.DenormalizeFeatureVector(fv);
-            if (fv.Valid)
+            if (fv.IsValid)
             {
                 quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
                 if (DebugJoints)

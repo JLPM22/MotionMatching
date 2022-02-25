@@ -28,7 +28,7 @@ namespace MotionMatching
             for (int i = 0; i < Features.Length; ++i)
             {
                 FeatureVector fv = Features[i];
-                if (fv.Valid)
+                if (fv.IsValid)
                 {
                     float sqrDistance = QueryFeature.SqrDistance(fv, Responsiveness, Quality);
                     if (sqrDistance < min)
