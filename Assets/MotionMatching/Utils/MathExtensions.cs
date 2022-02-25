@@ -9,13 +9,21 @@ namespace MotionMatching
     {
         /// <summary>
         /// Returns the rotation between two vectors, from and to are normalized
+        /// If from and to are coplanar and opposite, coplanarNormal is used to determine the axis of rotation
         /// </summary>
-        public static quaternion FromToRotationSafe(float3 from, float3 to)
+        public static quaternion FromToRotationSafe(float3 from, float3 to, float3 coplanarNormal)
         {
             float dotFT = math.dot(math.normalize(from), math.normalize(to));
-            if (dotFT > 0.99999f)
+            if (dotFT > 0.99999f) // cross(from, to) is zero
             {
                 return quaternion.identity;
+            }
+            else if (dotFT < -0.99999f) // cross(from, to) is zero
+            {
+                return quaternion.AxisAngle(
+                    angle: math.PI,
+                    axis: coplanarNormal
+                );
             }
             return quaternion.AxisAngle(
                 angle: math.acos(math.clamp(dotFT, -1f, 1f)),
@@ -25,13 +33,21 @@ namespace MotionMatching
 
         /// <summary>
         /// Returns the rotation between two vectors, from and to are ASSUMED to be normalized
+        /// If from and to are coplanar and opposite, coplanarNormal is used to determine the axis of rotation
         /// </summary>
-        public static quaternion FromToRotation(float3 from, float3 to)
+        public static quaternion FromToRotation(float3 from, float3 to, float3 coplanarNormal)
         {
             float dotFT = math.dot(from, to);
-            if (dotFT > 0.99999f)
+            if (dotFT > 0.99999f) // cross(from, to) is zero
             {
                 return quaternion.identity;
+            }
+            else if (dotFT < -0.99999f) // cross(from, to) is zero
+            {
+                return quaternion.AxisAngle(
+                    angle: math.PI,
+                    axis: coplanarNormal
+                );
             }
             return quaternion.AxisAngle(
                 angle: math.acos(math.clamp(dotFT, -1f, 1f)),

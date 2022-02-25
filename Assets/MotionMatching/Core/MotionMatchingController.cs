@@ -196,7 +196,7 @@ namespace MotionMatching
             characterForward = math.normalize(new float3(characterForward.x, 0, characterForward.z));
             float3 hipsForward = math.mul(SkeletonTransforms[0].rotation, MMData.DefaultHipsForward);
             hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
-            SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward), SkeletonTransforms[0].rotation);
+            SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward, new float3(0, 1, 0)), SkeletonTransforms[0].rotation);
             // Root Y Position
             SkeletonTransforms[0].localPosition = new float3(0, pose.RootWorld.y, 0);
         }
