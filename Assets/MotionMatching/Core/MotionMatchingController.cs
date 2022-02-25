@@ -17,10 +17,13 @@ namespace MotionMatching
         public bool LockFPS = true;
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
         public bool Normalize = false;
-        [Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
-        [Range(0.0f, 1.0f)] public float Quality = 1.0f;
+        [Tooltip("How important is the trajectory (future positions + future directions)")] [Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
+        [Tooltip("How important is the current pose")] [Range(0.0f, 1.0f)] public float Quality = 1.0f;
+        // TODO: generalize this and do custom editor
+        public float[] FeatureWeights = { 1, 1, 1, 1, 1, 1, 1 };
         [Header("Debug")]
         public bool DebugSkeleton = true;
+        public bool DebugDrawEndSites = true;
         public bool DebugCurrent = true;
         public bool DebugJoints = true;
         public bool DebugTrajectory = true;
@@ -34,6 +37,7 @@ namespace MotionMatching
         private int SearchFrameCount;
         private FeatureVector QueryFeature;
         private NativeArray<int> SearchResult;
+        private NativeArray<float> FeaturesWeightsNativeArray; // TODO: remove this... maybe it is not necessary float[] + Native Array with Custom Editor 
 
         private void Awake()
         {
@@ -49,7 +53,7 @@ namespace MotionMatching
             PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
             PoseExtractor poseExtractor = new PoseExtractor();
             PoseSet = new PoseSet();
-            if (!poseExtractor.Extract(Animation, PoseSet, MMData.DefaultHipsForward))
+            if (!poseExtractor.Extract(Animation, PoseSet, MMData))
             {
                 Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
             }
@@ -86,6 +90,7 @@ namespace MotionMatching
 
             // Other initialization
             SearchResult = new NativeArray<int>(1, Allocator.Persistent);
+            FeaturesWeightsNativeArray = new NativeArray<float>(FeatureWeights.Length, Allocator.Persistent);
             // Search first Frame valid (to start with a valid pose)
             for (int i = 0; i < FeatureSet.GetFeatures().Length; i++)
             {
@@ -167,6 +172,8 @@ namespace MotionMatching
             QueryFeature.HipsLocalVelocity = current.HipsLocalVelocity;
             // Normalize (only trajectory... because current FeatureVector is already normalized)
             if (Normalize) QueryFeature = FeatureSet.NormalizeTrajectory(QueryFeature);
+            // Weights
+            for (int i = 0; i < FeatureWeights.Length; i++) FeaturesWeightsNativeArray[i] = FeatureWeights[i];
             // Search
             var job = new LinearMotionMatchingSearchBurst
             {
@@ -174,6 +181,7 @@ namespace MotionMatching
                 QueryFeature = QueryFeature,
                 Responsiveness = Responsiveness,
                 Quality = Quality,
+                FeatureWeights = FeaturesWeightsNativeArray,
                 BestIndex = SearchResult
             };
             job.Schedule().Complete();
@@ -241,12 +249,14 @@ namespace MotionMatching
         {
             FeatureSet.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
+            if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
         }
 
         private void OnApplicationQuit()
         {
             FeatureSet.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
+            if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
         }
 
 #if UNITY_EDITOR
@@ -263,10 +273,13 @@ namespace MotionMatching
                     Transform t = SkeletonTransforms[i];
                     Gizmos.DrawLine(t.parent.position, t.position);
                 }
-                foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
+                if (DebugDrawEndSites)
                 {
-                    Transform t = SkeletonTransforms[endSite.ParentIndex];
-                    Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
+                    foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
+                    {
+                        Transform t = SkeletonTransforms[endSite.ParentIndex];
+                        Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
+                    }
                 }
             }
 

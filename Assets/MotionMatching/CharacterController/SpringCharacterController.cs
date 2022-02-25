@@ -20,18 +20,19 @@ namespace MotionMatching
         public int NumberPrediction = 3;
         public int PredictionFrames = 20;
         public float MaxSpeed = 1.0f;
-        [Range(0.0f, 1.0f)] public float Responsiveness = 0.75f;
+        [Range(0.0f, 1.0f)] public float ResponsivenessPositions = 0.75f;
+        [Range(0.0f, 1.0f)] public float ResponsivenessDirections = 0.75f;
         public float MinimumVelocityClamp = 0.01f;
         [Tooltip("Controls when to consider that the input has suddenly changed. Used to recompute MotionMatching. -1.0f: Never. 1.0f: Always")]
         [Range(-1.0f, 1.0f)] public float InputBigChangeThreshold = 0.5f;
         // Adjustment & Clamping --------------------------------------------
         [Header("Adjustment")] // Move Simulation Bone towards the Simulation Object (motion matching towards character controller)
-        public bool DoAdjustment = true;
         public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
-        [Range(0.0f, 1.0f)] public float PositionAdjustmentHalflife = 0.1f; // Time needed to move half of the distance between SimulationBone and SimulationObject
+        public bool DoAdjustment = true;
+        [Range(0.0f, 2.0f)] public float PositionAdjustmentHalflife = 0.1f; // Time needed to move half of the distance between SimulationBone and SimulationObject
         // [Range(0.0f, 1.0f)] public float RotationAdjustmentHalflife = 0.2f;
         public bool DoClamping = true;
-        [Range(0.0f, 1.0f)] public float MaxDistanceSimulationBoneAndObject = 0.1f; // Max distance between SimulationBone and SimulationObject
+        [Range(0.0f, 2.0f)] public float MaxDistanceSimulationBoneAndObject = 0.1f; // Max distance between SimulationBone and SimulationObject
         [Header("DEBUG")]
         public bool DebugCurrent = true;
         public bool DebugPrediction = true;
@@ -135,7 +136,7 @@ namespace MotionMatching
                 PredictedAngularVelocities[i] = AngularVelocity;
                 // Predict
                 Spring.SimpleSpringDamperImplicit(ref PredictedRotations[i], ref PredictedAngularVelocities[i],
-                                                  DesiredRotation, 1.0f - Responsiveness, (i + 1) * NumberPrediction * averagedDeltaTime);
+                                                  DesiredRotation, 1.0f - ResponsivenessDirections, (i + 1) * NumberPrediction * averagedDeltaTime);
             }
         }
 
@@ -157,21 +158,21 @@ namespace MotionMatching
                     PredictedAcceleration[i] = PredictedAcceleration[i - 1];
                 }
                 Spring.CharacterPositionUpdate(ref PredictedPosition[i], ref PredictedVelocity[i], ref PredictedAcceleration[i],
-                                               desiredSpeed, 1.0f - Responsiveness, PredictionFrames * averagedDeltaTime);
+                                               desiredSpeed, 1.0f - ResponsivenessPositions, PredictionFrames * averagedDeltaTime);
             }
         }
 
         private quaternion ComputeNewRot(quaternion currentRotation)
         {
             quaternion newRotation = currentRotation;
-            Spring.SimpleSpringDamperImplicit(ref newRotation, ref AngularVelocity, DesiredRotation, 1.0f - Responsiveness, Time.deltaTime);
+            Spring.SimpleSpringDamperImplicit(ref newRotation, ref AngularVelocity, DesiredRotation, 1.0f - ResponsivenessDirections, Time.deltaTime);
             return newRotation;
         }
 
         private float2 ComputeNewPos(float2 currentPos, float2 desiredSpeed)
         {
             float2 newPos = currentPos;
-            Spring.CharacterPositionUpdate(ref newPos, ref Velocity, ref Acceleration, desiredSpeed, 1.0f - Responsiveness, Time.deltaTime);
+            Spring.CharacterPositionUpdate(ref newPos, ref Velocity, ref Acceleration, desiredSpeed, 1.0f - ResponsivenessPositions, Time.deltaTime);
             return newPos;
         }
 

@@ -572,9 +572,18 @@ MonoBehaviour:
   LockFPS: 1
   SearchFrames: 10
   Normalize: 1
-  Responsiveness: 1
+  Responsiveness: 0.5
   Quality: 1
+  FeatureWeights:
+  - 0.8
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
   DebugSkeleton: 1
+  DebugDrawEndSites: 0
   DebugCurrent: 1
   DebugJoints: 1
   DebugTrajectory: 1
@@ -626,15 +635,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   NumberPrediction: 3
   PredictionFrames: 20
-  MaxSpeed: 1
-  Responsiveness: 0.5
+  MaxSpeed: 3
+  ResponsivenessPositions: 0.75
+  ResponsivenessDirections: 0.95
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
-  DoAdjustment: 0
   SimulationBone: {fileID: 845368627}
-  PositionAdjustmentHalflife: 0.1
+  DoAdjustment: 0
+  PositionAdjustmentHalflife: 0.5
   DoClamping: 0
-  MaxDistanceSimulationBoneAndObject: 0.2
+  MaxDistanceSimulationBoneAndObject: 1
   DebugCurrent: 1
   DebugPrediction: 1
   DebugClamping: 1

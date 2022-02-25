@@ -31,7 +31,7 @@ public class FeatureDebug : MonoBehaviour
 
         PoseExtractor poseExtractor = new PoseExtractor();
         PoseSet = new PoseSet();
-        if (!poseExtractor.Extract(Animation, PoseSet, MMData.DefaultHipsForward))
+        if (!poseExtractor.Extract(Animation, PoseSet, MMData))
         {
             Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
         }

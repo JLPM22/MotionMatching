@@ -26,6 +26,7 @@ namespace MotionMatching
         public TextAsset BVH;
         public float UnitScale = 1.0f;
         public float3 DefaultHipsForward = new float3(0, 0, 1);
+        [Tooltip("Minimum velocity between poses (less than this value will be clamped to 0)")] public float MinimumVelocity = 0.0001f;
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
 
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
@@ -80,9 +81,12 @@ namespace MotionMatching
         {
             MotionMatchingData data = (MotionMatchingData)target;
 
+            // BVH
             data.BVH = (TextAsset)EditorGUILayout.ObjectField("BVH", data.BVH, typeof(TextAsset), false);
             if (data.BVH == null) return;
+            // UnitScale
             data.UnitScale = EditorGUILayout.FloatField("Unit Scale", data.UnitScale);
+            // DefaultHipsForward
             data.DefaultHipsForward = EditorGUILayout.Vector3Field("Default Hips Forward", data.DefaultHipsForward);
             if (math.abs(math.length(data.DefaultHipsForward) - 1.0f) > 1E-6f)
             {
@@ -91,6 +95,9 @@ namespace MotionMatching
                 if (GUILayout.Button("Fix")) data.DefaultHipsForward = math.normalize(data.DefaultHipsForward);
                 EditorGUILayout.EndHorizontal();
             }
+            // MinimumVelocity
+            data.MinimumVelocity = EditorGUILayout.FloatField("Minimum Velocity", data.MinimumVelocity);
+            if (data.MinimumVelocity < 0) data.MinimumVelocity = 0;
 
             if (GUILayout.Button("Read Skeleton from BVH"))
             {

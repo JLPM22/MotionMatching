@@ -9,17 +9,13 @@ namespace MotionMatching
     [BurstCompile]
     public struct LinearMotionMatchingSearchBurst : IJob
     {
-        [ReadOnly]
-        public NativeArray<FeatureVector> Features;
-        [ReadOnly]
-        public FeatureVector QueryFeature;
-        [ReadOnly]
-        public float Responsiveness;
-        [ReadOnly]
-        public float Quality;
+        [ReadOnly] public NativeArray<FeatureVector> Features;
+        [ReadOnly] public FeatureVector QueryFeature;
+        [ReadOnly] public float Responsiveness;
+        [ReadOnly] public NativeArray<float> FeatureWeights;
+        [ReadOnly] public float Quality;
 
-        [WriteOnly]
-        public NativeArray<int> BestIndex;
+        [WriteOnly] public NativeArray<int> BestIndex;
 
         public void Execute()
         {
@@ -30,7 +26,7 @@ namespace MotionMatching
                 FeatureVector fv = Features[i];
                 if (fv.IsValid)
                 {
-                    float sqrDistance = QueryFeature.SqrDistance(fv, Responsiveness, Quality);
+                    float sqrDistance = QueryFeature.SqrDistance(fv, Responsiveness, Quality, FeatureWeights);
                     if (sqrDistance < min)
                     {
                         min = sqrDistance;

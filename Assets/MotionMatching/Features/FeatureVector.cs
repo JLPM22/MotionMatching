@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
 using static Unity.Mathematics.math;
+using Unity.Collections;
 
 namespace MotionMatching
 {
@@ -25,19 +26,19 @@ namespace MotionMatching
         public float3 HipsLocalVelocity;
 
         // TODO: Check property per property that they are correctly working and affecting the final result
-        public float SqrDistance(FeatureVector other, float responsiveness, float quality)
+        public float SqrDistance(FeatureVector other, float responsiveness, float quality, NativeArray<float> featureWeights)
         {
             float sum = 0.0f;
             for (int i = 0; i < GetFutureTrajectoryLength(); i++)
             {
-                sum += lengthsq(GetFutureTrajectoryLocalPosition(i) - other.GetFutureTrajectoryLocalPosition(i)) * responsiveness;
-                sum += lengthsq(GetFutureTrajectoryLocalDirection(i) - other.GetFutureTrajectoryLocalDirection(i)) * responsiveness;
+                sum += lengthsq(GetFutureTrajectoryLocalPosition(i) - other.GetFutureTrajectoryLocalPosition(i)) * responsiveness * featureWeights[0];
+                sum += lengthsq(GetFutureTrajectoryLocalDirection(i) - other.GetFutureTrajectoryLocalDirection(i)) * responsiveness * featureWeights[1];
             }
-            sum += lengthsq(LeftFootLocalPosition - other.LeftFootLocalPosition) * quality;
-            sum += lengthsq(RightFootLocalPosition - other.RightFootLocalPosition) * quality;
-            sum += lengthsq(LeftFootLocalVelocity - other.LeftFootLocalVelocity) * quality;
-            sum += lengthsq(RightFootLocalVelocity - other.RightFootLocalVelocity) * quality;
-            sum += lengthsq(HipsLocalVelocity - other.HipsLocalVelocity) * quality;
+            sum += lengthsq(LeftFootLocalPosition - other.LeftFootLocalPosition) * quality * featureWeights[2];
+            sum += lengthsq(RightFootLocalPosition - other.RightFootLocalPosition) * quality * featureWeights[3];
+            sum += lengthsq(LeftFootLocalVelocity - other.LeftFootLocalVelocity) * quality * featureWeights[4];
+            sum += lengthsq(RightFootLocalVelocity - other.RightFootLocalVelocity) * quality * featureWeights[5];
+            sum += lengthsq(HipsLocalVelocity - other.HipsLocalVelocity) * quality * featureWeights[6];
             return sum;
         }
 
