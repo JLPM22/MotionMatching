@@ -70,28 +70,50 @@ namespace MotionMatching
                     else
                     {
                         // Create "fake" bone
-                        Transform parent = skinnedMeshRenderer.bones[i].parent;
-                        Transform newBone = new GameObject(skinnedMeshRenderer.bones[i].name).transform;
-                        if (JointNameToMecanim.TryGetValue(parent.name, out HumanBodyBones parentBoneType) &&
-                            mmSkeleton.Find(parentBoneType, out Skeleton.Joint mmJointParent))
-                        {
-                            newBone.SetParent(mmBones[mmJointParent.Index], false);
-                        }
-                        else
-                        {
-                            newBone.SetParent(boneDict[parent.name], false);
-                        }
-                        newBone.localPosition = skinnedMeshRenderer.bones[i].localPosition;
-                        newBone.localRotation = skinnedMeshRenderer.bones[i].localRotation;
-                        newBone.localScale = skinnedMeshRenderer.bones[i].localScale;
-                        boneDict.Add(newBone.name, newBone);
-                        bonesRenderer[i] = newBone;
+                        Transform bone = skinnedMeshRenderer.bones[i];
+                        Transform parent = bone.parent;
+                        Transform mmNewBone = new GameObject(skinnedMeshRenderer.bones[i].name).transform;
+                        CreateAndAssignParentBones(mmNewBone, bone, parent, boneDict, mmSkeleton, mmBones, skinnedMeshRenderer);
+                        bonesRenderer[i] = mmNewBone;
                     }
                 }
                 // Structures needed by SkinnedMeshRenderer to do the skinning
                 skinnedMeshRenderer.bones = bonesRenderer;
                 skinnedMeshRenderer.rootBone = bonesRenderer[0];
             }
+        }
+
+        /// <summary>
+        /// Check if a bone is used by MotionMatching or already created and return it
+        /// otherwise create it and recusively check its parent
+        /// </summary>
+        private void CreateAndAssignParentBones(Transform mmNewBone, Transform bone, Transform parent,
+                                                Dictionary<string, Transform> boneDict,
+                                                Skeleton mmSkeleton, Transform[] mmBones,
+                                                SkinnedMeshRenderer skinnedMeshRenderer)
+        {
+            // Check if the parent is used by motion matching
+            if (JointNameToMecanim.TryGetValue(parent.name, out HumanBodyBones parentBoneType) &&
+                mmSkeleton.Find(parentBoneType, out Skeleton.Joint mmJointParent))
+            {
+                mmNewBone.SetParent(mmBones[mmJointParent.Index], false);
+            }
+            // Check if the parent is already created
+            else if (boneDict.ContainsKey(parent.name))
+            {
+                mmNewBone.SetParent(boneDict[parent.name], false);
+            }
+            // Create the parent and recursively call this function
+            else
+            {
+                Transform mmNewParent = new GameObject(parent.name).transform;
+                CreateAndAssignParentBones(mmNewParent, parent, parent.parent, boneDict, mmSkeleton, mmBones, skinnedMeshRenderer);
+                mmNewBone.SetParent(mmNewParent, false);
+            }
+            mmNewBone.localPosition = bone.localPosition;
+            mmNewBone.localRotation = bone.localRotation;
+            mmNewBone.localScale = bone.localScale;
+            boneDict.Add(mmNewBone.name, mmNewBone);
         }
 
         // RETARGETING.... I tried 
