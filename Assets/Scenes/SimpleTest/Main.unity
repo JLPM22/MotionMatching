@@ -24,7 +24,7 @@ RenderSettings:
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 4
+  m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
   m_SkyboxMaterial: {fileID: 0}
   m_HaloStrength: 0.5
@@ -570,15 +570,20 @@ MonoBehaviour:
   MMData: {fileID: 11400000, guid: 184d0c04ed7e84b43af0af9fc048633c, type: 2}
   SpheresRadius: 0.05
   LockFPS: 1
-  DefaultHipsForward:
-    x: 0
-    y: 0
-    z: 1
   SearchFrames: 10
   Normalize: 0
   Responsiveness: 1
   Quality: 0.386
+  FeatureWeights:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
   DebugSkeleton: 1
+  DebugDrawEndSites: 1
   DebugCurrent: 1
   DebugJoints: 1
   DebugTrajectory: 1
@@ -631,11 +636,12 @@ MonoBehaviour:
   NumberPrediction: 3
   PredictionFrames: 20
   MaxSpeed: 3
-  Responsiveness: 0.75
+  ResponsivenessPositions: 0.75
+  ResponsivenessDirections: 0.75
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
-  DoAdjustment: 1
   SimulationBone: {fileID: 845368627}
+  DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
   DoClamping: 1
   MaxDistanceSimulationBoneAndObject: 0.4
@@ -850,7 +856,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   volumeAnchorOverride: {fileID: 0}
-  antialiasing: 2
+  antialiasing: 3
   SMAAQuality: 2
   dithering: 1
   stopNaNs: 0
@@ -1004,7 +1010,6 @@ MonoBehaviour:
   SpheresRadius: 0.05
   VectorLength: 1
   LockFPS: 1
-  DefaultHipsForward: {x: 0, y: 0, z: 1}
 --- !u!1 &2013410473
 GameObject:
   m_ObjectHideFlags: 1

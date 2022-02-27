@@ -11,6 +11,8 @@ namespace MotionMatching
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
+        public event Action OnSkeletonTransformUpdated;
+
         public SpringCharacterController CharacterController;
         public MotionMatchingData MMData;
         public float SpheresRadius = 0.1f;
@@ -207,6 +209,8 @@ namespace MotionMatching
             SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward, new float3(0, 1, 0)), SkeletonTransforms[0].rotation);
             // Root Y Position
             SkeletonTransforms[0].localPosition = new float3(0, pose.RootWorld.y, 0);
+            // Post processing the transforms
+            if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke();
         }
 
         private float2 GetPositionLocalCharacter(float2 worldPosition)

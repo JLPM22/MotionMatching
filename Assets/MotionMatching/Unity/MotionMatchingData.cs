@@ -24,10 +24,10 @@ namespace MotionMatching
         // (if it is fixed some code can be deleted... all code related to DefaultHipsForward and in the UpdateTransform() when correcting the hips forward)
 
         public TextAsset BVH;
+        public TextAsset BVHTPose; // BVH with a TPose in the first frame, used for retargeting
         public float UnitScale = 1.0f;
-        [Tooltip("Local vector (axis) pointing in the forward direction of the hips")]
-        public float3 HipsForwardLocalVector = new float3(0, 0, 1);
-        [Tooltip("Minimum velocity between poses (less than this value will be clamped to 0)")] public float MinimumPoseVelocity = 0.0001f;
+        public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
+        public float MinimumPoseVelocity = 0.0001f; // Minimum velocity between poses (less than this value will be clamped to 0)
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
 
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
@@ -85,6 +85,8 @@ namespace MotionMatching
             // BVH
             data.BVH = (TextAsset)EditorGUILayout.ObjectField("BVH", data.BVH, typeof(TextAsset), false);
             if (data.BVH == null) return;
+            data.BVHTPose = (TextAsset)EditorGUILayout.ObjectField(new GUIContent("BVH with TPose", "BVH with a TPose in the first frame, used for retargeting"),
+                                                                   data.BVHTPose, typeof(TextAsset), false);
             // UnitScale
             data.UnitScale = EditorGUILayout.FloatField("Unit Scale", data.UnitScale);
             // DefaultHipsForward

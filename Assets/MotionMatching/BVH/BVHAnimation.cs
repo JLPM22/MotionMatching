@@ -60,6 +60,21 @@ namespace MotionMatching
             }
         }
 
+        public Quaternion GetWorldRotation(Joint joint, int frameIndex)
+        {
+            Frame frame = Frames[frameIndex];
+            Quaternion worldRot = Quaternion.identity;
+
+            while (joint.Index != 0) // while not root
+            {
+                worldRot = frame.LocalRotations[joint.Index] * worldRot;
+                joint = Skeleton.GetParent(joint);
+            }
+            worldRot = frame.LocalRotations[0] * worldRot; // root
+
+            return worldRot;
+        }
+
         public struct EndSite
         {
             public int ParentIndex;

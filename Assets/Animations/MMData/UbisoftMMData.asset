@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: UbisoftMMData
   m_EditorClassIdentifier: 
   BVH: {fileID: 4900000, guid: 6e45330f2ad044a44b219e4bd5e0cde6, type: 3}
+  BVHTPose: {fileID: 4900000, guid: aee79f4d1fd676f41bb7ee3697ebc798, type: 3}
   UnitScale: 0.01
   HipsForwardLocalVector:
     x: 0
