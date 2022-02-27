@@ -25,8 +25,9 @@ namespace MotionMatching
 
         public TextAsset BVH;
         public float UnitScale = 1.0f;
-        public float3 DefaultHipsForward = new float3(0, 0, 1);
-        [Tooltip("Minimum velocity between poses (less than this value will be clamped to 0)")] public float MinimumVelocity = 0.0001f;
+        [Tooltip("Local vector (axis) pointing in the forward direction of the hips")]
+        public float3 HipsForwardLocalVector = new float3(0, 0, 1);
+        [Tooltip("Minimum velocity between poses (less than this value will be clamped to 0)")] public float MinimumPoseVelocity = 0.0001f;
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
 
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
@@ -87,17 +88,19 @@ namespace MotionMatching
             // UnitScale
             data.UnitScale = EditorGUILayout.FloatField("Unit Scale", data.UnitScale);
             // DefaultHipsForward
-            data.DefaultHipsForward = EditorGUILayout.Vector3Field("Default Hips Forward", data.DefaultHipsForward);
-            if (math.abs(math.length(data.DefaultHipsForward) - 1.0f) > 1E-6f)
+            data.HipsForwardLocalVector = EditorGUILayout.Vector3Field(new GUIContent("Hips Forward Local Vector", "Local vector (axis) pointing in the forward direction of the hips"),
+                                                                       data.HipsForwardLocalVector);
+            if (math.abs(math.length(data.HipsForwardLocalVector) - 1.0f) > 1E-6f)
             {
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.HelpBox("Default Hips Forward should be normalized", MessageType.Warning);
-                if (GUILayout.Button("Fix")) data.DefaultHipsForward = math.normalize(data.DefaultHipsForward);
+                EditorGUILayout.HelpBox("Hips Forward Local Vector should be normalized", MessageType.Warning);
+                if (GUILayout.Button("Fix")) data.HipsForwardLocalVector = math.normalize(data.HipsForwardLocalVector);
                 EditorGUILayout.EndHorizontal();
             }
             // MinimumVelocity
-            data.MinimumVelocity = EditorGUILayout.FloatField("Minimum Velocity", data.MinimumVelocity);
-            if (data.MinimumVelocity < 0) data.MinimumVelocity = 0;
+            data.MinimumPoseVelocity = EditorGUILayout.FloatField(new GUIContent("Minimum Pose Velocity", "Minimum velocity between poses (less than this value will be clamped to 0)"),
+                                                                  data.MinimumPoseVelocity);
+            if (data.MinimumPoseVelocity < 0) data.MinimumPoseVelocity = 0;
 
             if (GUILayout.Button("Read Skeleton from BVH"))
             {

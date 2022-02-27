@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   BVH: {fileID: 4900000, guid: 6e45330f2ad044a44b219e4bd5e0cde6, type: 3}
   UnitScale: 0.01
-  DefaultHipsForward:
+  HipsForwardLocalVector:
     x: 0
     y: 1
     z: 0
+  MinimumPoseVelocity: 0.0001
   SkeletonToMecanim:
   - Name: Hips
     MecanimBone: 0

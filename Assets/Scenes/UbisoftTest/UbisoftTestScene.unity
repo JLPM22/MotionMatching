@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2022.3721, g: 1988.7324, b: 2395.918, a: 1}
+  m_IndirectSpecularColor: {r: 2024.8115, g: 1990.7559, b: 2397.379, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -570,15 +570,20 @@ MonoBehaviour:
   MMData: {fileID: 11400000, guid: 54f129c1522b5774abec5da428c6b3b3, type: 2}
   SpheresRadius: 0.05
   LockFPS: 1
-  DefaultHipsForward:
-    x: 0
-    y: 1
-    z: 0
   SearchFrames: 10
   Normalize: 1
   Responsiveness: 1
   Quality: 1
+  FeatureWeights:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
   DebugSkeleton: 1
+  DebugDrawEndSites: 1
   DebugCurrent: 1
   DebugJoints: 1
   DebugTrajectory: 1
@@ -631,11 +636,12 @@ MonoBehaviour:
   NumberPrediction: 3
   PredictionFrames: 20
   MaxSpeed: 1
-  Responsiveness: 0.5
+  ResponsivenessPositions: 0.75
+  ResponsivenessDirections: 0.75
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
-  DoAdjustment: 0
   SimulationBone: {fileID: 845368627}
+  DoAdjustment: 0
   PositionAdjustmentHalflife: 0.1
   DoClamping: 0
   MaxDistanceSimulationBoneAndObject: 0.2
@@ -1004,7 +1010,6 @@ MonoBehaviour:
   SpheresRadius: 0.05
   VectorLength: 1
   LockFPS: 1
-  DefaultHipsForward: {x: 0, y: 1, z: 0}
 --- !u!1 &2013410473
 GameObject:
   m_ObjectHideFlags: 1

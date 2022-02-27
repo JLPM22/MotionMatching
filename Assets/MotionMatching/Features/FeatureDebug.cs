@@ -37,7 +37,7 @@ public class FeatureDebug : MonoBehaviour
         }
 
         FeatureExtractor featureExtractor = new FeatureExtractor();
-        FeatureSet = featureExtractor.Extract(PoseSet, MMData.DefaultHipsForward);
+        FeatureSet = featureExtractor.Extract(PoseSet, MMData.HipsForwardLocalVector);
 
         // Skeleton
         SkeletonTransforms = new Transform[Animation.Skeleton.Joints.Count];
@@ -128,7 +128,7 @@ public class FeatureDebug : MonoBehaviour
         int currentFrame = CurrentFrame - 1; // OnDrawGizmos is called after Update
         if (currentFrame < 0) currentFrame = Animation.Frames.Length - 1;
         PoseVector pose = PoseSet.Poses[currentFrame];
-        FeatureExtractor.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, MMData.DefaultHipsForward, out float3 characterOrigin, out float3 characterForward);
+        FeatureExtractor.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, MMData.HipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
         Gizmos.DrawWireSphere(characterOrigin, SpheresRadius);
         Debug.Assert(math.length(characterForward) > 0.99f && math.length(characterForward) < 1.01f, "characterForward.magnitude = " + math.length(characterForward) + " should be 1");

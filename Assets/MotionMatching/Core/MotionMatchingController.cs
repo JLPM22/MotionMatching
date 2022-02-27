@@ -61,7 +61,7 @@ namespace MotionMatching
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
             FeatureExtractor featureExtractor = new FeatureExtractor();
-            FeatureSet = featureExtractor.Extract(PoseSet, MMData.DefaultHipsForward);
+            FeatureSet = featureExtractor.Extract(PoseSet, MMData.HipsForwardLocalVector);
             if (Normalize) FeatureSet.NormalizeFeatures();
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
 
@@ -202,7 +202,7 @@ namespace MotionMatching
             // Correct Root Orientation to match the Simulation Bone
             float3 characterForward = transform.forward;
             characterForward = math.normalize(new float3(characterForward.x, 0, characterForward.z));
-            float3 hipsForward = math.mul(SkeletonTransforms[0].rotation, MMData.DefaultHipsForward);
+            float3 hipsForward = math.mul(SkeletonTransforms[0].rotation, MMData.HipsForwardLocalVector);
             hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
             SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward, new float3(0, 1, 0)), SkeletonTransforms[0].rotation);
             // Root Y Position
