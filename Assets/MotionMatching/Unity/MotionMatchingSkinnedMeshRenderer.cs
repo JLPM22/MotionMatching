@@ -123,9 +123,11 @@ namespace MotionMatching
                 Quaternion targetTPoseRotation = TargetTPose[i];
                 Quaternion sourceRotation = SourceBones[i].rotation;
                 /*
-                    R_t = Rotation from target
-                    R_s = Rotation from source
-                    R_t = R_s * R_st (R_st is the rotation mapping from source to target)
+                    R_t = Rotation transforming from target local space to world space
+                    R_s = Rotation transforming from source local space to world space
+                    R_t = R_s * R_st (R_st is a matrix transforming from target to source space)
+                    // It makes sense because R_st will be mapping from target to source, and R_s from source to world.
+                    // The result is transforming from T to world, which is what R_t does.
                     RTPose_t = RTPose_s * R_st
                     R_st = (RTPose_s)^-1 * RTPose_t
                     R_t = R_s * (R_st)^-1 * RTPose_t

@@ -55,6 +55,24 @@ namespace MotionMatching
             );
         }
 
+        public static quaternion GetXAxisRotation(this quaternion q)
+        {
+            float a = math.sqrt((q.value.w * q.value.w) + (q.value.x * q.value.x));
+            return new quaternion(x: q.value.x, y: 0, z: 0, w: q.value.w / a);
+        }
+
+        public static quaternion GetYAxisRotation(this quaternion q)
+        {
+            float a = math.sqrt((q.value.w * q.value.w) + (q.value.y * q.value.y));
+            return new quaternion(x: 0, y: q.value.y, z: 0, w: q.value.w / a);
+        }
+
+        public static quaternion GetZAxisRotation(this quaternion q)
+        {
+            float a = math.sqrt((q.value.w * q.value.w) + (q.value.z * q.value.z));
+            return new quaternion(x: 0, y: 0, z: q.value.z, w: q.value.w / a);
+        }
+
         /// <summary>
         /// Quaternion absolute forces the quaternion to take the shortest path
         /// </summary>

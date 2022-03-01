@@ -39,15 +39,13 @@ namespace MotionMatching
                 jointLocalRotations[i] = frame.LocalRotations[i];
             }
             // Root: remove Y world axis rotation
-            Quaternion hipsRotWorld = jointLocalRotations[0]; // rotation before removing Y world axis rotation
-            float3 hipsRotEuler = hipsRotWorld.eulerAngles;
-            float yRot = hipsRotEuler.y;
-            hipsRotEuler.y = 0.0f;
-            jointLocalRotations[0] = Quaternion.Euler(hipsRotEuler);
+            quaternion hipsRotWorld = jointLocalRotations[0]; // rotation before removing Y world axis rotation
+            quaternion inversehipsRotWorldY = math.inverse(MathExtensions.GetYAxisRotation(hipsRotWorld));
+            jointLocalRotations[0] = math.mul(inversehipsRotWorldY, hipsRotWorld);
             // Local Root Velocity
             FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, mmData.HipsForwardLocalVector, out _, out float3 characterForward);
             float3 rootVelocity = float3.zero;
-            quaternion rootRotVelocity = Quaternion.identity;
+            quaternion rootRotVelocity = quaternion.identity;
             if (frameIndex < nFrames - 1) // we shouldn't use last frame's root motion
             {
                 float3 hipsWorldXZ = new float3(frame.RootMotion.x, 0.0f, frame.RootMotion.z);
@@ -55,8 +53,8 @@ namespace MotionMatching
                 rootVelocity = nextHipsWorldXZ - hipsWorldXZ;
                 if (math.length(rootVelocity) < mmData.MinimumPoseVelocity) rootVelocity = float3.zero; // Clamp Velocity if too small to avoid small numerical errors to move the character
                 rootVelocity = FeatureExtractor.GetLocalDirectionFromCharacter(rootVelocity, characterForward);
-                float yRotNext = bvhAnimation.Frames[frameIndex + 1].LocalRotations[0].eulerAngles.y;
-                rootRotVelocity = Quaternion.Inverse(Quaternion.Euler(0.0f, yRot, 0.0f)) * Quaternion.Euler(0.0f, yRotNext, 0.0f);
+                quaternion yRotNext = MathExtensions.GetYAxisRotation(bvhAnimation.Frames[frameIndex + 1].LocalRotations[0]);
+                rootRotVelocity = math.mul(inversehipsRotWorldY, yRotNext);
             }
             return new PoseVector(jointLocalPositions, jointLocalRotations, rootVelocity, rootRotVelocity, frame.RootMotion, hipsRotWorld);
         }
