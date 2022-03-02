@@ -17,9 +17,13 @@ namespace MotionMatching
     {
         public quaternion[] InertializedRotations;
         public float3[] InertializedAngularVelocities;
+        public float InertializedHipsY;
+        public float InertializedHipsYVelocity;
 
         private quaternion[] OffsetRotations;
         private float3[] OffsetAngularVelocities;
+        private float OffsetHipsY;
+        private float OffsetHipsYVelocity;
 
         public Inertialization(Skeleton skeleton)
         {
@@ -50,6 +54,14 @@ namespace MotionMatching
                                            targetJointRotation, targetJointAngularVelocity,
                                            ref OffsetRotations[i], ref OffsetAngularVelocities[i]);
             }
+            // Set up the inertialization for root Y
+            float sourceHipsY = sourcePose.RootWorld.y;
+            float targetHipsY = targetPose.RootWorld.y;
+            float sourceHipsYVelocity = sourcePose.JointVelocities[0].y;
+            float targetHipsYVelocity = targetPose.JointVelocities[0].y;
+            InertializeJointTransition(sourceHipsY, sourceHipsYVelocity,
+                                       targetHipsY, targetHipsYVelocity,
+                                       ref OffsetHipsY, ref OffsetHipsYVelocity);
         }
 
         /// <summary>
@@ -68,6 +80,13 @@ namespace MotionMatching
                                        ref OffsetRotations[i], ref OffsetAngularVelocities[i],
                                        out InertializedRotations[i], out InertializedAngularVelocities[i]);
             }
+            // Update the inertialization for root Y
+            float targetHipsY = targetPose.RootWorld.y;
+            float targetRootYVelocity = targetPose.JointVelocities[0].y;
+            InertializeJointUpdate(targetHipsY, targetRootYVelocity,
+                                   halfLife, deltaTime,
+                                   ref OffsetHipsY, ref OffsetHipsYVelocity,
+                                   out InertializedHipsY, out InertializedHipsYVelocity);
         }
 
         /// <summary>
@@ -92,6 +111,17 @@ namespace MotionMatching
             offset = (source + offset) - target;
             offsetVel = (sourceVel + offsetVel) - targetVel;
         }
+        /// <summary>
+        /// Compute the offsets from the source pose to the target pose.
+        /// Offsets are in/out since we may start a inertialization in the middle of another inertialization.
+        /// </summary>
+        private static void InertializeJointTransition(float source, float sourceVel,
+                                                       float target, float targetVel,
+                                                       ref float offset, ref float offsetVel)
+        {
+            offset = (source + offset) - target;
+            offsetVel = (sourceVel + offsetVel) - targetVel;
+        }
 
         /// <summary>
         /// Updates the inertialization decaying the offset and applying it to the target pose
@@ -112,6 +142,18 @@ namespace MotionMatching
                                                    float halfLife, float deltaTime,
                                                    ref float3 offset, ref float3 offsetVel,
                                                    out float3 newValue, out float3 newVel)
+        {
+            Spring.DecaySpringDamperImplicit(ref offset, ref offsetVel, halfLife, deltaTime);
+            newValue = target + offset;
+            newVel = targetVel + offsetVel;
+        }
+        /// <summary>
+        /// Updates the inertialization decaying the offset and applying it to the target pose
+        /// </summary>
+        private static void InertializeJointUpdate(float target, float targetVel,
+                                                   float halfLife, float deltaTime,
+                                                   ref float offset, ref float offsetVel,
+                                                   out float newValue, out float newVel)
         {
             Spring.DecaySpringDamperImplicit(ref offset, ref offsetVel, halfLife, deltaTime);
             newValue = target + offset;

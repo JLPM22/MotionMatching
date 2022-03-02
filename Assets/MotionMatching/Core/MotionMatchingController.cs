@@ -239,7 +239,7 @@ namespace MotionMatching
             hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
             SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward, new float3(0, 1, 0)), SkeletonTransforms[0].rotation);
             // Root Y Position
-            SkeletonTransforms[0].localPosition = new float3(0, pose.RootWorld.y, 0);
+            SkeletonTransforms[0].localPosition = new float3(0, Inertialize ? Inertialization.InertializedHipsY : pose.RootWorld.y, 0);
             // Post processing the transforms
             if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke();
         }

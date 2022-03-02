@@ -19,7 +19,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: -1
-  MinimumPoseVelocity: 0.001
+  MinimumPoseVelocity: 0.0001
   SkeletonToMecanim:
   - Name: Hips
     MecanimBone: 0
