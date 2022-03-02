@@ -49,13 +49,52 @@ namespace MotionMatching
         public static void SimpleSpringDamperImplicit(ref quaternion rot, ref float3 angularVel, quaternion rotGoal, float halfLife, float deltaTime)
         {
             float y = HalfLifeToDamping(halfLife) / 2.0f; // this could be precomputed
-            float3 j0 = MathExtensions.QuaternionToScaledAngleAxis(MathExtensions.Absolute(math.mul(rot, math.inverse(rotGoal))));
+            float3 j0 = MathExtensions.QuaternionToScaledAngleAxis(MathExtensions.Abs(math.mul(rot, math.inverse(rotGoal))));
             float3 j1 = angularVel + j0 * y;
             float eyedt = FastNEgeExp(y * deltaTime); // this could be precomputed if several agents use it the same frame
 
             rot = math.mul(MathExtensions.QuaternionFromScaledAngleAxis(eyedt * (j0 + j1 * deltaTime)), rotGoal);
             angularVel = eyedt * (angularVel - j1 * y * deltaTime);
         }
+
+        /// <summary>
+        /// Special type of SpringDamperImplicit when the desired rotation is the identity
+        /// </summary>
+        public static void DecaySpringDamperImplicit(ref quaternion rot, ref float3 angularVel, float halfLife, float deltaTime)
+        {
+            float y = HalfLifeToDamping(halfLife) / 2.0f; // this could be precomputed
+            float3 j0 = MathExtensions.QuaternionToScaledAngleAxis(rot);
+            float3 j1 = angularVel + j0 * y;
+            float eyedt = FastNEgeExp(y * deltaTime); // this could be precomputed if several agents use it the same frame
+
+            rot = MathExtensions.QuaternionFromScaledAngleAxis(eyedt * (j0 + j1 * deltaTime));
+            angularVel = eyedt * (angularVel - j1 * y * deltaTime);
+        }
+        /// <summary>
+        /// Special type of SpringDamperImplicit when the desired position is 0
+        /// </summary>
+        public static void DecaySpringDamperImplicit(ref float3 pos, ref float3 velocity, float halfLife, float deltaTime)
+        {
+            float y = HalfLifeToDamping(halfLife) / 2.0f; // this could be precomputed
+            float3 j1 = velocity + pos * y;
+            float eyedt = FastNEgeExp(y * deltaTime); // this could be precomputed if several agents use it the same frame
+
+            pos = eyedt * (pos + j1 * deltaTime);
+            velocity = eyedt * (velocity - j1 * y * deltaTime);
+        }
+        /// <summary>
+        /// Special type of SpringDamperImplicit when the value is 0
+        /// </summary>
+        public static void DecaySpringDamperImplicit(ref float value, ref float velocity, float halfLife, float deltaTime)
+        {
+            float y = HalfLifeToDamping(halfLife) / 2.0f; // this could be precomputed
+            float j1 = velocity + value * y;
+            float eyedt = FastNEgeExp(y * deltaTime); // this could be precomputed if several agents use it the same frame
+
+            value = eyedt * (value + j1 * deltaTime);
+            velocity = eyedt * (velocity - j1 * y * deltaTime);
+        }
+
 
         private static float HalfLifeToDamping(float halfLife, float eps = 1e-5f)
         {

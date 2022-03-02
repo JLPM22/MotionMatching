@@ -15,15 +15,17 @@ namespace MotionMatching
 
         public SpringCharacterController CharacterController;
         public MotionMatchingData MMData;
-        public float SpheresRadius = 0.1f;
         public bool LockFPS = true;
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
-        public bool Normalize = false;
-        [Tooltip("How important is the trajectory (future positions + future directions)")] [Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
-        [Tooltip("How important is the current pose")] [Range(0.0f, 1.0f)] public float Quality = 1.0f;
+        public bool Normalize = true; // Should apply normalization of the features set
+        public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
+        [Range(0.0f, 1.0f)] public float InertializeHalfLife = 0.1f; // Time needed to move half of the distance between the source to the target pose
+        [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
+        [Tooltip("How important is the current pose")][Range(0.0f, 1.0f)] public float Quality = 1.0f;
         // TODO: generalize this and do custom editor
         public float[] FeatureWeights = { 1, 1, 1, 1, 1, 1, 1 };
         [Header("Debug")]
+        public float SpheresRadius = 0.1f;
         public bool DebugSkeleton = true;
         public bool DebugDrawEndSites = true;
         public bool DebugCurrent = true;
@@ -40,6 +42,7 @@ namespace MotionMatching
         private FeatureVector QueryFeature;
         private NativeArray<int> SearchResult;
         private NativeArray<float> FeaturesWeightsNativeArray; // TODO: remove this... maybe it is not necessary float[] + Native Array with Custom Editor 
+        private Inertialization Inertialization;
 
         private void Awake()
         {
@@ -78,6 +81,9 @@ namespace MotionMatching
                 t.localPosition = joint.LocalOffset;
                 SkeletonTransforms[joint.Index] = t;
             }
+
+            // Inertialization
+            Inertialization = new Inertialization(Animation.Skeleton);
 
             // FPS
             if (LockFPS)
@@ -133,7 +139,14 @@ namespace MotionMatching
                 PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
                 if (nextFrame != CurrentFrame)
                 {
+                    int previousFrame = CurrentFrame;
                     CurrentFrame = nextFrame;
+
+                    // Inertialize
+                    if (Inertialize)
+                    {
+                        Inertialization.PoseTransition(PoseSet, previousFrame, CurrentFrame);
+                    }
                 }
                 else
                 {
@@ -194,12 +207,23 @@ namespace MotionMatching
         {
             PoseVector pose = PoseSet.Poses[frameIndex];
             // Simulation Bone
-            transform.position += transform.TransformDirection(pose.RootVelocity);
-            transform.rotation = transform.rotation * pose.RootRotVelocity;
+            transform.position += transform.TransformDirection(pose.RootDisplacement);
+            transform.rotation = transform.rotation * pose.RootRotDisplacement;
             // Joints
-            for (int i = 0; i < pose.JointLocalRotations.Length; i++)
+            if (Inertialize)
             {
-                SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
+                Inertialization.Update(pose, InertializeHalfLife, Time.deltaTime);
+                for (int i = 0; i < Inertialization.InertializedRotations.Length; i++)
+                {
+                    SkeletonTransforms[i].localRotation = Inertialization.InertializedRotations[i];
+                }
+            }
+            else
+            {
+                for (int i = 0; i < pose.JointLocalRotations.Length; i++)
+                {
+                    SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
+                }
             }
             // Correct Root Orientation to match the Simulation Bone
             float3 characterForward = transform.forward;

@@ -76,7 +76,7 @@ namespace MotionMatching
         /// <summary>
         /// Quaternion absolute forces the quaternion to take the shortest path
         /// </summary>
-        public static quaternion Absolute(quaternion q)
+        public static quaternion Abs(quaternion q)
         {
             return q.value.w < 0.0f ? new quaternion(-q.value.x, -q.value.y, -q.value.z, -q.value.w) : q;
         }
@@ -90,6 +90,11 @@ namespace MotionMatching
         public static quaternion QuaternionFromScaledAngleAxis(float3 angleAxis, float eps = 1e-8f)
         {
             return Exp(angleAxis * 0.5f, eps);
+        }
+
+        public static float3 AngularVelocity(quaternion current, quaternion next, float dt)
+        {
+            return QuaternionToScaledAngleAxis(math.normalizesafe(Abs(math.mul(math.inverse(current), next)))) / dt;
         }
 
         public static float3 Log(quaternion q, float eps = 1e-8f)

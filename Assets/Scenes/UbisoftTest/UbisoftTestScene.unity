@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2025.9922, g: 1992.2578, b: 2399.3867, a: 1}
+  m_IndirectSpecularColor: {r: 2025.3779, g: 1991.3906, b: 2398.496, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -640,12 +640,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c61468b8454f5ae4f906e45c7a7fec1c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  InitFrameIndex: 20
+  EndFrameIndex: 100
+  Change: 0
+  CurrentFrameIndex: 0
   CharacterController: {fileID: 922198739}
   MMData: {fileID: 11400000, guid: 54f129c1522b5774abec5da428c6b3b3, type: 2}
-  SpheresRadius: 0.05
   LockFPS: 1
   SearchFrames: 10
   Normalize: 1
+  Inertialize: 1
+  InertializeHalfLife: 0.1
   Responsiveness: 1
   Quality: 1
   FeatureWeights:
@@ -656,6 +661,7 @@ MonoBehaviour:
   - 1
   - 1
   - 1
+  SpheresRadius: 0.05
   DebugSkeleton: 1
   DebugDrawEndSites: 1
   DebugCurrent: 1

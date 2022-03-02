@@ -13,17 +13,24 @@ namespace MotionMatching
     {
         public float3[] JointLocalPositions; // JointLocalPositions[0] is (0,0,0), the actual position in world space is encoded in RootWorld
         public quaternion[] JointLocalRotations; // JointLocalRotations[0] the Y axis has been removed
-        public float3 RootVelocity; // Local to character forward facing direction
-        public quaternion RootRotVelocity; // Local to character forward facing direction (Only Y Axis)
+        public float3[] JointVelocities; // Computed from World Positions
+        public float3[] JointAngularVelocities; // Computed from World Rotations
+        public float3 RootDisplacement; // Local to character forward facing direction
+        public quaternion RootRotDisplacement; // Local to character forward facing direction (Only Y Axis)
         public float3 RootWorld;
         public quaternion RootWorldRot;
 
-        public PoseVector(float3[] jointLocalPositions, quaternion[] jointLocalRotations, float3 rootVelocity, quaternion rootRotVelocity, float3 rootWorld, quaternion rootWorldRot)
+        public PoseVector(float3[] jointLocalPositions, quaternion[] jointLocalRotations,
+                          float3[] jointVelocities, float3[] jointAngularVelocities,
+                          float3 rootDisplacement, quaternion rootRotDisplacement,
+                          float3 rootWorld, quaternion rootWorldRot)
         {
             JointLocalPositions = jointLocalPositions;
             JointLocalRotations = jointLocalRotations;
-            RootVelocity = rootVelocity;
-            RootRotVelocity = rootRotVelocity;
+            JointVelocities = jointVelocities;
+            JointAngularVelocities = jointAngularVelocities;
+            RootDisplacement = rootDisplacement;
+            RootRotDisplacement = rootRotDisplacement;
             RootWorld = rootWorld;
             RootWorldRot = rootWorldRot;
         }

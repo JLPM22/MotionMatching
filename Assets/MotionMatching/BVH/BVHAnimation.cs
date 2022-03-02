@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace MotionMatching
 {
@@ -60,10 +61,14 @@ namespace MotionMatching
             }
         }
 
-        public Quaternion GetWorldRotation(Joint joint, int frameIndex)
+        /// <summary>
+        /// Apply forward kinematics to obtain the quaternion rotating from the local
+        /// coordinate system of the joint to the world coordinate system.
+        /// </summary>
+        public quaternion GetWorldRotation(Joint joint, int frameIndex)
         {
             Frame frame = Frames[frameIndex];
-            Quaternion worldRot = Quaternion.identity;
+            quaternion worldRot = quaternion.identity;
 
             while (joint.Index != 0) // while not root
             {
@@ -73,6 +78,23 @@ namespace MotionMatching
             worldRot = frame.LocalRotations[0] * worldRot; // root
 
             return worldRot;
+        }
+
+        /// <summary>
+        /// Apply forward kinematics to obtain the position of the joint in the world coordinate system.
+        /// </summary>
+        public float3 GetWorldPosition(Joint joint, int frameIndex)
+        {
+            Frame frame = Frames[frameIndex];
+            float4x4 localToWorld = float4x4.identity;
+            while (joint.ParentIndex != 0) // while not root
+            {
+                Joint parent = Skeleton.GetParent(joint);
+                localToWorld = float4x4.TRS(parent.LocalOffset, frame.LocalRotations[joint.ParentIndex], new float3(1, 1, 1)) * localToWorld;
+                joint = parent;
+            }
+            localToWorld = float4x4.TRS(frame.RootMotion, frame.LocalRotations[0], new float3(1, 1, 1)) * localToWorld;
+            return math.mul(localToWorld, new float4(joint.LocalOffset, 1)).xyz;
         }
 
         public struct EndSite

@@ -5,6 +5,8 @@ using Unity.Mathematics;
 
 namespace MotionMatching
 {
+    using Joint = Skeleton.Joint;
+
     /// <summary>
     /// Extracts full pose for Motion Matching from BVHAnimation
     /// </summary>
@@ -30,33 +32,56 @@ namespace MotionMatching
         {
             BVHAnimation.Frame frame = bvhAnimation.Frames[frameIndex];
             int nJoints = bvhAnimation.Skeleton.Joints.Count;
-            // Joints
             float3[] jointLocalPositions = new float3[nJoints];
             quaternion[] jointLocalRotations = new quaternion[nJoints];
-            for (int i = 0; i < nJoints; i++)
-            {
-                jointLocalPositions[i] = bvhAnimation.Skeleton.Joints[i].LocalOffset;
-                jointLocalRotations[i] = frame.LocalRotations[i];
-            }
-            // Root: remove Y world axis rotation
-            quaternion hipsRotWorld = jointLocalRotations[0]; // rotation before removing Y world axis rotation
-            quaternion inversehipsRotWorldY = math.inverse(MathExtensions.GetYAxisRotation(hipsRotWorld));
-            jointLocalRotations[0] = math.mul(inversehipsRotWorldY, hipsRotWorld);
-            // Local Root Velocity
-            FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, mmData.HipsForwardLocalVector, out _, out float3 characterForward);
+            float3[] jointVelocities = new float3[nJoints];
+            float3[] jointAngularVelocities = new float3[nJoints];
             float3 rootVelocity = float3.zero;
             quaternion rootRotVelocity = quaternion.identity;
-            if (frameIndex < nFrames - 1) // we shouldn't use last frame's root motion
+            quaternion hipsRotWorld = frame.LocalRotations[0]; // rotation before removing Y world axis rotation
+            if (frameIndex < nFrames - 1) // we shouldn't use the last frame's root motion
             {
+                BVHAnimation.Frame nextFrame = bvhAnimation.Frames[frameIndex + 1];
+                // Joints
+                for (int i = 0; i < nJoints; i++)
+                {
+                    jointLocalPositions[i] = bvhAnimation.Skeleton.Joints[i].LocalOffset;
+                    jointLocalRotations[i] = frame.LocalRotations[i];
+                }
+                // Velocities
+                for (int i = 0; i < nJoints; i++)
+                {
+                    Joint joint = bvhAnimation.Skeleton.Joints[i];
+                    // Velocity
+                    float3 pos = bvhAnimation.GetWorldPosition(joint, frameIndex);
+                    float3 posNext = bvhAnimation.GetWorldPosition(joint, frameIndex + 1);
+                    float3 vel = (posNext - pos) / bvhAnimation.FrameTime;
+                    jointVelocities[i] = vel;
+                    // Angular velocity
+                    quaternion rot = bvhAnimation.GetWorldRotation(joint, frameIndex);
+                    quaternion rotNext = bvhAnimation.GetWorldRotation(joint, frameIndex + 1);
+                    // Source: https://theorangeduck.com/page/exponential-map-angle-axis-angular-velocity
+                    float3 angularVel = MathExtensions.AngularVelocity(rot, rotNext, bvhAnimation.FrameTime);
+                    jointAngularVelocities[i] = angularVel;
+                }
+                // Root: remove Y world axis rotation
+                quaternion inversehipsRotWorldY = math.inverse(MathExtensions.GetYAxisRotation(hipsRotWorld));
+                jointLocalRotations[0] = math.mul(inversehipsRotWorldY, hipsRotWorld);
+                // Local Root Displacement
+                FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, mmData.HipsForwardLocalVector, out _, out float3 characterForward);
+
                 float3 hipsWorldXZ = new float3(frame.RootMotion.x, 0.0f, frame.RootMotion.z);
-                float3 nextHipsWorldXZ = new float3(bvhAnimation.Frames[frameIndex + 1].RootMotion.x, 0.0f, bvhAnimation.Frames[frameIndex + 1].RootMotion.z);
+                float3 nextHipsWorldXZ = new float3(nextFrame.RootMotion.x, 0.0f, nextFrame.RootMotion.z);
                 rootVelocity = nextHipsWorldXZ - hipsWorldXZ;
                 if (math.length(rootVelocity) < mmData.MinimumPoseVelocity) rootVelocity = float3.zero; // Clamp Velocity if too small to avoid small numerical errors to move the character
                 rootVelocity = FeatureExtractor.GetLocalDirectionFromCharacter(rootVelocity, characterForward);
-                quaternion yRotNext = MathExtensions.GetYAxisRotation(bvhAnimation.Frames[frameIndex + 1].LocalRotations[0]);
+                quaternion yRotNext = MathExtensions.GetYAxisRotation(nextFrame.LocalRotations[0]);
                 rootRotVelocity = math.mul(inversehipsRotWorldY, yRotNext);
             }
-            return new PoseVector(jointLocalPositions, jointLocalRotations, rootVelocity, rootRotVelocity, frame.RootMotion, hipsRotWorld);
+            return new PoseVector(jointLocalPositions, jointLocalRotations,
+                                  jointVelocities, jointAngularVelocities,
+                                  rootVelocity, rootRotVelocity,
+                                  frame.RootMotion, hipsRotWorld);
         }
     }
 }
