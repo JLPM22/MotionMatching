@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2025.3779, g: 1991.3906, b: 2398.496, a: 1}
+  m_IndirectSpecularColor: {r: 2025.9922, g: 1992.2578, b: 2399.3867, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -640,10 +640,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c61468b8454f5ae4f906e45c7a7fec1c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  InitFrameIndex: 20
-  EndFrameIndex: 100
-  Change: 0
-  CurrentFrameIndex: 0
   CharacterController: {fileID: 922198739}
   MMData: {fileID: 11400000, guid: 54f129c1522b5774abec5da428c6b3b3, type: 2}
   LockFPS: 1
@@ -662,11 +658,11 @@ MonoBehaviour:
   - 1
   - 1
   SpheresRadius: 0.05
-  DebugSkeleton: 1
-  DebugDrawEndSites: 1
-  DebugCurrent: 1
-  DebugJoints: 1
-  DebugTrajectory: 1
+  DebugSkeleton: 0
+  DebugDrawEndSites: 0
+  DebugCurrent: 0
+  DebugJoints: 0
+  DebugTrajectory: 0
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -694,6 +690,7 @@ GameObject:
   - component: {fileID: 922198743}
   - component: {fileID: 922198742}
   - component: {fileID: 922198739}
+  - component: {fileID: 922198744}
   m_Layer: 0
   m_Name: CharacterController
   m_TagString: Untagged
@@ -715,19 +712,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   NumberPrediction: 3
   PredictionFrames: 20
-  MaxSpeed: 1
-  ResponsivenessPositions: 0.75
+  MaxSpeed: 2
+  ResponsivenessPositions: 0.263
   ResponsivenessDirections: 0.75
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
   SimulationBone: {fileID: 845368627}
-  DoAdjustment: 0
+  DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
+  MaximumAdjustmentRatio: 0.5
   DoClamping: 0
-  MaxDistanceSimulationBoneAndObject: 0.2
-  DebugCurrent: 1
-  DebugPrediction: 1
-  DebugClamping: 1
+  MaxDistanceSimulationBoneAndObject: 1
+  DebugCurrent: 0
+  DebugPrediction: 0
+  DebugClamping: 0
 --- !u!4 &922198741
 Transform:
   m_ObjectHideFlags: 0
@@ -767,6 +765,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4214c09160b148640afde91a8d0e634f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &922198744
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 922198738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3263f4711897b924aa892c1da8c94ed6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  NumberPrediction: 3
+  PredictionFrames: 20
+  MaxSpeed: 2
+  ResponsivenessPositions: 0.614
+  ResponsivenessDirections: 0.789
+  MinimumVelocityClamp: 0.01
+  InputBigChangeThreshold: 0.5
+  SimulationBone: {fileID: 845368627}
+  DoAdjustment: 1
+  PositionAdjustmentHalflife: 0.1
+  MaximumAdjustmentRatio: 0.16
+  DoClamping: 0
+  MaxDistanceSimulationBoneAndObject: 1
+  DebugCurrent: 1
+  DebugPrediction: 0
+  DebugClamping: 0
 --- !u!1 &995313761
 GameObject:
   m_ObjectHideFlags: 0

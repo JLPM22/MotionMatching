@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2025.7764, g: 1991.3262, b: 2396.914, a: 1}
+  m_IndirectSpecularColor: {r: 2025.9922, g: 1992.2578, b: 2399.3867, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -568,25 +568,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CharacterController: {fileID: 922198739}
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
-  SpheresRadius: 0.05
   LockFPS: 1
   SearchFrames: 10
   Normalize: 1
-  Responsiveness: 0.5
+  Inertialize: 1
+  InertializeHalfLife: 0.1
+  Responsiveness: 1
   Quality: 1
   FeatureWeights:
-  - 0.8
+  - 1
+  - 1.5
   - 1
   - 1
   - 1
   - 1
   - 1
-  - 1
+  SpheresRadius: 0.05
   DebugSkeleton: 1
   DebugDrawEndSites: 0
   DebugCurrent: 1
   DebugJoints: 1
-  DebugTrajectory: 1
+  DebugTrajectory: 0
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -641,8 +643,9 @@ MonoBehaviour:
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
   SimulationBone: {fileID: 845368627}
-  DoAdjustment: 0
-  PositionAdjustmentHalflife: 0.5
+  DoAdjustment: 1
+  PositionAdjustmentHalflife: 0.1
+  MaximumAdjustmentRatio: 0.5
   DoClamping: 0
   MaxDistanceSimulationBoneAndObject: 1
   DebugCurrent: 1

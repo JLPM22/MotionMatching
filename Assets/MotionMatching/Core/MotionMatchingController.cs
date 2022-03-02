@@ -32,6 +32,7 @@ namespace MotionMatching
         public bool DebugJoints = true;
         public bool DebugTrajectory = true;
 
+        public float3 Velocity { get; private set; }
 
         private BVHAnimation Animation;
         private PoseSet PoseSet;
@@ -206,13 +207,19 @@ namespace MotionMatching
         private void UpdateTransformAndSkeleton(int frameIndex)
         {
             PoseVector pose = PoseSet.Poses[frameIndex];
-            // Simulation Bone
-            transform.position += transform.TransformDirection(pose.RootDisplacement);
-            transform.rotation = transform.rotation * pose.RootRotDisplacement;
-            // Joints
+            // Update Inertialize if enabled
             if (Inertialize)
             {
                 Inertialization.Update(pose, InertializeHalfLife, Time.deltaTime);
+            }
+            // Simulation Bone
+            float3 previousPosition = transform.position;
+            transform.position += transform.TransformDirection(pose.RootDisplacement);
+            transform.rotation = transform.rotation * pose.RootRotDisplacement;
+            Velocity = ((float3)transform.position - previousPosition) / Time.deltaTime;
+            // Joints
+            if (Inertialize)
+            {
                 for (int i = 0; i < Inertialization.InertializedRotations.Length; i++)
                 {
                     SkeletonTransforms[i].localRotation = Inertialization.InertializedRotations[i];

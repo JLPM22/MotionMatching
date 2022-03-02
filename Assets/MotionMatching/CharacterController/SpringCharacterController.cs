@@ -31,6 +31,7 @@ namespace MotionMatching
         public bool DoAdjustment = true;
         [Range(0.0f, 2.0f)] public float PositionAdjustmentHalflife = 0.1f; // Time needed to move half of the distance between SimulationBone and SimulationObject
         // [Range(0.0f, 1.0f)] public float RotationAdjustmentHalflife = 0.2f;
+        [Range(0.0f, 2.0f)] public float MaximumAdjustmentRatio = 0.5f; // Ratio between the adjustment and the character's velocity to clamp the adjustment
         public bool DoClamping = true;
         [Range(0.0f, 2.0f)] public float MaxDistanceSimulationBoneAndObject = 0.1f; // Max distance between SimulationBone and SimulationObject
         [Header("DEBUG")]
@@ -200,6 +201,13 @@ namespace MotionMatching
             float3 differencePosition = simulationObject - simulationBone;
             // Damp the difference using the adjustment halflife and dt
             float3 adjustmentPosition = Spring.DampAdjustmentImplicit(differencePosition, PositionAdjustmentHalflife, Time.deltaTime);
+            // Clamp adjustment if the length is greater than the character velocity
+            // multiplied by the ratio
+            float maxLength = MaximumAdjustmentRatio * math.length(SimulationBone.Velocity) * Time.deltaTime;
+            if (math.length(adjustmentPosition) > maxLength)
+            {
+                adjustmentPosition = maxLength * math.normalize(adjustmentPosition);
+            }
             // Move the simulation bone towards the simulation object
             SimulationBone.transform.position = simulationBone + adjustmentPosition;
         }

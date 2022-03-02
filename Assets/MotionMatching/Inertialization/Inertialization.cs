@@ -34,13 +34,12 @@ namespace MotionMatching
         /// <summary>
         /// It takes as input the current state of the source pose and the target pose.
         /// It sets up the inertialization, which can then by updated by calling InertializeUpdate(...).
-        /// Root rotation and all Joints rotations are inertialized. (No root position)
         /// </summary>
         public void PoseTransition(PoseSet poseSet, int sourcePoseIndex, int targetPoseIndex)
         {
             PoseVector sourcePose = poseSet.Poses[sourcePoseIndex];
             PoseVector targetPose = poseSet.Poses[targetPoseIndex];
-
+            // Set up the inertialization for joint local rotations
             for (int i = 0; i < sourcePose.JointLocalRotations.Length; i++)
             {
                 quaternion sourceJointRotation = sourcePose.JointLocalRotations[i];
@@ -59,6 +58,7 @@ namespace MotionMatching
         /// </summary>
         public void Update(PoseVector targetPose, float halfLife, float deltaTime)
         {
+            // Update the inertialization for joint local rotations
             for (int i = 0; i < targetPose.JointLocalRotations.Length; i++)
             {
                 quaternion targetJointRotation = targetPose.JointLocalRotations[i];
@@ -81,6 +81,17 @@ namespace MotionMatching
             offsetRot = math.normalizesafe(MathExtensions.Abs(math.mul(math.inverse(targetRot), math.mul(sourceRot, offsetRot))));
             offsetAngularVel = (sourceAngularVel + offsetAngularVel) - targetAngularVel;
         }
+        /// <summary>
+        /// Compute the offsets from the source pose to the target pose.
+        /// Offsets are in/out since we may start a inertialization in the middle of another inertialization.
+        /// </summary>
+        private static void InertializeJointTransition(float3 source, float3 sourceVel,
+                                                       float3 target, float3 targetVel,
+                                                       ref float3 offset, ref float3 offsetVel)
+        {
+            offset = (source + offset) - target;
+            offsetVel = (sourceVel + offsetVel) - targetVel;
+        }
 
         /// <summary>
         /// Updates the inertialization decaying the offset and applying it to the target pose
@@ -93,6 +104,18 @@ namespace MotionMatching
             Spring.DecaySpringDamperImplicit(ref offsetRot, ref offsetAngularVel, halfLife, deltaTime);
             newRot = math.mul(targetRot, offsetRot);
             newAngularVel = targetAngularVel + offsetAngularVel;
+        }
+        /// <summary>
+        /// Updates the inertialization decaying the offset and applying it to the target pose
+        /// </summary>
+        private static void InertializeJointUpdate(float3 target, float3 targetVel,
+                                                   float halfLife, float deltaTime,
+                                                   ref float3 offset, ref float3 offsetVel,
+                                                   out float3 newValue, out float3 newVel)
+        {
+            Spring.DecaySpringDamperImplicit(ref offset, ref offsetVel, halfLife, deltaTime);
+            newValue = target + offset;
+            newVel = targetVel + offsetVel;
         }
     }
 }

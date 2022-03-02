@@ -37,7 +37,8 @@ namespace MotionMatching
             float3[] jointVelocities = new float3[nJoints];
             float3[] jointAngularVelocities = new float3[nJoints];
             float3 rootVelocity = float3.zero;
-            quaternion rootRotVelocity = quaternion.identity;
+            quaternion rootRotDisplacement = quaternion.identity;
+            float3 rootRotAngularVelocity = float3.zero;
             quaternion hipsRotWorld = frame.LocalRotations[0]; // rotation before removing Y world axis rotation
             if (frameIndex < nFrames - 1) // we shouldn't use the last frame's root motion
             {
@@ -60,13 +61,23 @@ namespace MotionMatching
                     // Angular velocity
                     quaternion rot = bvhAnimation.GetWorldRotation(joint, frameIndex);
                     quaternion rotNext = bvhAnimation.GetWorldRotation(joint, frameIndex + 1);
+                    if (i == 0)
+                    {
+                        // Remove Y world axis rotation from the root...
+                        // so angularVel is consistent with jointLocalRotations[0]
+                        quaternion inverseRotY = math.inverse(MathExtensions.GetYAxisRotation(rot));
+                        rot = math.mul(inverseRotY, rotNext);
+                        quaternion inverseRotNextY = math.inverse(MathExtensions.GetYAxisRotation(rotNext));
+                        rotNext = math.mul(inverseRotNextY, rotNext);
+                    }
                     // Source: https://theorangeduck.com/page/exponential-map-angle-axis-angular-velocity
                     float3 angularVel = MathExtensions.AngularVelocity(rot, rotNext, bvhAnimation.FrameTime);
                     jointAngularVelocities[i] = angularVel;
                 }
                 // Root: remove Y world axis rotation
-                quaternion inversehipsRotWorldY = math.inverse(MathExtensions.GetYAxisRotation(hipsRotWorld));
-                jointLocalRotations[0] = math.mul(inversehipsRotWorldY, hipsRotWorld);
+                quaternion hipsRotWorldOnlyY = MathExtensions.GetYAxisRotation(hipsRotWorld);
+                quaternion inverseHipsRotWorldY = math.inverse(hipsRotWorldOnlyY);
+                jointLocalRotations[0] = math.mul(inverseHipsRotWorldY, hipsRotWorld);
                 // Local Root Displacement
                 FeatureExtractor.GetWorldOriginCharacter(frame.RootMotion, hipsRotWorld, mmData.HipsForwardLocalVector, out _, out float3 characterForward);
 
@@ -75,12 +86,14 @@ namespace MotionMatching
                 rootVelocity = nextHipsWorldXZ - hipsWorldXZ;
                 if (math.length(rootVelocity) < mmData.MinimumPoseVelocity) rootVelocity = float3.zero; // Clamp Velocity if too small to avoid small numerical errors to move the character
                 rootVelocity = FeatureExtractor.GetLocalDirectionFromCharacter(rootVelocity, characterForward);
+                // Root Rot
                 quaternion yRotNext = MathExtensions.GetYAxisRotation(nextFrame.LocalRotations[0]);
-                rootRotVelocity = math.mul(inversehipsRotWorldY, yRotNext);
+                rootRotDisplacement = math.mul(inverseHipsRotWorldY, yRotNext);
+                rootRotAngularVelocity = MathExtensions.AngularVelocity(hipsRotWorldOnlyY, yRotNext, bvhAnimation.FrameTime);
             }
             return new PoseVector(jointLocalPositions, jointLocalRotations,
                                   jointVelocities, jointAngularVelocities,
-                                  rootVelocity, rootRotVelocity,
+                                  rootVelocity, rootRotDisplacement, rootRotAngularVelocity,
                                   frame.RootMotion, hipsRotWorld);
         }
     }
