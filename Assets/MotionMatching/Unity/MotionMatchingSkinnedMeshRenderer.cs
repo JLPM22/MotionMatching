@@ -134,6 +134,8 @@ namespace MotionMatching
                 */
                 TargetBones[i].rotation = sourceRotation * Quaternion.Inverse(sourceTPoseRotation) * targetTPoseRotation;
             }
+            // Hips Height
+            TargetBones[0].position = MotionMatching.GetSkeletonTransforms()[0].position;
         }
 
         // Used for retargeting. First parent, then children
