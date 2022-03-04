@@ -15,7 +15,7 @@ namespace MotionMatching
     /// </summary>
     public class BVHImporter
     {
-        public BVHAnimation Import(TextAsset bvh, float scale = 1.0f)
+        public BVHAnimation Import(TextAsset bvh, float scale = 1.0f, bool onlyFirstFrame = false)
         {
             List<AxisOrder> channels = new List<AxisOrder>();
             BVHAnimation animation = new BVHAnimation();
@@ -78,6 +78,7 @@ namespace MotionMatching
             animation.SetFrameTime(frameTime);
             // Frames
             int numberChannels = channels.Count;
+            numberFrames = onlyFirstFrame ? Mathf.Min(1, numberFrames) : numberFrames;
             for (int i = 0; i < numberFrames; i++)
             {
                 Vector3 rootMotion = new Vector3();

@@ -54,7 +54,7 @@ namespace MotionMatching
             // Source TPose (BVH with TPose)
             BVHImporter bvhImporter = new BVHImporter();
             // Animation containing in the first frame a TPose
-            BVHAnimation tposeAnimation = bvhImporter.Import(mmData.BVHTPose, mmData.UnitScale);
+            BVHAnimation tposeAnimation = bvhImporter.Import(mmData.BVHTPose, mmData.UnitScale, true);
             // Store Rotations
             // Source
             Skeleton skeleton = tposeAnimation.Skeleton;
