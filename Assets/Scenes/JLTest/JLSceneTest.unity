@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2025.9199, g: 1991.9473, b: 2399.0703, a: 1}
+  m_IndirectSpecularColor: {r: 2025.2725, g: 1991.8438, b: 2398.9531, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -726,11 +726,11 @@ MonoBehaviour:
   Normalize: 1
   Inertialize: 1
   InertializeHalfLife: 0.1
-  Responsiveness: 0.167
+  Responsiveness: 1
   Quality: 1
   FeatureWeights:
   - 1
-  - 1.5
+  - 1
   - 1
   - 1
   - 1

@@ -67,6 +67,13 @@ namespace MotionMatching
         {
             float2 prevInputMovement = InputMovement;
             InputMovement = movementDirection;
+            // Desired Rotation
+            if (!OrientationFixed && math.length(movementDirection) > 0.0001f)
+            {
+                float2 desiredDirection = math.normalize(movementDirection);
+                DesiredRotation = quaternion.LookRotation(new float3(desiredDirection.x, 0.0f, desiredDirection.y), transform.up);
+            }
+            // Input Changed Quickly
             if (math.dot(prevInputMovement, InputMovement) < InputBigChangeThreshold)
             {
                 NotifyInputChangedQuickly();
@@ -100,12 +107,6 @@ namespace MotionMatching
                 // Update Transform
                 transform.position = new float3(newPos.x, transform.position.y, newPos.y);
                 transform.rotation = newRot;
-                // Desired Rotation
-                if (!OrientationFixed)
-                {
-                    float2 desiredDirection = math.normalize(Velocity);
-                    DesiredRotation = quaternion.LookRotation(new float3(desiredDirection.x, 0.0f, desiredDirection.y), transform.up);
-                }
             }
 
             // Adjust SimulationBone to pull the character (moving SimulationBone) towards the Simulation Object (character controller)
