@@ -13,7 +13,7 @@ namespace MotionMatching
     {
         public event Action OnSkeletonTransformUpdated;
 
-        public SpringCharacterController CharacterController;
+        public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
         public bool LockFPS = true;
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
@@ -48,13 +48,7 @@ namespace MotionMatching
         private void Awake()
         {
             // BVH
-            PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
-            BVHImporter importer = new BVHImporter();
-            Animation = importer.Import(MMData.BVH, MMData.UnitScale);
-            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
-
-            // Add Mecanim mapping information
-            Animation.UpdateMecanimInformation(MMData);
+            Animation = MMData.GetOrImportAnimation();
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
             PoseExtractor poseExtractor = new PoseExtractor();
@@ -109,18 +103,21 @@ namespace MotionMatching
                     break;
                 }
             }
+            // Init Pose
+            transform.position = CharacterController.GetWorldInitPosition();
+            transform.rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
         }
 
         private void OnEnable()
         {
             SearchFrameCount = 0;
-            CharacterController.OnUpdate += OnCharacterControllerUpdated;
+            CharacterController.OnUpdated += OnCharacterControllerUpdated;
             CharacterController.OnInputChangedQuickly += OnInputChangedQuickly;
         }
 
         private void OnDisable()
         {
-            CharacterController.OnUpdate -= OnCharacterControllerUpdated;
+            CharacterController.OnUpdated -= OnCharacterControllerUpdated;
             CharacterController.OnInputChangedQuickly -= OnInputChangedQuickly;
         }
 

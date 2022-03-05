@@ -30,6 +30,23 @@ namespace MotionMatching
         public float MinimumPoseVelocity = 0.0001f; // Minimum velocity between poses (less than this value will be clamped to 0)
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
 
+        private BVHAnimation Animation;
+
+        public BVHAnimation GetOrImportAnimation()
+        {
+            if (Animation == null)
+            {
+                PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
+                BVHImporter importer = new BVHImporter();
+                Animation = importer.Import(BVH, UnitScale);
+                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
+
+                // Add Mecanim mapping information
+                Animation.UpdateMecanimInformation(this);
+            }
+            return Animation;
+        }
+
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
         {
             for (int i = 0; i < SkeletonToMecanim.Count; i++)

@@ -10,15 +10,10 @@ namespace MotionMatching
     // Adjustment between Character Controller and Motion Matching Character Entity
     /* https://theorangeduck.com/page/code-vs-data-driven-displacement */
 
-    public class SpringCharacterController : MonoBehaviour
+    public class SpringCharacterController : MotionMatchingCharacterController
     {
-        // Events -----------------------------------------------------------
-        public event Action<float> OnUpdate;
-        public event Action OnInputChangedQuickly;
 
         // General ----------------------------------------------------------
-        public int NumberPrediction = 3;
-        public int PredictionFrames = 20;
         public float MaxSpeed = 1.0f;
         [Range(0.0f, 1.0f)] public float ResponsivenessPositions = 0.75f;
         [Range(0.0f, 1.0f)] public float ResponsivenessDirections = 0.75f;
@@ -55,9 +50,6 @@ namespace MotionMatching
         private float2[] PredictedVelocity;
         private float2 Acceleration;
         private float2[] PredictedAcceleration;
-        // Accumulated Delta Time --------------------------------------------------
-        private Queue<float> LastDeltaTime = new Queue<float>();
-        private float SumDeltaTime;
 
         // FUNCTIONS ---------------------------------------------------------------
         private void Start()
@@ -75,10 +67,9 @@ namespace MotionMatching
         {
             float2 prevInputMovement = InputMovement;
             InputMovement = movementDirection;
-            if (math.dot(prevInputMovement, InputMovement) < InputBigChangeThreshold &&
-                OnInputChangedQuickly != null)
+            if (math.dot(prevInputMovement, InputMovement) < InputBigChangeThreshold)
             {
-                OnInputChangedQuickly.Invoke();
+                NotifyInputChangedQuickly();
             }
         }
 
@@ -87,14 +78,11 @@ namespace MotionMatching
             OrientationFixed = !OrientationFixed;
         }
 
-        private void Update()
+        protected override void OnUpdate()
         {
-            // Average DeltaTime (for prediction... it is better to have a stable frame rate)
-            float averagedDeltaTime = GetAveragedDeltaTime();
-
             // Rotations
             quaternion currentRotation = transform.rotation;
-            PredictRotations(currentRotation, averagedDeltaTime);
+            PredictRotations(currentRotation, AveragedDeltaTime);
             // Update Current Rotation
             quaternion newRot = ComputeNewRot(currentRotation);
 
@@ -102,7 +90,7 @@ namespace MotionMatching
             float2 desiredSpeed = InputMovement * MaxSpeed;
             float2 currentPos = new float2(transform.position.x, transform.position.z);
             // Predict
-            PredictPositions(currentPos, desiredSpeed, averagedDeltaTime);
+            PredictPositions(currentPos, desiredSpeed, AveragedDeltaTime);
             // Update Current Position
             float2 newPos = ComputeNewPos(currentPos, desiredSpeed);
 
@@ -123,9 +111,6 @@ namespace MotionMatching
             // Adjust SimulationBone to pull the character (moving SimulationBone) towards the Simulation Object (character controller)
             if (DoAdjustment) AdjustSimulationBone();
             if (DoClamping) ClampSimulationBone();
-
-            // Update other components depending on the character controller
-            if (OnUpdate != null) OnUpdate(Time.deltaTime);
         }
 
         private void PredictRotations(quaternion currentRotation, float averagedDeltaTime)
@@ -225,24 +210,33 @@ namespace MotionMatching
         //     SimulationBone.transform.rotation = simulationBone * adjustmentRotation;
         // }
 
-        private float GetAveragedDeltaTime()
+        public override float3 GetCurrentPosition()
         {
-            const int nAverageDeltaTime = 20;
-            SumDeltaTime += Time.deltaTime;
-            LastDeltaTime.Enqueue(Time.deltaTime);
-            if (LastDeltaTime.Count == nAverageDeltaTime + 1) SumDeltaTime -= LastDeltaTime.Dequeue();
-            return SumDeltaTime / nAverageDeltaTime;
+            return transform.position;
+        }
+        public override quaternion GetCurrentRotation()
+        {
+            return transform.rotation;
         }
 
-        public float2 GetWorldPredictedPosition(int index)
+        public override float2 GetWorldPredictedPosition(int index)
         {
             return PredictedPosition[index];
         }
 
-        public float2 GetWorldPredictedDirection(int index)
+        public override float2 GetWorldPredictedDirection(int index)
         {
             float3 dir = math.mul(PredictedRotations[index], new float3(0, 0, 1));
             return math.normalize(new float2(dir.x, dir.z));
+        }
+
+        public override float3 GetWorldInitPosition()
+        {
+            return transform.position;
+        }
+        public override float3 GetWorldInitDirection()
+        {
+            return transform.forward;
         }
 
 #if UNITY_EDITOR
@@ -251,13 +245,13 @@ namespace MotionMatching
             const float radius = 0.05f;
             const float vectorReduction = 0.5f;
             const float verticalOffset = 0.05f;
-            Vector3 transformPos = transform.position + Vector3.up * verticalOffset;
+            Vector3 transformPos = (Vector3)GetCurrentPosition() + Vector3.up * verticalOffset;
             if (DebugCurrent)
             {
                 // Draw Current Position & Velocity
                 Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
                 Gizmos.DrawSphere(transformPos, radius);
-                Gizmos.DrawLine(transformPos, transformPos + transform.forward * vectorReduction);
+                Gizmos.DrawLine(transformPos, transformPos + ((Quaternion)GetCurrentRotation() * Vector3.forward) * vectorReduction);
             }
 
             if (PredictedPosition == null || PredictedRotations == null) return;
