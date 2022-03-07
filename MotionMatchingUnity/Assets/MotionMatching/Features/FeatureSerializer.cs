@@ -20,7 +20,7 @@ namespace MotionMatching
             // Write Features
             using (var stream = File.Open(Path.Combine(path, fileName + ".mmfeatures"), FileMode.Create))
             {
-                using (var writer = new BinaryWriter(stream))
+                using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8))
                 {
                     // Serialize Number Feature Vectors
                     writer.Write((uint)featureSet.NumberFeatureVectors);
@@ -109,7 +109,7 @@ namespace MotionMatching
             {
                 using (var stream = File.Open(featuresPath, FileMode.Open))
                 {
-                    using (var reader = new BinaryReader(stream))
+                    using (var reader = new BinaryReader(stream, System.Text.Encoding.UTF8))
                     {
                         // Deserialize Number Feature Vectors
                         uint numberFeatureVectors = reader.ReadUInt32();
@@ -141,7 +141,7 @@ namespace MotionMatching
                         for (int i = 0; i < numberFeatureVectors; ++i)
                         {
                             FeatureVector featureVector = new FeatureVector();
-                            featureVector.IsValid = reader.ReadUInt32() == 1;
+                            featureVector.IsValid = reader.ReadUInt32() != 0;
                             // HARDCODED: allow for variable number of features
                             for (int j = 0; j < 3; ++j)
                             {

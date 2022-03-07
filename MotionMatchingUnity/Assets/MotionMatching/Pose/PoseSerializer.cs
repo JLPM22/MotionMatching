@@ -24,7 +24,7 @@ namespace MotionMatching
             // Write Skeleton
             using (var stream = File.Open(Path.Combine(path, fileName + ".mmskeleton"), FileMode.Create))
             {
-                using (var writer = new BinaryWriter(stream))
+                using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8))
                 {
                     // Write Number Joints
                     writer.Write((uint)poseSet.Skeleton.Joints.Count);
@@ -43,7 +43,7 @@ namespace MotionMatching
             // Write Poses
             using (var stream = File.Open(Path.Combine(path, fileName + ".mmpose"), FileMode.Create))
             {
-                using (var writer = new BinaryWriter(stream))
+                using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8))
                 {
                     // Serialize Number Animation Clips
                     writer.Write((uint)poseSet.Clips.Count);
@@ -90,7 +90,7 @@ namespace MotionMatching
             {
                 using (var stream = File.Open(skeletonPath, FileMode.Open))
                 {
-                    using (var reader = new BinaryReader(stream))
+                    using (var reader = new BinaryReader(stream, System.Text.Encoding.UTF8))
                     {
                         // Read Number Joints
                         uint nJoints = reader.ReadUInt32();
@@ -117,7 +117,7 @@ namespace MotionMatching
             {
                 using (var stream = File.Open(posePath, FileMode.Open))
                 {
-                    using (var reader = new BinaryReader(stream))
+                    using (var reader = new BinaryReader(stream, System.Text.Encoding.UTF8))
                     {
                         // Deserialize Number Animation Clips
                         uint nClips = reader.ReadUInt32();
