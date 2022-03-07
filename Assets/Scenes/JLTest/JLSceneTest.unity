@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2026.2832, g: 1992.6035, b: 2399.5781, a: 1}
+  m_IndirectSpecularColor: {r: 2025.9922, g: 1992.2578, b: 2399.3867, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -723,7 +723,6 @@ MonoBehaviour:
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
   LockFPS: 1
   SearchFrames: 10
-  Normalize: 1
   Inertialize: 1
   InertializeHalfLife: 0.1
   Responsiveness: 1
@@ -738,7 +737,6 @@ MonoBehaviour:
   - 1
   SpheresRadius: 0.05
   DebugSkeleton: 1
-  DebugDrawEndSites: 0
   DebugCurrent: 1
   DebugJoints: 1
   DebugTrajectory: 0

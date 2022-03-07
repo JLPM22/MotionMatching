@@ -19,7 +19,7 @@ namespace MotionMatching
         /// </summary>
         public void Serialize(PoseSet poseSet, string path, string fileName)
         {
-            Directory.CreateDirectory(path); // creatae directory and parent directories if they don't exist
+            Directory.CreateDirectory(path); // create directory and parent directories if they don't exist
 
             // Write Skeleton
             using (var stream = File.Open(Path.Combine(path, fileName + ".mmskeleton"), FileMode.Create))
@@ -79,13 +79,13 @@ namespace MotionMatching
         /// in the specified path with name filename and extension .mmpose and .mmskeleton
         /// Returns true if poseSet was successfully deserialized, false otherwise
         /// </summary>
-        public bool Deserialize(string path, string filename, out PoseSet poseSet)
+        public bool Deserialize(string path, string fileName, out PoseSet poseSet)
         {
             poseSet = new PoseSet();
 
             // Read Skeleton
             Skeleton skeleton = new Skeleton();
-            string skeletonPath = Path.Combine(path, filename + ".mmskeleton");
+            string skeletonPath = Path.Combine(path, fileName + ".mmskeleton");
             if (File.Exists(skeletonPath))
             {
                 using (var stream = File.Open(skeletonPath, FileMode.Open))
@@ -112,7 +112,7 @@ namespace MotionMatching
             poseSet.SetSkeleton(skeleton);
 
             // Read Poses
-            string posePath = Path.Combine(path, filename + ".mmpose");
+            string posePath = Path.Combine(path, fileName + ".mmpose");
             if (File.Exists(posePath))
             {
                 using (var stream = File.Open(posePath, FileMode.Open))

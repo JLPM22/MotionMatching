@@ -33,6 +33,7 @@ namespace MotionMatching
 
         private BVHAnimation Animation;
         private PoseSet PoseSet;
+        private FeatureSet FeatureSet;
 
         public BVHAnimation GetOrImportAnimation()
         {
@@ -70,6 +71,24 @@ namespace MotionMatching
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Import");
             }
             return PoseSet;
+        }
+
+        public FeatureSet GetOrImportFeatureSet()
+        {
+            if (FeatureSet == null)
+            {
+                PROFILE.BEGIN_SAMPLE_PROFILING("Feature Import", true);
+                FeatureSerializer serializer = new FeatureSerializer();
+                if (!serializer.Deserialize(GetAssetPath(), name, out FeatureSet))
+                {
+                    Debug.LogError("Failed to read feature set. Creating it in runtime instead.");
+                    FeatureExtractor featureExtractor = new FeatureExtractor();
+                    FeatureSet = featureExtractor.Extract(PoseSet, HipsForwardLocalVector);
+                    FeatureSet.NormalizeFeatures();
+                }
+                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Import", true);
+            }
+            return FeatureSet;
         }
 
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
@@ -223,8 +242,21 @@ namespace MotionMatching
                 PROFILE.BEGIN_SAMPLE_PROFILING("Pose Serialize", true);
                 PoseSerializer poseSerializer = new PoseSerializer();
                 poseSerializer.Serialize(poseSet, data.GetAssetPath(), data.name);
-                AssetDatabase.Refresh();
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize", true);
+
+                PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
+                FeatureExtractor featureExtractor = new FeatureExtractor();
+                FeatureSet featureSet = featureExtractor.Extract(poseSet, data.HipsForwardLocalVector);
+                featureSet.NormalizeFeatures();
+                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
+
+                PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize", true);
+                FeatureSerializer featureSerializer = new FeatureSerializer();
+                featureSerializer.Serialize(featureSet, data.GetAssetPath(), data.name);
+                featureSet.Dispose();
+                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize", true);
+
+                AssetDatabase.Refresh();
             }
 
             // Save

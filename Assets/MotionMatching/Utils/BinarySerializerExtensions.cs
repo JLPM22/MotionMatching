@@ -8,6 +8,11 @@ namespace MotionMatching
 {
     public class BinarySerializerExtensions
     {
+        public static void WriteFloat2(BinaryWriter writer, float2 value)
+        {
+            writer.Write(value.x);
+            writer.Write(value.y);
+        }
         public static void WriteFloat3(BinaryWriter writer, float3 value)
         {
             writer.Write(value.x);
@@ -34,6 +39,11 @@ namespace MotionMatching
             {
                 WriteQuaternion(writer, value);
             }
+        }
+
+        public static float2 ReadFloat2(BinaryReader reader)
+        {
+            return new float2(reader.ReadSingle(), reader.ReadSingle());
         }
         public static float3 ReadFloat3(BinaryReader reader)
         {

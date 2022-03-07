@@ -17,7 +17,6 @@ namespace MotionMatching
         public MotionMatchingData MMData;
         public bool LockFPS = true;
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
-        public bool Normalize = true; // Should apply normalization of the features set
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         [Range(0.0f, 1.0f)] public float InertializeHalfLife = 0.1f; // Time needed to move half of the distance between the source to the target pose
         [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
@@ -48,11 +47,8 @@ namespace MotionMatching
             // PoseSet
             PoseSet = MMData.GetOrImportPoseSet();
 
-            PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
-            FeatureExtractor featureExtractor = new FeatureExtractor();
-            FeatureSet = featureExtractor.Extract(PoseSet, MMData.HipsForwardLocalVector);
-            if (Normalize) FeatureSet.NormalizeFeatures();
-            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
+            // FeatureSet
+            FeatureSet = MMData.GetOrImportFeatureSet();
 
             // Skeleton
             SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
@@ -173,7 +169,7 @@ namespace MotionMatching
             QueryFeature.RightFootLocalVelocity = current.RightFootLocalVelocity;
             QueryFeature.HipsLocalVelocity = current.HipsLocalVelocity;
             // Normalize (only trajectory... because current FeatureVector is already normalized)
-            if (Normalize) QueryFeature = FeatureSet.NormalizeTrajectory(QueryFeature);
+            QueryFeature = FeatureSet.NormalizeTrajectory(QueryFeature);
             // Weights
             for (int i = 0; i < FeatureWeights.Length; i++) FeaturesWeightsNativeArray[i] = FeatureWeights[i];
             // Search
@@ -314,7 +310,7 @@ namespace MotionMatching
             if (FeatureSet == null) return;
 
             FeatureVector fv = FeatureSet.GetFeature(currentFrame);
-            if (Normalize) fv = FeatureSet.DenormalizeFeatureVector(fv);
+            fv = FeatureSet.DenormalizeFeatureVector(fv);
             if (fv.IsValid)
             {
                 quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));

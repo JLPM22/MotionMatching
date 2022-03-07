@@ -34,6 +34,24 @@ namespace MotionMatching
             return Features;
         }
 
+        public float GetMean(int dimension)
+        {
+            return Mean[dimension];
+        }
+        public float GetStandardDeviation(int dimension)
+        {
+            return StandardDeviation[dimension];
+        }
+
+        public void SetMean(float[] mean)
+        {
+            Mean = mean;
+        }
+        public void SetStandardDeviation(float[] standardDeviation)
+        {
+            StandardDeviation = standardDeviation;
+        }
+
         /// <summary>
         /// Returns a copty of the feature vector with only the trajectory features normalized
         /// </summary>
