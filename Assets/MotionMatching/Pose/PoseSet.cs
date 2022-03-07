@@ -19,15 +19,36 @@ namespace MotionMatching
             Clips = new List<AnimationClip>();
         }
 
+        public void SetSkeleton(Skeleton skeleton)
+        {
+            Skeleton = skeleton;
+        }
+
         /// <summary>
         /// Add the animation clip to the current pose set
         /// Returns true if the clip was added, false if the skeleton is not compatible and the clip was not added
         /// </summary>
         public bool AddClip(Skeleton skeleton, PoseVector[] poses, float frameTime)
         {
-            if (!IsSkeletonCompatible(skeleton)) return false;
-            if (Skeleton == null) Skeleton = skeleton;
+            Debug.Assert(skeleton != null, "Skeleton shold be set first. Use SetSkeleton(...)");
 
+            if (!IsSkeletonCompatible(skeleton)) return false;
+
+            int start = Poses.Count;
+            int nPoses = poses.Length;
+
+            Clips.Add(new AnimationClip(start, start + nPoses, frameTime));
+            Poses.AddRange(poses);
+
+            return true;
+        }
+
+        /// <summary>
+        /// Add the animation clip to the current pose set
+        /// Returns true if the clip was added, false otherwise
+        /// </summary>
+        public bool AddClip(PoseVector[] poses, float frameTime)
+        {
             int start = Poses.Count;
             int nPoses = poses.Length;
 

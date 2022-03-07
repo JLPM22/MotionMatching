@@ -12,7 +12,7 @@ namespace MotionMatching
     /// </summary>
     public class FeatureSet
     {
-        public int NumberFeatures { get { return Features.Length; } }
+        public int NumberFeatureVectors { get { return Features.Length; } }
 
         private NativeArray<FeatureVector> Features;
         private float[] Mean;

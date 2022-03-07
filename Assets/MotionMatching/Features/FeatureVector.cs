@@ -25,7 +25,6 @@ namespace MotionMatching
         public float3 RightFootLocalVelocity;
         public float3 HipsLocalVelocity;
 
-        // TODO: Check property per property that they are correctly working and affecting the final result
         public float SqrDistance(FeatureVector other, float responsiveness, float quality, NativeArray<float> featureWeights)
         {
             float sum = 0.0f;

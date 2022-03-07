@@ -27,14 +27,12 @@ namespace MotionMatching
         [Header("Debug")]
         public float SpheresRadius = 0.1f;
         public bool DebugSkeleton = true;
-        public bool DebugDrawEndSites = true;
         public bool DebugCurrent = true;
         public bool DebugJoints = true;
         public bool DebugTrajectory = true;
 
         public float3 Velocity { get; private set; }
 
-        private BVHAnimation Animation;
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
         private Transform[] SkeletonTransforms;
@@ -47,17 +45,8 @@ namespace MotionMatching
 
         private void Awake()
         {
-            // BVH
-            Animation = MMData.GetOrImportAnimation();
-
-            PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
-            PoseExtractor poseExtractor = new PoseExtractor();
-            PoseSet = new PoseSet();
-            if (!poseExtractor.Extract(Animation, PoseSet, MMData))
-            {
-                Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
-            }
-            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Extract", true);
+            // PoseSet
+            PoseSet = MMData.GetOrImportPoseSet();
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
             FeatureExtractor featureExtractor = new FeatureExtractor();
@@ -66,8 +55,8 @@ namespace MotionMatching
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
 
             // Skeleton
-            SkeletonTransforms = new Transform[Animation.Skeleton.Joints.Count];
-            foreach (Skeleton.Joint joint in Animation.Skeleton.Joints)
+            SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
+            foreach (Skeleton.Joint joint in PoseSet.Skeleton.Joints)
             {
                 Transform t = (new GameObject()).transform;
                 t.name = joint.Name;
@@ -78,12 +67,12 @@ namespace MotionMatching
             }
 
             // Inertialization
-            Inertialization = new Inertialization(Animation.Skeleton);
+            Inertialization = new Inertialization(PoseSet.Skeleton);
 
             // FPS
             if (LockFPS)
             {
-                Application.targetFrameRate = (int)(1.0f / Animation.FrameTime);
+                Application.targetFrameRate = (int)(1.0f / PoseSet.Clips[0].FrameTime);
                 Debug.Log("[Motion Matching] Updated Target FPS: " + Application.targetFrameRate);
             }
             else
@@ -266,7 +255,7 @@ namespace MotionMatching
         /// </summary>
         public Skeleton GetSkeleton()
         {
-            return Animation.Skeleton;
+            return PoseSet.Skeleton;
         }
 
         /// <summary>
@@ -295,7 +284,7 @@ namespace MotionMatching
         private void OnDrawGizmos()
         {
             // Skeleton
-            if (SkeletonTransforms == null || Animation == null || Animation.EndSites == null) return;
+            if (SkeletonTransforms == null || PoseSet == null) return;
 
             if (DebugSkeleton)
             {
@@ -305,21 +294,12 @@ namespace MotionMatching
                     Transform t = SkeletonTransforms[i];
                     Gizmos.DrawLine(t.parent.position, t.position);
                 }
-                if (DebugDrawEndSites)
-                {
-                    foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
-                    {
-                        Transform t = SkeletonTransforms[endSite.ParentIndex];
-                        Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
-                    }
-                }
             }
 
             // Character
             if (PoseSet == null) return;
 
             int currentFrame = CurrentFrame;
-            if (currentFrame < 0) currentFrame = Animation.Frames.Length - 1;
             PoseVector pose = PoseSet.Poses[currentFrame];
             float3 characterOrigin = transform.position;
             float3 characterForward = transform.forward;

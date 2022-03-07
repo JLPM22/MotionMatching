@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2025.2725, g: 1991.8438, b: 2398.9531, a: 1}
+  m_IndirectSpecularColor: {r: 2026.2832, g: 1992.6035, b: 2399.5781, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -798,7 +798,7 @@ MonoBehaviour:
   SimulationBone: {fileID: 845368627}
   DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
-  MaximumAdjustmentRatio: 0.5
+  MaximumAdjustmentRatio: 0.25
   DoClamping: 0
   MaxDistanceSimulationBoneAndObject: 1
   DebugCurrent: 1
@@ -899,7 +899,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1040825378}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.28719673, y: 0.43860626, z: 0.4296279}
+  m_LocalPosition: {x: 0.28719673, y: 10, z: 0.4296279}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

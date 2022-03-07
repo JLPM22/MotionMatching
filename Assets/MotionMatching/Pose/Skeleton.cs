@@ -81,6 +81,15 @@ namespace MotionMatching
                 Type = HumanBodyBones.LastBone;
             }
 
+            public Joint(string name, int index, int parentIndex, Vector3 localOffset, HumanBodyBones type)
+            {
+                Name = name;
+                Index = index;
+                ParentIndex = parentIndex;
+                LocalOffset = localOffset;
+                Type = type;
+            }
+
             public bool Equals(Joint other)
             {
                 return Name == other.Name && Index == other.Index && ParentIndex == other.ParentIndex && LocalOffset == other.LocalOffset && Type == other.Type;

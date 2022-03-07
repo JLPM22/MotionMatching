@@ -22,6 +22,9 @@ namespace MotionMatching
         /// </summary>
         public bool Extract(BVHAnimation bvhAnimation, PoseSet poseSet, MotionMatchingData mmData)
         {
+            // Set Skeleton
+            poseSet.SetSkeleton(bvhAnimation.Skeleton);
+            // Set Poses
             int nFrames = bvhAnimation.Frames.Length;
             PoseVector[] poses = new PoseVector[nFrames];
             for (int i = 0; i < nFrames; i++)

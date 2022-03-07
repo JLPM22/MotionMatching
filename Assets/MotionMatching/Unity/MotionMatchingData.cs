@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
+using System.IO;
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -31,6 +32,7 @@ namespace MotionMatching
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
 
         private BVHAnimation Animation;
+        private PoseSet PoseSet;
 
         public BVHAnimation GetOrImportAnimation()
         {
@@ -45,6 +47,29 @@ namespace MotionMatching
                 Animation.UpdateMecanimInformation(this);
             }
             return Animation;
+        }
+
+        public PoseSet GetOrImportPoseSet()
+        {
+            if (PoseSet == null)
+            {
+                PROFILE.BEGIN_SAMPLE_PROFILING("Pose Import");
+                PoseSerializer serializer = new PoseSerializer();
+                if (!serializer.Deserialize(GetAssetPath(), name, out PoseSet))
+                {
+                    Debug.LogError("Failed to read pose set. Creating it in runtime instead.");
+                    BVHAnimation animation = GetOrImportAnimation();
+                    PoseExtractor poseExtractor = new PoseExtractor();
+                    PoseSet = new PoseSet();
+                    if (!poseExtractor.Extract(animation, PoseSet, this))
+                    {
+                        Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
+                        return null;
+                    }
+                }
+                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Import");
+            }
+            return PoseSet;
         }
 
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
@@ -73,6 +98,12 @@ namespace MotionMatching
             }
             jointName = "";
             return false;
+        }
+
+        public string GetAssetPath()
+        {
+            string assetPath = AssetDatabase.GetAssetPath(this);
+            return Path.Combine(Application.dataPath, assetPath.Remove(assetPath.Length - ".asset".Length, 6).Remove(0, "Assets".Length + 1));
         }
 
         [System.Serializable]
@@ -174,6 +205,27 @@ namespace MotionMatching
                 }
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
+
+            // Generate Databases
+            if (GUILayout.Button("Generate Databases"))
+            {
+                BVHAnimation animation = data.GetOrImportAnimation();
+
+                PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
+                PoseExtractor poseExtractor = new PoseExtractor();
+                PoseSet poseSet = new PoseSet();
+                if (!poseExtractor.Extract(animation, poseSet, data))
+                {
+                    Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
+                }
+                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Extract", true);
+
+                PROFILE.BEGIN_SAMPLE_PROFILING("Pose Serialize", true);
+                PoseSerializer poseSerializer = new PoseSerializer();
+                poseSerializer.Serialize(poseSet, data.GetAssetPath(), data.name);
+                AssetDatabase.Refresh();
+                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize", true);
+            }
 
             // Save
             if (GUI.changed)
