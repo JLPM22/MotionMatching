@@ -400,7 +400,7 @@ MonoBehaviour:
   DebugSkeleton: 0
   DebugCurrent: 1
   DebugJoints: 0
-  DebugTrajectory: 1
+  DebugTrajectory: 0
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -450,8 +450,8 @@ MonoBehaviour:
   SimulationBone: {fileID: 845368627}
   NumberPrediction: 3
   MaxSpeed: 4
-  ResponsivenessPositions: 0.26
-  ResponsivenessDirections: 0.618
+  ResponsivenessPositions: 0.5
+  ResponsivenessDirections: 0.8
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
   DoAdjustment: 1
@@ -459,9 +459,9 @@ MonoBehaviour:
   MaximumAdjustmentRatio: 0.25
   DoClamping: 1
   MaxDistanceSimulationBoneAndObject: 0.25
-  DebugCurrent: 1
-  DebugPrediction: 1
-  DebugClamping: 1
+  DebugCurrent: 0
+  DebugPrediction: 0
+  DebugClamping: 0
 --- !u!4 &922198741
 Transform:
   m_ObjectHideFlags: 0

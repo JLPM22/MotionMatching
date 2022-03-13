@@ -524,8 +524,8 @@ MonoBehaviour:
   SimulationBone: {fileID: 845368627}
   NumberPrediction: 3
   MaxSpeed: 2.5
-  ResponsivenessPositions: 0.75
-  ResponsivenessDirections: 0.75
+  ResponsivenessPositions: 0.5
+  ResponsivenessDirections: 0.8
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
   DoAdjustment: 1

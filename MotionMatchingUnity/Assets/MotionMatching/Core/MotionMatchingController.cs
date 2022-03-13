@@ -118,31 +118,27 @@ namespace MotionMatching
             {
                 // Motion Matching
                 PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Search");
-                int nextFrame = SearchMotionMatching();
+                int bestFrame = SearchMotionMatching();
                 PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
-                if (nextFrame != CurrentFrame)
+                if (bestFrame != CurrentFrame)
                 {
-                    int previousFrame = CurrentFrame;
-                    CurrentFrame = nextFrame;
-
                     // Inertialize
                     if (Inertialize)
                     {
-                        Inertialization.PoseTransition(PoseSet, previousFrame, CurrentFrame);
+                        Inertialization.PoseTransition(PoseSet, CurrentFrame, bestFrame);
                     }
-                }
-                else
-                {
-                    CurrentFrame += 1;
+                    CurrentFrame = bestFrame;
                 }
                 SearchFrameCount = SearchFrames;
             }
             else
             {
                 // Advance
-                CurrentFrame += 1;
                 SearchFrameCount -= 1;
             }
+            // Always advance one (bestFrame from motion matching is the best match to the current frame, but we want to move to the next frame)
+            CurrentFrame += 1;
+
             UpdateTransformAndSkeleton(CurrentFrame);
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
         }
