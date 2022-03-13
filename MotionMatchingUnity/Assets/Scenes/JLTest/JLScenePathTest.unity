@@ -414,8 +414,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14d8336587724e7438d61a3d804f1202, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  SimulationBone: {fileID: 845368627}
   NumberPrediction: 3
-  PredictionFrames: 20
   Path:
   - Position:
       x: -10
@@ -748,14 +748,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3263f4711897b924aa892c1da8c94ed6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  SimulationBone: {fileID: 845368627}
   NumberPrediction: 3
-  PredictionFrames: 20
   MaxSpeed: 3
   ResponsivenessPositions: 0.75
   ResponsivenessDirections: 0.95
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
-  SimulationBone: {fileID: 845368627}
   DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
   MaximumAdjustmentRatio: 0.5
@@ -1105,8 +1104,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14d8336587724e7438d61a3d804f1202, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  SimulationBone: {fileID: 1702772098}
   NumberPrediction: 3
-  PredictionFrames: 20
   Path:
   - Position:
       x: -10
@@ -1464,8 +1463,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14d8336587724e7438d61a3d804f1202, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  SimulationBone: {fileID: 488265980}
   NumberPrediction: 3
-  PredictionFrames: 20
   Path:
   - Position:
       x: -10

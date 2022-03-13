@@ -11,8 +11,8 @@ namespace MotionMatching
         public event Action<float> OnUpdated;
         public event Action OnInputChangedQuickly;
 
+        public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
         public int NumberPrediction = 3;
-        public int PredictionFrames = 20;
 
         // Accumulated Delta Time
         public float AveragedDeltaTime { get; private set; }

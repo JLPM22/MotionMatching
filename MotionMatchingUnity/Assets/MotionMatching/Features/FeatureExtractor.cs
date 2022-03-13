@@ -17,7 +17,7 @@ namespace MotionMatching
         /// <summary>
         /// Extract the feature vectors from poseSet and return a new FeatureSet
         /// </summary>
-        public FeatureSet Extract(PoseSet poseSet, float3 hipsForwardLocalVector)
+        public FeatureSet Extract(PoseSet poseSet, MotionMatchingData mmData)
         {
             int nPoses = poseSet.NumberPoses;
             FeatureVector[] features = new FeatureVector[nPoses];
@@ -28,7 +28,7 @@ namespace MotionMatching
             {
                 if (poseSet.IsPoseValidForPrediction(poseIndex))
                 {
-                    features[poseIndex] = ExtractFeature(poseSet, poseIndex, leftFoot, rightFoot, hips, hipsForwardLocalVector);
+                    features[poseIndex] = ExtractFeature(poseSet, poseIndex, leftFoot, rightFoot, hips, mmData);
                 }
             }
             return new FeatureSet(features);
@@ -37,15 +37,15 @@ namespace MotionMatching
         /// <summary>
         /// Returns the feature vector of the pose at poseIndex, poseIndex cannot be at the end of a clip
         /// </summary>
-        private FeatureVector ExtractFeature(PoseSet poseSet, int poseIndex, Joint leftFoot, Joint rightFoot, Joint hips, float3 hipsForwardLocalVector)
+        private FeatureVector ExtractFeature(PoseSet poseSet, int poseIndex, Joint leftFoot, Joint rightFoot, Joint hips, MotionMatchingData mmData)
         {
-            // HARDCODED: Trajectory we will use 20, 40 and 60 fps (60Hz) as the original paper
+            // HARDCODED: only 3 points in trajectory
             poseSet.GetPose(poseIndex, out PoseVector pose);
             poseSet.GetPose(poseIndex + 1, out PoseVector poseNext);
             // Compute local features based on the projection of the hips in the ZX plane (ground)
             // so hips and feet are local to a stable position with respect to the character
             // this solution only works for one type of skeleton
-            GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, hipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
+            GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, mmData.HipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
             FeatureVector feature = new FeatureVector();
             feature.IsValid = true;
             // Left Foot
@@ -56,16 +56,16 @@ namespace MotionMatching
             GetJointFeatures(pose, poseNext, poseSet.Skeleton, hips, characterOrigin, characterForward, poseSet.FrameTime, out _, out feature.HipsLocalVelocity);
             // Trajectory
             float2 trajectoryLocalPos, trajectoryLocalDir;
-            poseSet.GetPose(poseIndex + 20, out PoseVector pose20);
-            GetTrajectoryFeatures(pose20, characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
+            poseSet.GetPose(poseIndex + mmData.PredictionFrames, out PoseVector futurePose1);
+            GetTrajectoryFeatures(futurePose1, characterOrigin, characterForward, mmData.HipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(0, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(0, trajectoryLocalDir);
-            poseSet.GetPose(poseIndex + 40, out PoseVector pose40);
-            GetTrajectoryFeatures(pose40, characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
+            poseSet.GetPose(poseIndex + mmData.PredictionFrames * 2, out PoseVector futurePose2);
+            GetTrajectoryFeatures(futurePose2, characterOrigin, characterForward, mmData.HipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(1, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(1, trajectoryLocalDir);
-            poseSet.GetPose(poseIndex + 60, out PoseVector pose60);
-            GetTrajectoryFeatures(pose60, characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
+            poseSet.GetPose(poseIndex + mmData.PredictionFrames * 3, out PoseVector futurePose3);
+            GetTrajectoryFeatures(futurePose3, characterOrigin, characterForward, mmData.HipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(2, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(2, trajectoryLocalDir);
             return feature;

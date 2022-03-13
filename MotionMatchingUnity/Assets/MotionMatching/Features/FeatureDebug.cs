@@ -39,7 +39,7 @@ public class FeatureDebug : MonoBehaviour
         }
 
         FeatureExtractor featureExtractor = new FeatureExtractor();
-        FeatureSet = featureExtractor.Extract(PoseSet, MMData.HipsForwardLocalVector);
+        FeatureSet = featureExtractor.Extract(PoseSet, MMData);
 
         // Skeleton
         SkeletonTransforms = new Transform[Animation.Skeleton.Joints.Count];

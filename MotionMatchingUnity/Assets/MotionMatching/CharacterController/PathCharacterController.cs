@@ -28,7 +28,7 @@ namespace MotionMatching
             // Predict the future positions and directions
             for (int i = 0; i < NumberPrediction; i++)
             {
-                SimulatePath(AveragedDeltaTime * (i + 1) * PredictionFrames, CurrentKeyPoint, CurrentKeyPointT,
+                SimulatePath(AveragedDeltaTime * (i + 1) * SimulationBone.MMData.PredictionFrames, CurrentKeyPoint, CurrentKeyPointT,
                              out _, out _,
                              out PredictedPositions[i], out PredictedDirections[i]);
             }

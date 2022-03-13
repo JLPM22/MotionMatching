@@ -383,7 +383,7 @@ MonoBehaviour:
   CharacterController: {fileID: 922198739}
   MMData: {fileID: 11400000, guid: 54f129c1522b5774abec5da428c6b3b3, type: 2}
   LockFPS: 1
-  SearchFrames: 10
+  SearchFrames: 5
   Inertialize: 1
   InertializeHalfLife: 0.1
   Responsiveness: 1
@@ -447,18 +447,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3263f4711897b924aa892c1da8c94ed6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  SimulationBone: {fileID: 845368627}
   NumberPrediction: 3
-  PredictionFrames: 20
   MaxSpeed: 1.5
   ResponsivenessPositions: 0.75
   ResponsivenessDirections: 0.75
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
-  SimulationBone: {fileID: 845368627}
   DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
   MaximumAdjustmentRatio: 0.25
-  DoClamping: 1
+  DoClamping: 0
   MaxDistanceSimulationBoneAndObject: 0.08
   DebugCurrent: 1
   DebugPrediction: 1

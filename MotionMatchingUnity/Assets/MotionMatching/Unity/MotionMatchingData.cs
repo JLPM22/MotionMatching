@@ -28,6 +28,8 @@ namespace MotionMatching
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
         public float MinimumPoseVelocity = 0.0001f; // Minimum velocity between poses (less than this value will be clamped to 0)
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
+        // HARDCODED: Only 3 predictions allowed for now
+        public int PredictionFrames = 20;
 
         private List<BVHAnimation> Animations;
         private PoseSet PoseSet;
@@ -102,7 +104,7 @@ namespace MotionMatching
         private void ImportFeatureSet()
         {
             FeatureExtractor featureExtractor = new FeatureExtractor();
-            FeatureSet = featureExtractor.Extract(PoseSet, HipsForwardLocalVector);
+            FeatureSet = featureExtractor.Extract(PoseSet, this);
             FeatureSet.NormalizeFeatures();
         }
 
@@ -231,6 +233,11 @@ namespace MotionMatching
                                                                   data.MinimumPoseVelocity);
             if (data.MinimumPoseVelocity < 0) data.MinimumPoseVelocity = 0;
 
+            // Prediction Frames
+            EditorGUILayout.LabelField("Prediction Frames", EditorStyles.boldLabel);
+            data.PredictionFrames = EditorGUILayout.IntField("Prediction Frames", data.PredictionFrames);
+
+            // SkeletonToMecanim
             if (GUILayout.Button("Read Skeleton from BVH"))
             {
                 BVHImporter importer = new BVHImporter();

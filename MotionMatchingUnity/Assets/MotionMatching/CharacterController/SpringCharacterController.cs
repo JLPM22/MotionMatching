@@ -22,7 +22,6 @@ namespace MotionMatching
         [Range(-1.0f, 1.0f)] public float InputBigChangeThreshold = 0.5f;
         // Adjustment & Clamping --------------------------------------------
         [Header("Adjustment")] // Move Simulation Bone towards the Simulation Object (motion matching towards character controller)
-        public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
         public bool DoAdjustment = true;
         [Range(0.0f, 2.0f)] public float PositionAdjustmentHalflife = 0.1f; // Time needed to move half of the distance between SimulationBone and SimulationObject
         // [Range(0.0f, 1.0f)] public float RotationAdjustmentHalflife = 0.2f;
@@ -145,7 +144,7 @@ namespace MotionMatching
                     PredictedAcceleration[i] = PredictedAcceleration[i - 1];
                 }
                 Spring.CharacterPositionUpdate(ref PredictedPosition[i], ref PredictedVelocity[i], ref PredictedAcceleration[i],
-                                               desiredSpeed, 1.0f - ResponsivenessPositions, PredictionFrames * averagedDeltaTime);
+                                               desiredSpeed, 1.0f - ResponsivenessPositions, SimulationBone.MMData.PredictionFrames * averagedDeltaTime);
             }
         }
 
