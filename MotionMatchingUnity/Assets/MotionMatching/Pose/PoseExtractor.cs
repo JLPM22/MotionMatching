@@ -70,7 +70,6 @@ namespace MotionMatching
                 PrevFrameLocalRotations = prevFrameLocalRotations,
                 FrameRootMotion = frame.RootMotion,
                 PrevFrameRootMotion = prevFrame.RootMotion,
-                MinimumPoseVelocity = mmData.MinimumPoseVelocity,
                 HipsForwardLocalVector = mmData.HipsForwardLocalVector,
                 // Output
                 JointLocalPositions = jointLocalPositions,
@@ -132,7 +131,6 @@ namespace MotionMatching
             [ReadOnly] public float3 FrameRootMotion;
             [ReadOnly] public NativeArray<quaternion> PrevFrameLocalRotations;
             [ReadOnly] public float3 PrevFrameRootMotion;
-            [ReadOnly] public float MinimumPoseVelocity;
             [ReadOnly] public float3 HipsForwardLocalVector;
 
             [WriteOnly] public NativeArray<float3> JointLocalPositions;
@@ -183,7 +181,6 @@ namespace MotionMatching
                 float3 hipsWorldXZ = new float3(FrameRootMotion.x, 0.0f, FrameRootMotion.z);
                 float3 prevHipsWorldXZ = new float3(PrevFrameRootMotion.x, 0.0f, PrevFrameRootMotion.z);
                 float3 tmpRootDisplacement = hipsWorldXZ - prevHipsWorldXZ;
-                if (math.length(tmpRootDisplacement) < MinimumPoseVelocity) tmpRootDisplacement = float3.zero; // Clamp Velocity if too small to avoid small numerical errors to move the character
                 RootDisplacement[0] = FeatureExtractor.GetLocalDirectionFromCharacter(tmpRootDisplacement, characterForward);
                 // Root Rot
                 quaternion yRot = MathExtensions.GetYAxisRotation(FrameLocalRotations[0]);

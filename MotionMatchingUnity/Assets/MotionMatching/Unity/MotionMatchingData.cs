@@ -26,7 +26,6 @@ namespace MotionMatching
         public TextAsset BVHTPose; // BVH with a TPose in the first frame, used for retargeting
         public float UnitScale = 1.0f;
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
-        public float MinimumPoseVelocity = 0.0001f; // Minimum velocity between poses (less than this value will be clamped to 0)
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
         // HARDCODED: Only 3 predictions allowed for now
         public int PredictionFrames = 20;
@@ -217,7 +216,11 @@ namespace MotionMatching
             data.BVHTPose = (TextAsset)EditorGUILayout.ObjectField(new GUIContent("BVH with TPose", "BVH with a TPose in the first frame, used for retargeting"),
                                                                    data.BVHTPose, typeof(TextAsset), false);
             // UnitScale
+            EditorGUILayout.BeginHorizontal();
             data.UnitScale = EditorGUILayout.FloatField("Unit Scale", data.UnitScale);
+            if (GUILayout.Button("m")) data.UnitScale = 1.0f;
+            if (GUILayout.Button("cm")) data.UnitScale = 0.01f;
+            EditorGUILayout.EndHorizontal();
             // DefaultHipsForward
             data.HipsForwardLocalVector = EditorGUILayout.Vector3Field(new GUIContent("Hips Forward Local Vector", "Local vector (axis) pointing in the forward direction of the hips"),
                                                                        data.HipsForwardLocalVector);
@@ -228,10 +231,6 @@ namespace MotionMatching
                 if (GUILayout.Button("Fix")) data.HipsForwardLocalVector = math.normalize(data.HipsForwardLocalVector);
                 EditorGUILayout.EndHorizontal();
             }
-            // MinimumVelocity
-            data.MinimumPoseVelocity = EditorGUILayout.FloatField(new GUIContent("Minimum Pose Velocity", "Minimum velocity between poses (less than this value will be clamped to 0)"),
-                                                                  data.MinimumPoseVelocity);
-            if (data.MinimumPoseVelocity < 0) data.MinimumPoseVelocity = 0;
 
             // Prediction Frames
             EditorGUILayout.LabelField("Prediction Frames", EditorStyles.boldLabel);
