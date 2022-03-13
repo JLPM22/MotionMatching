@@ -71,12 +71,12 @@ namespace MotionMatching
         private void ImportPoseSet()
         {
             ImportAnimationsIfNeeded();
-            PoseExtractor poseExtractor = new PoseExtractor();
             PoseSet = new PoseSet();
             PoseSet.SetSkeleton(Animations[0].Skeleton);
             for (int i = 0; i < Animations.Count; i++)
             {
                 BVHAnimation animation = Animations[i];
+                PoseExtractor poseExtractor = new PoseExtractor();
                 if (!poseExtractor.Extract(animation, PoseSet, this))
                 {
                     Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation. BVH Index: " + i);

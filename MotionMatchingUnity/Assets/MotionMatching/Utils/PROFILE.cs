@@ -59,7 +59,7 @@ namespace MotionMatching
                 data = new DATA();
                 ProfileDatas.Add(tag, data);
             }
-            data.AddSample(stopwatch.ElapsedMilliseconds, stopwatch.ElapsedTicks);
+            data.AddSample((float)stopwatch.Elapsed.TotalMilliseconds, stopwatch.ElapsedTicks);
 #endif
         }
         public static void END_AND_PRINT_SAMPLE_PROFILING(string tag, bool sampleMemory = false)

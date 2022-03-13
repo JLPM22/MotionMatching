@@ -93,7 +93,7 @@ namespace MotionMatching
         /// </summary>
         private float3 ForwardKinematics(Skeleton skeleton, PoseVector pose, Joint joint)
         {
-            float3 localOffset = joint.LocalOffset;
+            float3 localOffset = pose.JointLocalPositions[joint.Index];
             Matrix4x4 localToWorld = Matrix4x4.identity;
             while (joint.ParentIndex != 0) // while not root
             {

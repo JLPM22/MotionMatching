@@ -126,5 +126,28 @@ namespace MotionMatching
                 return new quaternion(s * angleAxis.x, s * angleAxis.y, s * angleAxis.z, c);
             }
         }
+
+        /* Source: https://stackoverflow.com/a/33999726 */
+        /// <summary>
+        /// Mirror a quaternion along the X axis.
+        /// </summary>
+        public static quaternion MirrorX(quaternion q)
+        {
+            return new quaternion(q.value.x, -q.value.y, -q.value.z, q.value.w);
+        }
+        /// <summary>
+        /// Mirror a quaternion along the Y axis.
+        /// </summary>
+        public static quaternion MirrorY(quaternion q)
+        {
+            return new quaternion(-q.value.x, q.value.y, -q.value.z, q.value.w);
+        }
+        /// <summary>
+        /// Mirror a quaternion along the Z axis.
+        /// </summary>
+        public static quaternion MirrorZ(quaternion q)
+        {
+            return new quaternion(-q.value.x, -q.value.y, q.value.z, q.value.w);
+        }
     }
 }

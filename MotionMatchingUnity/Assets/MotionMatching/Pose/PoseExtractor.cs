@@ -35,6 +35,8 @@ namespace MotionMatching
         private PoseVector ExtractPose(BVHAnimation bvhAnimation, int frameIndex, MotionMatchingData mmData, int nFrames)
         {
             BVHAnimation.Frame frame = bvhAnimation.Frames[frameIndex];
+            BVHAnimation.Frame prevFrame = frameIndex == 0 ? frame : bvhAnimation.Frames[frameIndex - 1];
+
             int nJoints = bvhAnimation.Skeleton.Joints.Count;
 
             // Native Arrays used by Burst for Output
@@ -46,7 +48,6 @@ namespace MotionMatching
             NativeArray<quaternion> rootRotDisplacement = new NativeArray<quaternion>(1, Allocator.TempJob);
             NativeArray<float3> rootRotAngularVelocity = new NativeArray<float3>(1, Allocator.TempJob);
 
-            BVHAnimation.Frame prevFrame = frameIndex == 0 ? frame : bvhAnimation.Frames[frameIndex - 1];
 
             // Native Arrays used by Burst for Input
             NativeArray<float3> jointOffsets = new NativeArray<float3>(nJoints, Allocator.TempJob);
@@ -133,7 +134,7 @@ namespace MotionMatching
             [ReadOnly] public float3 PrevFrameRootMotion;
             [ReadOnly] public float3 HipsForwardLocalVector;
 
-            [WriteOnly] public NativeArray<float3> JointLocalPositions;
+            public NativeArray<float3> JointLocalPositions;
             [WriteOnly] public NativeArray<quaternion> JointLocalRotations;
             [WriteOnly] public NativeArray<float3> JointVelocities;
             [WriteOnly] public NativeArray<float3> JointAngularVelocities;
@@ -216,11 +217,11 @@ namespace MotionMatching
                 while (JointParents[joint] != 0) // while not root
                 {
                     int parent = JointParents[joint];
-                    localToWorld = float4x4.TRS(JointOffsets[parent], localRotations[parent], new float3(1, 1, 1)) * localToWorld;
+                    localToWorld = float4x4.TRS(JointLocalPositions[parent], localRotations[parent], new float3(1, 1, 1)) * localToWorld;
                     joint = parent;
                 }
                 localToWorld = float4x4.TRS(rootMotion, localRotations[0], new float3(1, 1, 1)) * localToWorld;
-                return math.mul(localToWorld, new float4(JointOffsets[joint], 1)).xyz;
+                return math.mul(localToWorld, new float4(JointLocalPositions[joint], 1)).xyz;
             }
         }
     }
