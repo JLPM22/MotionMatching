@@ -72,20 +72,22 @@ namespace MotionMatching
 
             int offset = 0;
             // FutureTrajectoryLocalPosition
-            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
+            for (int j = 0; j < nTrajectoryDimensions; j += 2)
             {
+                int float2Index = j / 2;
                 float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
-                value.x = (value.x - Mean[offset + float2Index]) / StandardDeviation[offset + float2Index];
-                value.y = (value.y - Mean[offset + float2Index + 1]) / StandardDeviation[offset + float2Index + 1];
+                value.x = (value.x - Mean[offset + j]) / StandardDeviation[offset + j];
+                value.y = (value.y - Mean[offset + j + 1]) / StandardDeviation[offset + j + 1];
                 normalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
             }
             offset += nTrajectoryDimensions;
             // FutureTrajectoryLocalDirection
-            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
+            for (int j = 0; j < nTrajectoryDimensions; j += 2)
             {
+                int float2Index = j / 2;
                 float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
-                value.x = (value.x - Mean[offset + float2Index]) / StandardDeviation[offset + float2Index];
-                value.y = (value.y - Mean[offset + float2Index + 1]) / StandardDeviation[offset + float2Index + 1];
+                value.x = (value.x - Mean[offset + j]) / StandardDeviation[offset + j];
+                value.y = (value.y - Mean[offset + j + 1]) / StandardDeviation[offset + j + 1];
                 normalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
             }
             // offset += nTrajectoryDimensions;
@@ -109,20 +111,22 @@ namespace MotionMatching
 
             int offset = 0;
             // FutureTrajectoryLocalPosition
-            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
+            for (int j = 0; j < nTrajectoryDimensions; j += 2)
             {
+                int float2Index = j / 2;
                 float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
-                value.x = (value.x - Mean[offset + float2Index]) / StandardDeviation[offset + float2Index];
-                value.y = (value.y - Mean[offset + float2Index + 1]) / StandardDeviation[offset + float2Index + 1];
+                value.x = (value.x - Mean[offset + j]) / StandardDeviation[offset + j];
+                value.y = (value.y - Mean[offset + j + 1]) / StandardDeviation[offset + j + 1];
                 normalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
             }
             offset += nTrajectoryDimensions;
             // FutureTrajectoryLocalDirection
-            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
+            for (int j = 0; j < nTrajectoryDimensions; j += 2)
             {
+                int float2Index = j / 2;
                 float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
-                value.x = (value.x - Mean[offset + float2Index]) / StandardDeviation[offset + float2Index];
-                value.y = (value.y - Mean[offset + float2Index + 1]) / StandardDeviation[offset + float2Index + 1];
+                value.x = (value.x - Mean[offset + j]) / StandardDeviation[offset + j];
+                value.y = (value.y - Mean[offset + j + 1]) / StandardDeviation[offset + j + 1];
                 normalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
             }
             offset += nTrajectoryDimensions;
@@ -186,20 +190,22 @@ namespace MotionMatching
 
             int offset = 0;
             // FutureTrajectoryLocalPosition
-            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
+            for (int j = 0; j < nTrajectoryDimensions; j += 2)
             {
+                int float2Index = j / 2;
                 float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
-                value.x = value.x * StandardDeviation[offset + float2Index] + Mean[offset + float2Index];
-                value.y = value.y * StandardDeviation[offset + float2Index + 1] + Mean[offset + float2Index + 1];
+                value.x = value.x * StandardDeviation[offset + j] + Mean[offset + j];
+                value.y = value.y * StandardDeviation[offset + j + 1] + Mean[offset + j + 1];
                 denormalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
             }
             offset += nTrajectoryDimensions;
             // FutureTrajectoryLocalDirection
-            for (int float2Index = 0; float2Index < nTrajectoryDimensions / 2; float2Index++)
+            for (int j = 0; j < nTrajectoryDimensions; j += 2)
             {
+                int float2Index = j / 2;
                 float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
-                value.x = value.x * StandardDeviation[offset + float2Index] + Mean[offset + float2Index];
-                value.y = value.y * StandardDeviation[offset + float2Index + 1] + Mean[offset + float2Index + 1];
+                value.x = value.x * StandardDeviation[offset + j] + Mean[offset + j];
+                value.y = value.y * StandardDeviation[offset + j + 1] + Mean[offset + j + 1];
                 denormalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
             }
             offset += nTrajectoryDimensions;

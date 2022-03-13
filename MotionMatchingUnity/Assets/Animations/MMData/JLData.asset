@@ -68,3 +68,4 @@ MonoBehaviour:
     MecanimBone: 5
   - Name: LeftToe
     MecanimBone: 19
+  PredictionFrames: 20

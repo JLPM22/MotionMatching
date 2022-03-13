@@ -449,16 +449,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   SimulationBone: {fileID: 845368627}
   NumberPrediction: 3
-  MaxSpeed: 3
-  ResponsivenessPositions: 0.75
-  ResponsivenessDirections: 0.95
+  MaxSpeed: 4
+  ResponsivenessPositions: 0.26
+  ResponsivenessDirections: 0.618
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
   DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
   MaximumAdjustmentRatio: 0.25
-  DoClamping: 0
-  MaxDistanceSimulationBoneAndObject: 1
+  DoClamping: 1
+  MaxDistanceSimulationBoneAndObject: 0.25
   DebugCurrent: 1
   DebugPrediction: 1
   DebugClamping: 1

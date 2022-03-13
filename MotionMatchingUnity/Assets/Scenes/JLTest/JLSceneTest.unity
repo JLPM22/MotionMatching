@@ -521,14 +521,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3263f4711897b924aa892c1da8c94ed6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  SimulationBone: {fileID: 845368627}
   NumberPrediction: 3
-  PredictionFrames: 20
-  MaxSpeed: 3
+  MaxSpeed: 2.5
   ResponsivenessPositions: 0.75
-  ResponsivenessDirections: 0.95
+  ResponsivenessDirections: 0.75
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
-  SimulationBone: {fileID: 845368627}
   DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
   MaximumAdjustmentRatio: 0.25
@@ -657,7 +656,7 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 0.9888991, b: 0.8915094, a: 1}
   m_Intensity: 1
   m_Range: 10
   m_SpotAngle: 30
