@@ -10,6 +10,7 @@ using Unity.Mathematics;
 public class FeatureDebug : MonoBehaviour
 {
     public MotionMatchingData MMData;
+    public int BVHIndex = 0;
     public bool Play;
     public float SpheresRadius = 0.1f;
     public float VectorLength = 1.0f;
@@ -24,13 +25,14 @@ public class FeatureDebug : MonoBehaviour
     private void Awake()
     {
         BVHImporter importer = new BVHImporter();
-        Animation = importer.Import(MMData.BVH, MMData.UnitScale);
+        Animation = importer.Import(MMData.BVHs[BVHIndex], MMData.UnitScale);
 
         // Add Mecanim mapping information
         Animation.UpdateMecanimInformation(MMData);
 
         PoseExtractor poseExtractor = new PoseExtractor();
         PoseSet = new PoseSet();
+        PoseSet.SetSkeleton(Animation.Skeleton);
         if (!poseExtractor.Extract(Animation, PoseSet, MMData))
         {
             Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
@@ -127,7 +129,7 @@ public class FeatureDebug : MonoBehaviour
         if (PoseSet == null) return;
         int currentFrame = CurrentFrame - 1; // OnDrawGizmos is called after Update
         if (currentFrame < 0) currentFrame = Animation.Frames.Length - 1;
-        PoseVector pose = PoseSet.Poses[currentFrame];
+        PoseSet.GetPose(currentFrame, out PoseVector pose);
         FeatureExtractor.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, MMData.HipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
         Gizmos.DrawWireSphere(characterOrigin, SpheresRadius);

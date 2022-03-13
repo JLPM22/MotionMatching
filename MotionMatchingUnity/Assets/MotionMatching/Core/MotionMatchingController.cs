@@ -68,7 +68,7 @@ namespace MotionMatching
             // FPS
             if (LockFPS)
             {
-                Application.targetFrameRate = (int)(1.0f / PoseSet.Clips[0].FrameTime);
+                Application.targetFrameRate = (int)(1.0f / PoseSet.FrameTime);
                 Debug.Log("[Motion Matching] Updated Target FPS: " + Application.targetFrameRate);
             }
             else
@@ -188,7 +188,7 @@ namespace MotionMatching
 
         private void UpdateTransformAndSkeleton(int frameIndex)
         {
-            PoseVector pose = PoseSet.Poses[frameIndex];
+            PoseSet.GetPose(frameIndex, out PoseVector pose);
             // Update Inertialize if enabled
             if (Inertialize)
             {
@@ -264,14 +264,14 @@ namespace MotionMatching
 
         private void OnDestroy()
         {
-            FeatureSet.Dispose();
+            if (FeatureSet != null) FeatureSet.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
         }
 
         private void OnApplicationQuit()
         {
-            FeatureSet.Dispose();
+            if (FeatureSet != null) FeatureSet.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
         }
@@ -296,7 +296,7 @@ namespace MotionMatching
             if (PoseSet == null) return;
 
             int currentFrame = CurrentFrame;
-            PoseVector pose = PoseSet.Poses[currentFrame];
+            PoseSet.GetPose(currentFrame, out PoseVector pose);
             float3 characterOrigin = transform.position;
             float3 characterForward = transform.forward;
             if (DebugCurrent)

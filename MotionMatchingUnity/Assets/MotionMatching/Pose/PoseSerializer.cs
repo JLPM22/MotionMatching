@@ -46,20 +46,22 @@ namespace MotionMatching
                 using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8))
                 {
                     // Serialize Number Animation Clips
-                    writer.Write((uint)poseSet.Clips.Count);
+                    writer.Write((uint)poseSet.NumberClips);
                     // Serialize Animation Clips
-                    foreach (var clip in poseSet.Clips)
+                    for (int i = 0; i < poseSet.NumberClips; ++i)
                     {
+                        PoseSet.AnimationClip clip = poseSet.GetClip(i);
                         writer.Write((uint)clip.Start);
                         writer.Write((uint)clip.End);
                         writer.Write(clip.FrameTime);
                     }
                     // Serialize Number Poses & Number Joints
-                    writer.Write((uint)poseSet.Poses.Count);
+                    writer.Write((uint)poseSet.NumberPoses);
                     writer.Write((uint)poseSet.Skeleton.Joints.Count);
                     // Serialize Poses
-                    foreach (var pose in poseSet.Poses)
+                    for (int i = 0; i < poseSet.NumberPoses; ++i)
                     {
+                        poseSet.GetPose(i, out PoseVector pose);
                         WriteFloat3Array(writer, pose.JointLocalPositions);
                         WriteQuaternionArray(writer, pose.JointLocalRotations);
                         WriteFloat3Array(writer, pose.JointVelocities);
@@ -121,15 +123,13 @@ namespace MotionMatching
                     {
                         // Deserialize Number Animation Clips
                         uint nClips = reader.ReadUInt32();
-                        Debug.Assert(nClips == 1, "Only one animation clip is supported"); // TODO: support more animation clips
                         // Deserialize Animation Clips
-                        float frameTime = 0.0f;
                         for (int i = 0; i < nClips; i++)
                         {
-                            // TODO: for now we ignore animation clips...
                             uint start = reader.ReadUInt32();
                             uint end = reader.ReadUInt32();
-                            frameTime = reader.ReadSingle();
+                            float frameTime = reader.ReadSingle();
+                            poseSet.AddAnimationClipUnsafe(new PoseSet.AnimationClip((int)start, (int)end, frameTime));
                         }
                         // Deserialize Number Poses & Number Joints
                         uint nPoses = reader.ReadUInt32();
@@ -152,7 +152,7 @@ namespace MotionMatching
                             poses[i] = pose;
                         }
                         // Set Poses in poseSet
-                        poseSet.AddClip(poses, frameTime);
+                        poseSet.AddClipUnsafe(poses);
                     }
                 }
             }

@@ -9,6 +9,7 @@ using UnityEngine;
 public class BVHDebug : MonoBehaviour
 {
     public MotionMatchingData MMData;
+    public int BVHIndex = 0;
     public bool Play;
     public float SpheresRadius = 0.1f;
     public bool LockFPS = true;
@@ -20,7 +21,7 @@ public class BVHDebug : MonoBehaviour
     private void Awake()
     {
         BVHImporter importer = new BVHImporter();
-        Animation = importer.Import(MMData.BVH, MMData.UnitScale);
+        Animation = importer.Import(MMData.BVHs[BVHIndex], MMData.UnitScale);
 
         Skeleton = new Transform[Animation.Skeleton.Joints.Count];
         foreach (Skeleton.Joint joint in Animation.Skeleton.Joints)

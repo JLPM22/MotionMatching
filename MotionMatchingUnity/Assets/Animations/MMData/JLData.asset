@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d0bb4b3a7b78d847be4e6490640196f, type: 3}
   m_Name: JLData
   m_EditorClassIdentifier: 
-  BVH: {fileID: 4900000, guid: 1861b3ddede746946859c5bbc1daaad8, type: 3}
+  BVHs:
+  - {fileID: 4900000, guid: 1861b3ddede746946859c5bbc1daaad8, type: 3}
   BVHTPose: {fileID: 4900000, guid: 78dab9649a9f0f542bd0b02cce0f9b54, type: 3}
   UnitScale: 0.01
   HipsForwardLocalVector:

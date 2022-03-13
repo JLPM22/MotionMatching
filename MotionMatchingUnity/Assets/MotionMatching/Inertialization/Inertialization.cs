@@ -41,8 +41,8 @@ namespace MotionMatching
         /// </summary>
         public void PoseTransition(PoseSet poseSet, int sourcePoseIndex, int targetPoseIndex)
         {
-            PoseVector sourcePose = poseSet.Poses[sourcePoseIndex];
-            PoseVector targetPose = poseSet.Poses[targetPoseIndex];
+            poseSet.GetPose(sourcePoseIndex, out PoseVector sourcePose);
+            poseSet.GetPose(targetPoseIndex, out PoseVector targetPose);
             // Set up the inertialization for joint local rotations
             for (int i = 0; i < sourcePose.JointLocalRotations.Length; i++)
             {

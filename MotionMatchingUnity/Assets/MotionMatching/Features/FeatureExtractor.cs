@@ -19,20 +19,16 @@ namespace MotionMatching
         /// </summary>
         public FeatureSet Extract(PoseSet poseSet, float3 hipsForwardLocalVector)
         {
-            int nPoses = poseSet.Poses.Count;
+            int nPoses = poseSet.NumberPoses;
             FeatureVector[] features = new FeatureVector[nPoses];
             if (!poseSet.Skeleton.Find(HumanBodyBones.LeftFoot, out Joint leftFoot)) Debug.Assert(false, "The skeleton does not contain any joint of type HumanBodyBones.LeftFoot");
             if (!poseSet.Skeleton.Find(HumanBodyBones.RightFoot, out Joint rightFoot)) Debug.Assert(false, "The skeleton does not contain any joint of type HumanBodyBones.RightFoot");
             if (!poseSet.Skeleton.Find(HumanBodyBones.Hips, out Joint hips)) Debug.Assert(false, "The skeleton does not contain any joint of type HumanBodyBones.Hips");
-            int i = 0;
-            for (int c = 0; c < poseSet.Clips.Count; c++)
+            for (int poseIndex = 0; poseIndex < nPoses; ++poseIndex)
             {
-                AnimationClip clip = poseSet.Clips[c];
-                // HARDCODED: Trajectory we will use 20, 40 and 60 fps (60Hz) as the original paper
-                for (int clipIt = clip.Start; clipIt < clip.End - 60; clipIt++)
+                if (poseSet.IsPoseValidForPrediction(poseIndex))
                 {
-                    features[i] = ExtractFeature(poseSet, clipIt, clip, leftFoot, rightFoot, hips, hipsForwardLocalVector);
-                    i += 1;
+                    features[poseIndex] = ExtractFeature(poseSet, poseIndex, leftFoot, rightFoot, hips, hipsForwardLocalVector);
                 }
             }
             return new FeatureSet(features);
@@ -41,13 +37,11 @@ namespace MotionMatching
         /// <summary>
         /// Returns the feature vector of the pose at poseIndex, poseIndex cannot be at the end of a clip
         /// </summary>
-        private FeatureVector ExtractFeature(PoseSet poseSet, int poseIndex, AnimationClip clip, Joint leftFoot, Joint rightFoot, Joint hips, float3 hipsForwardLocalVector)
+        private FeatureVector ExtractFeature(PoseSet poseSet, int poseIndex, Joint leftFoot, Joint rightFoot, Joint hips, float3 hipsForwardLocalVector)
         {
             // HARDCODED: Trajectory we will use 20, 40 and 60 fps (60Hz) as the original paper
-            Debug.Assert(poseIndex >= clip.Start, "clip does not contain poseIndex");
-            Debug.Assert(poseIndex < clip.End - 60, "poseIndex cannot be in the last 60 frames of a clip");
-            PoseVector pose = poseSet.Poses[poseIndex];
-            PoseVector poseNext = poseSet.Poses[poseIndex + 1];
+            poseSet.GetPose(poseIndex, out PoseVector pose);
+            poseSet.GetPose(poseIndex + 1, out PoseVector poseNext);
             // Compute local features based on the projection of the hips in the ZX plane (ground)
             // so hips and feet are local to a stable position with respect to the character
             // this solution only works for one type of skeleton
@@ -55,20 +49,23 @@ namespace MotionMatching
             FeatureVector feature = new FeatureVector();
             feature.IsValid = true;
             // Left Foot
-            GetJointFeatures(pose, poseNext, poseSet.Skeleton, leftFoot, characterOrigin, characterForward, clip, out feature.LeftFootLocalPosition, out feature.LeftFootLocalVelocity);
+            GetJointFeatures(pose, poseNext, poseSet.Skeleton, leftFoot, characterOrigin, characterForward, poseSet.FrameTime, out feature.LeftFootLocalPosition, out feature.LeftFootLocalVelocity);
             // Right Foot
-            GetJointFeatures(pose, poseNext, poseSet.Skeleton, rightFoot, characterOrigin, characterForward, clip, out feature.RightFootLocalPosition, out feature.RightFootLocalVelocity);
+            GetJointFeatures(pose, poseNext, poseSet.Skeleton, rightFoot, characterOrigin, characterForward, poseSet.FrameTime, out feature.RightFootLocalPosition, out feature.RightFootLocalVelocity);
             // Hips
-            GetJointFeatures(pose, poseNext, poseSet.Skeleton, hips, characterOrigin, characterForward, clip, out _, out feature.HipsLocalVelocity);
+            GetJointFeatures(pose, poseNext, poseSet.Skeleton, hips, characterOrigin, characterForward, poseSet.FrameTime, out _, out feature.HipsLocalVelocity);
             // Trajectory
             float2 trajectoryLocalPos, trajectoryLocalDir;
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 20], characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
+            poseSet.GetPose(poseIndex + 20, out PoseVector pose20);
+            GetTrajectoryFeatures(pose20, characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(0, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(0, trajectoryLocalDir);
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 40], characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
+            poseSet.GetPose(poseIndex + 40, out PoseVector pose40);
+            GetTrajectoryFeatures(pose40, characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(1, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(1, trajectoryLocalDir);
-            GetTrajectoryFeatures(poseSet.Poses[poseIndex + 60], characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
+            poseSet.GetPose(poseIndex + 60, out PoseVector pose60);
+            GetTrajectoryFeatures(pose60, characterOrigin, characterForward, hipsForwardLocalVector, out trajectoryLocalPos, out trajectoryLocalDir);
             feature.SetFutureTrajectoryLocalPosition(2, trajectoryLocalPos);
             feature.SetFutureTrajectoryLocalDirection(2, trajectoryLocalDir);
             return feature;
@@ -82,13 +79,13 @@ namespace MotionMatching
             futureLocalDirection = math.normalize(new float2(futureLocalDirection3D.x, futureLocalDirection3D.z));
         }
 
-        private void GetJointFeatures(PoseVector pose, PoseVector poseNext, Skeleton skeleton, Joint joint, float3 characterOrigin, float3 characterForward, AnimationClip clip,
+        private void GetJointFeatures(PoseVector pose, PoseVector poseNext, Skeleton skeleton, Joint joint, float3 characterOrigin, float3 characterForward, float frameTime,
                                       out float3 localPosition, out float3 localVelocity)
         {
             float3 worldPosition = ForwardKinematics(skeleton, pose, joint);
             float3 worldPositionNext = ForwardKinematics(skeleton, poseNext, joint);
             localPosition = GetLocalPositionFromCharacter(worldPosition, characterOrigin, characterForward);
-            localVelocity = (GetLocalPositionFromCharacter(worldPositionNext, characterOrigin, characterForward) - localPosition) / clip.FrameTime;
+            localVelocity = (GetLocalPositionFromCharacter(worldPositionNext, characterOrigin, characterForward) - localPosition) / frameTime;
         }
 
         /// <summary>

@@ -19,35 +19,36 @@ namespace MotionMatching
     [CreateAssetMenu(fileName = "MotionMatchingData", menuName = "MotionMatching/MotionMatchingData")]
     public class MotionMatchingData : ScriptableObject
     {
-        // TODO: add a way to add multiple animation clips (BVHs)
-
         // TODO: DefaultHipsForward... detect/suggest automatically? try to fix automatically at BVHAnimation level? 
         // (if it is fixed some code can be deleted... all code related to DefaultHipsForward and in the UpdateTransform() when correcting the hips forward)
 
-        public TextAsset BVH;
+        public List<TextAsset> BVHs;
         public TextAsset BVHTPose; // BVH with a TPose in the first frame, used for retargeting
         public float UnitScale = 1.0f;
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
         public float MinimumPoseVelocity = 0.0001f; // Minimum velocity between poses (less than this value will be clamped to 0)
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
 
-        private BVHAnimation Animation;
+        private List<BVHAnimation> Animations;
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
 
-        public BVHAnimation GetOrImportAnimation()
+        private void ImportAnimationsIfNeeded()
         {
-            if (Animation == null)
+            if (Animations == null)
             {
+                Animations = new List<BVHAnimation>();
                 PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
-                BVHImporter importer = new BVHImporter();
-                Animation = importer.Import(BVH, UnitScale);
+                for (int i = 0; i < BVHs.Count; i++)
+                {
+                    BVHImporter importer = new BVHImporter();
+                    BVHAnimation animation = importer.Import(BVHs[i], UnitScale);
+                    Animations.Add(animation);
+                    // Add Mecanim mapping information
+                    animation.UpdateMecanimInformation(this);
+                }
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
-
-                // Add Mecanim mapping information
-                Animation.UpdateMecanimInformation(this);
             }
-            return Animation;
         }
 
         public PoseSet GetOrImportPoseSet()
@@ -59,18 +60,27 @@ namespace MotionMatching
                 if (!serializer.Deserialize(GetAssetPath(), name, out PoseSet))
                 {
                     Debug.LogError("Failed to read pose set. Creating it in runtime instead.");
-                    BVHAnimation animation = GetOrImportAnimation();
-                    PoseExtractor poseExtractor = new PoseExtractor();
-                    PoseSet = new PoseSet();
-                    if (!poseExtractor.Extract(animation, PoseSet, this))
-                    {
-                        Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
-                        return null;
-                    }
+                    ImportPoseSet();
                 }
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Import");
             }
             return PoseSet;
+        }
+
+        private void ImportPoseSet()
+        {
+            ImportAnimationsIfNeeded();
+            PoseExtractor poseExtractor = new PoseExtractor();
+            PoseSet = new PoseSet();
+            PoseSet.SetSkeleton(Animations[0].Skeleton);
+            for (int i = 0; i < Animations.Count; i++)
+            {
+                BVHAnimation animation = Animations[i];
+                if (!poseExtractor.Extract(animation, PoseSet, this))
+                {
+                    Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation. BVH Index: " + i);
+                }
+            }
         }
 
         public FeatureSet GetOrImportFeatureSet()
@@ -82,13 +92,18 @@ namespace MotionMatching
                 if (!serializer.Deserialize(GetAssetPath(), name, out FeatureSet))
                 {
                     Debug.LogError("Failed to read feature set. Creating it in runtime instead.");
-                    FeatureExtractor featureExtractor = new FeatureExtractor();
-                    FeatureSet = featureExtractor.Extract(PoseSet, HipsForwardLocalVector);
-                    FeatureSet.NormalizeFeatures();
+                    ImportFeatureSet();
                 }
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Import", true);
             }
             return FeatureSet;
+        }
+
+        private void ImportFeatureSet()
+        {
+            FeatureExtractor featureExtractor = new FeatureExtractor();
+            FeatureSet = featureExtractor.Extract(PoseSet, HipsForwardLocalVector);
+            FeatureSet.NormalizeFeatures();
         }
 
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
@@ -137,6 +152,34 @@ namespace MotionMatching
                 MecanimBone = mecanimBone;
             }
         }
+
+        public void GenerateDatabases()
+        {
+            PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
+            ImportPoseSet();
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Extract", true);
+
+            PROFILE.BEGIN_SAMPLE_PROFILING("Pose Serialize", true);
+            PoseSerializer poseSerializer = new PoseSerializer();
+            poseSerializer.Serialize(PoseSet, GetAssetPath(), this.name);
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize", true);
+
+            PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
+            ImportFeatureSet();
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
+
+            PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize", true);
+            FeatureSerializer featureSerializer = new FeatureSerializer();
+            featureSerializer.Serialize(FeatureSet, GetAssetPath(), this.name);
+            if (FeatureSet != null)
+            {
+                FeatureSet.Dispose();
+                FeatureSet = null;
+            }
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize", true);
+
+            AssetDatabase.Refresh();
+        }
     }
 
 #if UNITY_EDITOR
@@ -150,8 +193,25 @@ namespace MotionMatching
             MotionMatchingData data = (MotionMatchingData)target;
 
             // BVH
-            data.BVH = (TextAsset)EditorGUILayout.ObjectField("BVH", data.BVH, typeof(TextAsset), false);
-            if (data.BVH == null) return;
+            EditorGUILayout.LabelField("BVHs", EditorStyles.boldLabel);
+            EditorGUI.indentLevel++;
+            for (int i = 0; i < data.BVHs.Count; i++)
+            {
+                data.BVHs[i] = (TextAsset)EditorGUILayout.ObjectField(data.BVHs[i], typeof(TextAsset), false);
+            }
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Add BVH"))
+            {
+                data.BVHs.Add(null);
+            }
+            if (GUILayout.Button("Remove BVH"))
+            {
+                data.BVHs.RemoveAt(data.BVHs.Count - 1);
+            }
+            EditorGUILayout.EndHorizontal();
+            EditorGUI.indentLevel--;
+            if (data.BVHs == null) return;
+            // BVH TPose
             data.BVHTPose = (TextAsset)EditorGUILayout.ObjectField(new GUIContent("BVH with TPose", "BVH with a TPose in the first frame, used for retargeting"),
                                                                    data.BVHTPose, typeof(TextAsset), false);
             // UnitScale
@@ -174,7 +234,7 @@ namespace MotionMatching
             if (GUILayout.Button("Read Skeleton from BVH"))
             {
                 BVHImporter importer = new BVHImporter();
-                BVHAnimation animation = importer.Import(data.BVH, data.UnitScale);
+                BVHAnimation animation = importer.Import(data.BVHs[0], data.UnitScale);
                 // Check if SkeletonToMecanim should be reset
                 bool shouldResetSkeletonToMecanim = true || data.SkeletonToMecanim.Count != animation.Skeleton.Joints.Count;
                 if (!shouldResetSkeletonToMecanim)
@@ -228,35 +288,7 @@ namespace MotionMatching
             // Generate Databases
             if (GUILayout.Button("Generate Databases"))
             {
-                BVHAnimation animation = data.GetOrImportAnimation();
-
-                PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
-                PoseExtractor poseExtractor = new PoseExtractor();
-                PoseSet poseSet = new PoseSet();
-                if (!poseExtractor.Extract(animation, poseSet, data))
-                {
-                    Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
-                }
-                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Extract", true);
-
-                PROFILE.BEGIN_SAMPLE_PROFILING("Pose Serialize", true);
-                PoseSerializer poseSerializer = new PoseSerializer();
-                poseSerializer.Serialize(poseSet, data.GetAssetPath(), data.name);
-                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize", true);
-
-                PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
-                FeatureExtractor featureExtractor = new FeatureExtractor();
-                FeatureSet featureSet = featureExtractor.Extract(poseSet, data.HipsForwardLocalVector);
-                featureSet.NormalizeFeatures();
-                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
-
-                PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize", true);
-                FeatureSerializer featureSerializer = new FeatureSerializer();
-                featureSerializer.Serialize(featureSet, data.GetAssetPath(), data.name);
-                featureSet.Dispose();
-                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize", true);
-
-                AssetDatabase.Refresh();
+                data.GenerateDatabases();
             }
 
             // Save
