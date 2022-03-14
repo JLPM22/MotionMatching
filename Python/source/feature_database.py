@@ -1,6 +1,5 @@
 import numpy as np
 from pathlib import Path
-import struct
 import serializer_helper as sh
 import pandas as pd
 import plotly.express as px
@@ -12,6 +11,7 @@ class feature_database:
         self.import_features(path)
 
     def import_features(self, path):
+        # Open as read binary
         with open(path, "rb") as f:
             # Read Header
             self.number_feature_vectors = sh.read_uint(f)
