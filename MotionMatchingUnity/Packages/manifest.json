@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.unity.barracuda": "3.0.0",
     "com.unity.collab-proxy": "1.15.12",
     "com.unity.ide.rider": "3.0.12",
     "com.unity.ide.visualstudio": "2.0.14",

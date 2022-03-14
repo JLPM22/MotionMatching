@@ -1,0 +1,99 @@
+using System.Collections;
+using System.Collections.Generic;
+using Unity.Barracuda;
+using Unity.Mathematics;
+using UnityEngine;
+
+namespace MotionMatching
+{
+    public class Decompressor
+    {
+        private Model Model;
+        private IWorker Worker;
+
+        private float[] Input;
+
+        public Decompressor(NNModel modelSource, int inputSize)
+        {
+            Model = ModelLoader.Load(modelSource);
+            Input = new float[inputSize];
+            Worker = WorkerFactory.CreateWorker(WorkerFactory.Type.CSharp, Model);
+        }
+
+        public void Decompress(FeatureVector feature, ref PoseVector pose)
+        {
+            // Copy feature to input
+            for (int i = 0; i < 3; ++i)
+            {
+                float2 pos = feature.GetFutureTrajectoryLocalPosition(i);
+                Input[i * 2] = pos.x;
+                Input[i * 2 + 1] = pos.y;
+            }
+            for (int i = 0; i < 3; ++i)
+            {
+                float2 dit = feature.GetFutureTrajectoryLocalDirection(i);
+                Input[i * 2 + 6] = dit.x;
+                Input[i * 2 + 7] = dit.y;
+            }
+            Input[12] = feature.LeftFootLocalPosition.x;
+            Input[13] = feature.LeftFootLocalPosition.y;
+            Input[14] = feature.LeftFootLocalPosition.z;
+            Input[15] = feature.RightFootLocalPosition.x;
+            Input[16] = feature.RightFootLocalPosition.y;
+            Input[17] = feature.RightFootLocalPosition.z;
+            Input[18] = feature.LeftFootLocalVelocity.x;
+            Input[19] = feature.LeftFootLocalVelocity.y;
+            Input[20] = feature.LeftFootLocalVelocity.z;
+            Input[21] = feature.RightFootLocalVelocity.x;
+            Input[22] = feature.RightFootLocalVelocity.y;
+            Input[23] = feature.RightFootLocalVelocity.z;
+            Input[24] = feature.HipsLocalVelocity.x;
+            Input[25] = feature.HipsLocalVelocity.y;
+            Input[26] = feature.HipsLocalVelocity.z;
+            // Tensor
+            Tensor input = new Tensor(1, 1, 1, Input.Length, Input);
+            // Run
+            Worker.Execute(input);
+            // Copy output
+            Tensor output = Worker.PeekOutput();
+            int count = 0;
+            for (int i = 0; i < 23; ++i)
+            {
+                int index = i * 3 + count;
+                pose.JointLocalPositions[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
+            }
+            count += 23 * 3;
+            for (int i = 0; i < 23; ++i)
+            {
+                int index = i * 4 + count;
+                pose.JointLocalRotations[i] = new quaternion(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2], output[0, 0, 0, index + 3]);
+            }
+            count += 23 * 4;
+            for (int i = 0; i < 23; ++i)
+            {
+                int index = i * 3 + count;
+                pose.JointVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
+            }
+            count += 23 * 3;
+            for (int i = 0; i < 23; ++i)
+            {
+                int index = i * 3 + count;
+                pose.JointAngularVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
+            }
+            count += 23 * 3;
+            pose.RootDisplacement = new float3(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2]);
+            count += 3;
+            pose.RootRotDisplacement = new quaternion(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2], output[0, 0, 0, count + 3]);
+            count += 4;
+            pose.RootRotAngularVelocity = new float3(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2]);
+            count += 3;
+            pose.RootWorld = new float3(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2]);
+            count += 3;
+            pose.RootWorldRot = new quaternion(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2], output[0, 0, 0, count + 3]);
+            count += 4;
+            // Dispose
+            input.Dispose();
+            output.Dispose();
+        }
+    }
+}

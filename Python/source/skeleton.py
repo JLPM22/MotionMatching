@@ -25,7 +25,11 @@ class skeleton:
                 self.joints.append((name, index, parent_index, local_offset, type))
 
 
-skeleton_path = Path(
-    "C:/Users/JLPM/Desktop/Trabajo/TFM/MotionMatching/MotionMatchingUnity/Assets/Animations/MMData/JLData/JLData.mmskeleton"
-)
-sk = skeleton(skeleton_path)
+def test():
+    skeleton_path = Path(
+        "C:/Users/JLPM/Desktop/Trabajo/TFM/MotionMatching/MotionMatchingUnity/Assets/Animations/MMData/JLData/JLData.mmskeleton"
+    )
+    sk = skeleton(skeleton_path)
+
+
+test()

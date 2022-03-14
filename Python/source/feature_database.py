@@ -37,8 +37,10 @@ class feature_database:
                 offset += number_elements * number_floats_type
             # Read Feature Vectors
             feature_vectors = []
+            self.is_valid = np.zeros(self.number_feature_vectors)
             for i in range(self.number_feature_vectors):
                 isValid = sh.read_uint(f) != 0
+                self.is_valid[i] = isValid
                 if isValid:
                     vector = []
                     for j in range(self.features_dimension):
@@ -60,68 +62,72 @@ class feature_database:
         self.feature_vectors = self.feature_vectors * self.stds + self.means
 
 
-feature_database_path = Path(
-    "C:/Users/JLPM/Desktop/Trabajo/TFM/MotionMatching/MotionMatchingUnity/Assets/Animations/MMData/JLData/JLData.mmfeatures"
-)
-features = feature_database(feature_database_path)
-features.denormalize()
+def test():
+    feature_database_path = Path(
+        "C:/Users/JLPM/Desktop/Trabajo/TFM/MotionMatching/MotionMatchingUnity/Assets/Animations/MMData/JLData/JLData.mmfeatures"
+    )
+    features = feature_database(feature_database_path)
+    features.denormalize()
 
-# Visualize feature database
-trajectory_positions = features.get_one_feature(0)
-features_df = pd.DataFrame(trajectory_positions[:, 0:2], columns=["x", "y"])
-features_df["prediction"] = ["p1"] * features_df.shape[0]
-features_df_aux = pd.DataFrame(trajectory_positions[:, 2:4], columns=["x", "y"])
-features_df_aux["prediction"] = ["p2"] * features_df_aux.shape[0]
-features_df = features_df.append(features_df_aux)
-features_df_aux = pd.DataFrame(trajectory_positions[:, 4:6], columns=["x", "y"])
-features_df_aux["prediction"] = ["p3"] * features_df_aux.shape[0]
-features_df = features_df.append(features_df_aux)
-fig = px.scatter(features_df, x="x", y="y", opacity=0.1, facet_col="prediction")
-fig.add_shape(
-    type="rect",
-    x0=-1,
-    y0=-1,
-    x1=1,
-    y1=1,
-    line=dict(color="red", width=2),
-    row="all",
-    col="all",
-)
-fig.show()
+    # Visualize feature database
+    trajectory_positions = features.get_one_feature(0)
+    features_df = pd.DataFrame(trajectory_positions[:, 0:2], columns=["x", "y"])
+    features_df["prediction"] = ["p1"] * features_df.shape[0]
+    features_df_aux = pd.DataFrame(trajectory_positions[:, 2:4], columns=["x", "y"])
+    features_df_aux["prediction"] = ["p2"] * features_df_aux.shape[0]
+    features_df = features_df.append(features_df_aux)
+    features_df_aux = pd.DataFrame(trajectory_positions[:, 4:6], columns=["x", "y"])
+    features_df_aux["prediction"] = ["p3"] * features_df_aux.shape[0]
+    features_df = features_df.append(features_df_aux)
+    fig = px.scatter(features_df, x="x", y="y", opacity=0.1, facet_col="prediction")
+    fig.add_shape(
+        type="rect",
+        x0=-1,
+        y0=-1,
+        x1=1,
+        y1=1,
+        line=dict(color="red", width=2),
+        row="all",
+        col="all",
+    )
+    fig.show()
 
-trajectory_directions = features.get_one_feature(1)
-features_df = pd.DataFrame(trajectory_directions[:, 0:2], columns=["x", "y"])
-features_df["prediction"] = ["p1"] * features_df.shape[0]
-features_df_aux = pd.DataFrame(trajectory_directions[:, 2:4], columns=["x", "y"])
-features_df_aux["prediction"] = ["p2"] * features_df_aux.shape[0]
-features_df = features_df.append(features_df_aux)
-features_df_aux = pd.DataFrame(trajectory_directions[:, 4:6], columns=["x", "y"])
-features_df_aux["prediction"] = ["p3"] * features_df_aux.shape[0]
-features_df = features_df.append(features_df_aux)
-fig = px.scatter(features_df, x="x", y="y", opacity=0.1, facet_col="prediction")
-fig.add_shape(
-    type="rect",
-    x0=-1,
-    y0=-1,
-    x1=1,
-    y1=1,
-    line=dict(color="red", width=2),
-    row="all",
-    col="all",
-)
-fig.show()
+    trajectory_directions = features.get_one_feature(1)
+    features_df = pd.DataFrame(trajectory_directions[:, 0:2], columns=["x", "y"])
+    features_df["prediction"] = ["p1"] * features_df.shape[0]
+    features_df_aux = pd.DataFrame(trajectory_directions[:, 2:4], columns=["x", "y"])
+    features_df_aux["prediction"] = ["p2"] * features_df_aux.shape[0]
+    features_df = features_df.append(features_df_aux)
+    features_df_aux = pd.DataFrame(trajectory_directions[:, 4:6], columns=["x", "y"])
+    features_df_aux["prediction"] = ["p3"] * features_df_aux.shape[0]
+    features_df = features_df.append(features_df_aux)
+    fig = px.scatter(features_df, x="x", y="y", opacity=0.1, facet_col="prediction")
+    fig.add_shape(
+        type="rect",
+        x0=-1,
+        y0=-1,
+        x1=1,
+        y1=1,
+        line=dict(color="red", width=2),
+        row="all",
+        col="all",
+    )
+    fig.show()
 
-left_foot_pos = features.get_one_feature(2)
-features_df = pd.DataFrame(left_foot_pos, columns=["x", "y", "z"])
-fig = px.scatter(features_df, x="x", y="z", opacity=0.1)
-fig.add_shape(
-    type="rect",
-    x0=-1,
-    y0=-1,
-    x1=1,
-    y1=1,
-    line=dict(color="red", width=2),
-    row="all",
-    col="all",
-)
-fig.show()
+    left_foot_pos = features.get_one_feature(2)
+    features_df = pd.DataFrame(left_foot_pos, columns=["x", "y", "z"])
+    fig = px.scatter(features_df, x="x", y="z", opacity=0.1)
+    fig.add_shape(
+        type="rect",
+        x0=-1,
+        y0=-1,
+        x1=1,
+        y1=1,
+        line=dict(color="red", width=2),
+        row="all",
+        col="all",
+    )
+    fig.show()
+
+
+# test()
