@@ -67,4 +67,27 @@ MonoBehaviour:
     MecanimBone: 5
   - Name: LeftToe
     MecanimBone: 19
+  TrajectoryFeatures:
+  - Name: FuturePositions
+    FeatureType: 0
+    Frames: 14000000280000003c000000
+  - Name: FutureDirections
+    FeatureType: 1
+    Frames: 14000000280000003c000000
+  PoseFeatures:
+  - Name: LeftFootPosition
+    FeatureType: 0
+    Bone: 5
+  - Name: LeftFootVelocity
+    FeatureType: 1
+    Bone: 5
+  - Name: RightFootPosition
+    FeatureType: 0
+    Bone: 6
+  - Name: RightFootVelocity
+    FeatureType: 1
+    Bone: 6
+  - Name: HipsVelocity
+    FeatureType: 1
+    Bone: 0
   PredictionFrames: 20
