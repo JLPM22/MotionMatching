@@ -6,13 +6,14 @@ using UnityEngine;
 
 namespace MotionMatching
 {
+    using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
+
     public abstract class MotionMatchingCharacterController : MonoBehaviour
     {
         public event Action<float> OnUpdated;
         public event Action OnInputChangedQuickly;
 
         public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
-        public int NumberPrediction = 3;
 
         // Accumulated Delta Time
         public float AveragedDeltaTime { get; private set; }
@@ -40,8 +41,12 @@ namespace MotionMatching
         public abstract float3 GetWorldInitDirection();
         public abstract float3 GetCurrentPosition();
         public abstract quaternion GetCurrentRotation();
-        public abstract float2 GetWorldPredictedPosition(int index);
-        public abstract float2 GetWorldPredictedDirection(int index);
+        /// <summary>
+        /// Get the prediction in world space of the feature.
+        /// e.g. the feature is the position of the character, and it has frames = { 20, 40, 60}
+        /// if index=1 it will return the position of the character at frame 40
+        /// </summary>
+        public abstract float3 GetWorldSpacePrediction(TrajectoryFeature feature, int index);
 
         private float GetAveragedDeltaTime()
         {

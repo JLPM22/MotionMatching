@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Barracuda;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -23,6 +24,7 @@ namespace MotionMatching
         private float3 InitPos;
         private quaternion InitRot;
         private PoseVector DecompressorPose;
+        private NativeArray<float> CurrentFeatureVector;
 
         private int CurrentFrame;
 
@@ -31,6 +33,7 @@ namespace MotionMatching
             InitPos = transform.position;
             InitRot = transform.rotation;
             CurrentFrame = StartFrame;
+            CurrentFeatureVector = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
             DecompressorPose = new PoseVector();
             DecompressorPose.JointLocalPositions = new float3[23];
             DecompressorPose.JointLocalRotations = new quaternion[23];
@@ -84,7 +87,8 @@ namespace MotionMatching
             else
             {
                 // Decompressor
-                Decompressor.Decompress(FeatureSet.GetFeature(CurrentFrame), ref DecompressorPose);
+                FeatureSet.GetFeature(CurrentFeatureVector, CurrentFrame);
+                Decompressor.Decompress(CurrentFeatureVector, ref DecompressorPose);
                 UpdateTransforms(DecompressorTransforms, DecompressorPose);
             }
         }
@@ -136,11 +140,12 @@ namespace MotionMatching
         private void OnDestroy()
         {
             if (FeatureSet != null) FeatureSet.Dispose();
+            if (CurrentFeatureVector != null && CurrentFeatureVector.IsCreated) CurrentFeatureVector.Dispose();
         }
 
         private void OnApplicationQuit()
         {
-            if (FeatureSet != null) FeatureSet.Dispose();
+            OnDestroy();
         }
 
         private void OnDrawGizmos()

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Barracuda;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -20,36 +21,11 @@ namespace MotionMatching
             Worker = WorkerFactory.CreateWorker(WorkerFactory.Type.CSharp, Model);
         }
 
-        public void Decompress(FeatureVector feature, ref PoseVector pose)
+        public void Decompress(NativeArray<float> feature, ref PoseVector pose)
         {
+            Debug.Assert(feature.Length == Input.Length, "Input size mismatch");
             // Copy feature to input
-            for (int i = 0; i < 3; ++i)
-            {
-                float2 pos = feature.GetFutureTrajectoryLocalPosition(i);
-                Input[i * 2] = pos.x;
-                Input[i * 2 + 1] = pos.y;
-            }
-            for (int i = 0; i < 3; ++i)
-            {
-                float2 dit = feature.GetFutureTrajectoryLocalDirection(i);
-                Input[i * 2 + 6] = dit.x;
-                Input[i * 2 + 7] = dit.y;
-            }
-            Input[12] = feature.LeftFootLocalPosition.x;
-            Input[13] = feature.LeftFootLocalPosition.y;
-            Input[14] = feature.LeftFootLocalPosition.z;
-            Input[15] = feature.RightFootLocalPosition.x;
-            Input[16] = feature.RightFootLocalPosition.y;
-            Input[17] = feature.RightFootLocalPosition.z;
-            Input[18] = feature.LeftFootLocalVelocity.x;
-            Input[19] = feature.LeftFootLocalVelocity.y;
-            Input[20] = feature.LeftFootLocalVelocity.z;
-            Input[21] = feature.RightFootLocalVelocity.x;
-            Input[22] = feature.RightFootLocalVelocity.y;
-            Input[23] = feature.RightFootLocalVelocity.z;
-            Input[24] = feature.HipsLocalVelocity.x;
-            Input[25] = feature.HipsLocalVelocity.y;
-            Input[26] = feature.HipsLocalVelocity.z;
+            for (int i = 0; i < Input.Length; ++i) Input[i] = feature[i];
             // Tensor
             Tensor input = new Tensor(1, 1, 1, Input.Length, Input);
             // Run

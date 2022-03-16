@@ -19,12 +19,21 @@ namespace MotionMatching
         // Private ---
         private List<PoseVector> Poses;
         private List<AnimationClip> Clips;
+        private int MaximumFramesPrediction;
 
-        public PoseSet()
+        public PoseSet(MotionMatchingData mmData)
         {
             Poses = new List<PoseVector>();
             Clips = new List<AnimationClip>();
             FrameTime = -1.0f;
+            MaximumFramesPrediction = 0;
+            foreach (var t in mmData.TrajectoryFeatures)
+            {
+                if (t.FramesPrediction[t.FramesPrediction.Length - 1] > MaximumFramesPrediction)
+                {
+                    MaximumFramesPrediction = t.FramesPrediction[t.FramesPrediction.Length - 1];
+                }
+            }
         }
 
         public void SetSkeleton(Skeleton skeleton)
@@ -83,7 +92,7 @@ namespace MotionMatching
                 AnimationClip clip = Clips[i];
                 if (poseIndex >= clip.Start && poseIndex < clip.End)
                 {
-                    if (poseIndex >= clip.End - 60) isPredictionSafe = false;
+                    if (poseIndex >= clip.End - MaximumFramesPrediction) isPredictionSafe = false;
                 }
             }
             return isPredictionSafe;
@@ -91,7 +100,7 @@ namespace MotionMatching
 
         /// <summary>
         /// Returns the pose at the given index.
-        /// HARDCODED: return true if the pose can be used for prediction (i.e. the pose is not in the last 60 frames of the clip)
+        /// Teturn true if the pose can be used for prediction
         /// </summary>
         public bool GetPose(int poseIndex, out PoseVector pose)
         {

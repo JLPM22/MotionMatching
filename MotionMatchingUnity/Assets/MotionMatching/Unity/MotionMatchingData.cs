@@ -29,8 +29,6 @@ namespace MotionMatching
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
         public List<TrajectoryFeature> TrajectoryFeatures = new List<TrajectoryFeature>();
         public List<PoseFeature> PoseFeatures = new List<PoseFeature>();
-        // HARDCODED: Only 3 predictions allowed for now
-        public int PredictionFrames = 20;
 
         private List<BVHAnimation> Animations;
         private PoseSet PoseSet;
@@ -60,7 +58,7 @@ namespace MotionMatching
             {
                 PROFILE.BEGIN_SAMPLE_PROFILING("Pose Import");
                 PoseSerializer serializer = new PoseSerializer();
-                if (!serializer.Deserialize(GetAssetPath(), name, out PoseSet))
+                if (!serializer.Deserialize(GetAssetPath(), name, this, out PoseSet))
                 {
                     Debug.LogError("Failed to read pose set. Creating it in runtime instead.");
                     ImportPoseSet();
@@ -73,7 +71,7 @@ namespace MotionMatching
         private void ImportPoseSet()
         {
             ImportAnimationsIfNeeded();
-            PoseSet = new PoseSet();
+            PoseSet = new PoseSet(this);
             PoseSet.SetSkeleton(Animations[0].Skeleton);
             for (int i = 0; i < Animations.Count; i++)
             {
@@ -92,7 +90,7 @@ namespace MotionMatching
             {
                 PROFILE.BEGIN_SAMPLE_PROFILING("Feature Import", true);
                 FeatureSerializer serializer = new FeatureSerializer();
-                if (!serializer.Deserialize(GetAssetPath(), name, out FeatureSet))
+                if (!serializer.Deserialize(GetAssetPath(), name, this, out FeatureSet))
                 {
                     Debug.LogError("Failed to read feature set. Creating it in runtime instead.");
                     ImportFeatureSet();
@@ -104,8 +102,8 @@ namespace MotionMatching
 
         private void ImportFeatureSet()
         {
-            FeatureExtractor featureExtractor = new FeatureExtractor();
-            FeatureSet = featureExtractor.Extract(PoseSet, this);
+            FeatureSet = new FeatureSet(this, PoseSet.NumberPoses);
+            FeatureSet.Extract(PoseSet, this);
             FeatureSet.NormalizeFeatures();
         }
 
@@ -166,7 +164,9 @@ namespace MotionMatching
             }
             public string Name;
             public Type FeatureType;
-            public int[] Frames = new int[0]; // Number of frames in the future for each point of the trajectory
+            public int[] FramesPrediction = new int[0]; // Number of frames in the future for each point of the trajectory
+            public HumanBodyBones Bone; // Bone used to compute the trajectory in the feature set
+            public bool Project; // Project the trajectory onto the ground plane
         }
 
         [System.Serializable]
@@ -199,7 +199,7 @@ namespace MotionMatching
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize", true);
             FeatureSerializer featureSerializer = new FeatureSerializer();
-            featureSerializer.Serialize(FeatureSet, GetAssetPath(), this.name);
+            featureSerializer.Serialize(FeatureSet, this, GetAssetPath(), this.name);
             if (FeatureSet != null)
             {
                 FeatureSet.Dispose();
@@ -260,10 +260,6 @@ namespace MotionMatching
                 if (GUILayout.Button("Fix")) data.HipsForwardLocalVector = math.normalize(data.HipsForwardLocalVector);
                 EditorGUILayout.EndHorizontal();
             }
-
-            // Prediction Frames
-            EditorGUILayout.LabelField("Prediction Frames", EditorStyles.boldLabel);
-            data.PredictionFrames = EditorGUILayout.IntField("Prediction Frames", data.PredictionFrames);
 
             // SkeletonToMecanim
             if (GUILayout.Button("Read Skeleton from BVH"))
@@ -331,6 +327,7 @@ namespace MotionMatching
                 for (int i = 0; i < data.TrajectoryFeatures.Count; i++)
                 {
                     MotionMatchingData.TrajectoryFeature trajectoryFeature = data.TrajectoryFeatures[i];
+                    // Header
                     EditorGUILayout.BeginVertical(GUI.skin.box);
                     EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.LabelField((i + 1).ToString());
@@ -340,27 +337,34 @@ namespace MotionMatching
                         data.TrajectoryFeatures.RemoveAt(i--);
                     }
                     EditorGUILayout.EndHorizontal();
+                    // Name
                     trajectoryFeature.Name = EditorGUILayout.TextField("Name", trajectoryFeature.Name);
+                    // Feature Type
                     trajectoryFeature.FeatureType = (MotionMatchingData.TrajectoryFeature.Type)EditorGUILayout.EnumPopup("Type", trajectoryFeature.FeatureType);
-                    EditorGUILayout.LabelField("Frames");
+                    // Frames
+                    EditorGUILayout.LabelField("Frames Prediction");
                     EditorGUILayout.BeginHorizontal();
-                    for (int j = 0; j < trajectoryFeature.Frames.Length; j++)
+                    for (int j = 0; j < trajectoryFeature.FramesPrediction.Length; j++)
                     {
-                        trajectoryFeature.Frames[j] = EditorGUILayout.IntField(trajectoryFeature.Frames[j]);
+                        trajectoryFeature.FramesPrediction[j] = EditorGUILayout.IntField(trajectoryFeature.FramesPrediction[j]);
                     }
                     if (GUILayout.Button("Add"))
                     {
-                        int[] newFrames = new int[trajectoryFeature.Frames.Length + 1];
-                        for (int j = 0; j < trajectoryFeature.Frames.Length; j++) newFrames[j] = trajectoryFeature.Frames[j];
-                        trajectoryFeature.Frames = newFrames;
+                        int[] newFrames = new int[trajectoryFeature.FramesPrediction.Length + 1];
+                        for (int j = 0; j < trajectoryFeature.FramesPrediction.Length; j++) newFrames[j] = trajectoryFeature.FramesPrediction[j];
+                        trajectoryFeature.FramesPrediction = newFrames;
                     }
-                    if (trajectoryFeature.Frames.Length > 0 && GUILayout.Button("Remove"))
+                    if (trajectoryFeature.FramesPrediction.Length > 0 && GUILayout.Button("Remove"))
                     {
-                        int[] newFrames = new int[trajectoryFeature.Frames.Length - 1];
-                        for (int j = 0; j < trajectoryFeature.Frames.Length - 1; j++) newFrames[j] = trajectoryFeature.Frames[j];
-                        trajectoryFeature.Frames = newFrames;
+                        int[] newFrames = new int[trajectoryFeature.FramesPrediction.Length - 1];
+                        for (int j = 0; j < trajectoryFeature.FramesPrediction.Length - 1; j++) newFrames[j] = trajectoryFeature.FramesPrediction[j];
+                        trajectoryFeature.FramesPrediction = newFrames;
                     }
                     EditorGUILayout.EndHorizontal();
+                    // Bone
+                    trajectoryFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Bone", trajectoryFeature.Bone);
+                    // Project
+                    trajectoryFeature.Project = EditorGUILayout.Toggle("Project", trajectoryFeature.Project);
                     EditorGUILayout.EndVertical();
                 }
                 if (GUILayout.Button("Add Trajectory Feature"))
@@ -371,6 +375,7 @@ namespace MotionMatching
                 for (int i = 0; i < data.PoseFeatures.Count; i++)
                 {
                     MotionMatchingData.PoseFeature poseFeature = data.PoseFeatures[i];
+                    // Header
                     EditorGUILayout.BeginVertical(GUI.skin.box);
                     EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.LabelField((i + 1).ToString());
@@ -380,6 +385,7 @@ namespace MotionMatching
                         data.PoseFeatures.RemoveAt(i--);
                     }
                     EditorGUILayout.EndHorizontal();
+                    //  Properties
                     poseFeature.Name = EditorGUILayout.TextField("Name", poseFeature.Name);
                     poseFeature.FeatureType = (MotionMatchingData.PoseFeature.Type)EditorGUILayout.EnumPopup("Type", poseFeature.FeatureType);
                     poseFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup(poseFeature.Bone);

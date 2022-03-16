@@ -7,29 +7,112 @@ using Unity.Mathematics;
 
 namespace MotionMatching
 {
+    using Joint = Skeleton.Joint;
+
     /// <summary>
     /// Stores all features vectors of all poses for Motion Matching
     /// </summary>
     public class FeatureSet
     {
-        public int NumberFeatureVectors { get { return Features.Length; } }
+        public int NumberFeatureVectors { get; private set; } // Total number of feature vectors
+        public int NumberTrajectoryFeatures { get; private set; } // Number of different trajectory features (e.g. 2 = position and direction)
+        private readonly int[] NumberPredictionsTrajectory; // Size: NumberTrajectoryFeatures. Number of predictions per trajectory feature (e.g. {3, 4}, means 3 predictions for position and 4 for direction)
+        private readonly int[] NumberFloatsTrajectory; // Size: NumberTrajectoryFeatures. Number of floats per trajectory feature (e.g. {2, 3}, means 2 floats for position (float2) and 3 for direction (float3))
+        private readonly int[] TrajectoryOffset; // Size: NumberTrajectoryFeatures. Offset of the trajectory feature in the feature vector (e.g. {0, 6}, means the position feature is at the beginning of the feature vector, and the direction feature starts at the sixth float)
+        public int NumberPoseFeatures { get; private set; } // Number of different pose features (e.g. 3 = leftFootPosition, leftFootVelocity, hipsVelocity)
+        private const int NumberFloatsPose = 3; // Number of floats per pose feature (e.g. 3 = float3)
+        public int PoseOffset { get; private set; } // Offset of the pose feature in the feature vector (e.g. 3 = leftFootPosition is at the third float)
+        public int FeatureSize { get; private set; } // Total size of a feature vector
 
-        private NativeArray<FeatureVector> Features;
+        private NativeArray<bool> Valid; // TODO: Refactor to avoid needing this
+        private NativeArray<float> Features; // Each feature: Trajectory + Pose
         private float[] Mean;
         private float[] StandardDeviation;
 
-        public FeatureSet(FeatureVector[] features)
+        public FeatureSet(MotionMatchingData mmData, int numberFeatureVectors)
         {
-            Features = new NativeArray<FeatureVector>(features.Length, Allocator.Persistent);
-            for (int i = 0; i < features.Length; i++) Features[i] = features[i];
+            NumberFeatureVectors = numberFeatureVectors;
+
+            NumberTrajectoryFeatures = mmData.TrajectoryFeatures.Count;
+            NumberPredictionsTrajectory = new int[NumberTrajectoryFeatures];
+            NumberFloatsTrajectory = new int[NumberTrajectoryFeatures];
+            TrajectoryOffset = new int[NumberTrajectoryFeatures];
+            int offset = 0;
+            for (int i = 0; i < NumberTrajectoryFeatures; i++)
+            {
+                TrajectoryOffset[i] = offset;
+                NumberPredictionsTrajectory[i] = mmData.TrajectoryFeatures[i].FramesPrediction.Length;
+                NumberFloatsTrajectory[i] = mmData.TrajectoryFeatures[i].Project ? 2 : 3;
+                offset += NumberPredictionsTrajectory[i] * NumberFloatsTrajectory[i];
+            }
+            PoseOffset = offset;
+            NumberPoseFeatures = mmData.PoseFeatures.Count;
+            FeatureSize = offset; // Trajectory
+            FeatureSize += NumberPoseFeatures * NumberFloatsPose; // + Pose
         }
 
-        public FeatureVector GetFeature(int index)
+        public bool IsValidFeature(int featureIndex)
         {
-            return Features[index];
+            return Valid[featureIndex];
         }
 
-        public NativeArray<FeatureVector> GetFeatures()
+        public void GetFeature(NativeArray<float> feature, int featureIndex)
+        {
+            Debug.Assert(feature.Length == FeatureSize, "Feature vector has wrong size");
+            for (int i = 0; i < FeatureSize; i++)
+            {
+                feature[i] = Features[featureIndex * FeatureSize + i];
+            }
+        }
+
+        public float2 GetProjectedTrajectoryFeature(int featureIndex, int trajectoryFeatureIndex, int predictionIndex, bool denormalize = false)
+        {
+            int featureOffset = TrajectoryOffset[trajectoryFeatureIndex] + predictionIndex * NumberFloatsTrajectory[trajectoryFeatureIndex];
+            int startIndex = featureIndex * FeatureSize + featureOffset;
+            float x = Features[startIndex];
+            float y = Features[startIndex + 1];
+            if (denormalize)
+            {
+                x = x * StandardDeviation[featureOffset] + Mean[featureOffset];
+                y = y * StandardDeviation[featureOffset + 1] + Mean[featureOffset + 1];
+            }
+            return new float2(x, y);
+        }
+        public float3 GetTrajectoryFeature(int featureIndex, int trajectoryFeatureIndex, int predictionIndex, bool denormalize = false)
+        {
+            int featureOffset = TrajectoryOffset[trajectoryFeatureIndex] + predictionIndex * NumberFloatsTrajectory[trajectoryFeatureIndex];
+            int startIndex = featureIndex * FeatureSize + featureOffset;
+            float x = Features[startIndex];
+            float y = Features[startIndex + 1];
+            float z = Features[startIndex + 2];
+            if (denormalize)
+            {
+                x = x * StandardDeviation[featureOffset] + Mean[featureOffset];
+                y = y * StandardDeviation[featureOffset + 1] + Mean[featureOffset + 1];
+            }
+            return new float3(x, y, z);
+        }
+        public float3 GetPoseFeature(int featureIndex, int poseFeatureIndex, bool denormalize = false)
+        {
+            int featureOffset = PoseOffset + poseFeatureIndex * NumberFloatsPose;
+            int startIndex = featureIndex * FeatureSize + featureOffset;
+            float x = Features[startIndex];
+            float y = Features[startIndex + 1];
+            float z = Features[startIndex + 2];
+            if (denormalize)
+            {
+                x = x * StandardDeviation[featureOffset] + Mean[featureOffset];
+                y = y * StandardDeviation[featureOffset + 1] + Mean[featureOffset + 1];
+                z = z * StandardDeviation[featureOffset + 2] + Mean[featureOffset + 2];
+            }
+            return new float3(x, y, z);
+        }
+
+        public NativeArray<bool> GetValid()
+        {
+            return Valid;
+        }
+        public NativeArray<float> GetFeatures()
         {
             return Features;
         }
@@ -43,214 +126,72 @@ namespace MotionMatching
             return StandardDeviation[dimension];
         }
 
+        // Deserliaze ---------------------------------------
+        public void SetValid(NativeArray<bool> valid)
+        {
+            Debug.Assert(valid.Length == NumberFeatureVectors, "Valid array has wrong size");
+            Valid = valid;
+        }
+        public void SetFeatures(NativeArray<float> features)
+        {
+            Debug.Assert(features.Length == NumberFeatureVectors * FeatureSize, "Feature vector has wrong size");
+            Features = features;
+        }
         public void SetMean(float[] mean)
         {
+            Debug.Assert(mean.Length == FeatureSize, "Mean array has wrong size");
             Mean = mean;
         }
         public void SetStandardDeviation(float[] standardDeviation)
         {
+            Debug.Assert(standardDeviation.Length == FeatureSize, "Standard deviation array has wrong size");
             StandardDeviation = standardDeviation;
         }
+        // --------------------------------------------------
 
         /// <summary>
-        /// Returns a copty of the feature vector with only the trajectory features normalized
+        /// Normalizes the trajectory features (pose features remaing untouched)
         /// </summary>
-        public FeatureVector NormalizeTrajectory(FeatureVector featureVector)
+        public void NormalizeTrajectory(NativeArray<float> featureVector)
         {
             Debug.Assert(Mean != null, "Mean is not initialized");
             Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
+            Debug.Assert(featureVector.Length == FeatureSize, "Feature vector size does not match");
 
-            const int nTrajectoryDimensions = 6;
-
-            FeatureVector normalizedFeatureVector = new FeatureVector();
-            normalizedFeatureVector.IsValid = featureVector.IsValid;
-            normalizedFeatureVector.LeftFootLocalPosition = featureVector.LeftFootLocalPosition;
-            normalizedFeatureVector.RightFootLocalPosition = featureVector.RightFootLocalPosition;
-            normalizedFeatureVector.LeftFootLocalVelocity = featureVector.LeftFootLocalVelocity;
-            normalizedFeatureVector.RightFootLocalVelocity = featureVector.RightFootLocalVelocity;
-            normalizedFeatureVector.HipsLocalVelocity = featureVector.HipsLocalVelocity;
-
-            int offset = 0;
-            // FutureTrajectoryLocalPosition
-            for (int j = 0; j < nTrajectoryDimensions; j += 2)
+            for (int i = 0; i < PoseOffset; i++)
             {
-                int float2Index = j / 2;
-                float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
-                value.x = (value.x - Mean[offset + j]) / StandardDeviation[offset + j];
-                value.y = (value.y - Mean[offset + j + 1]) / StandardDeviation[offset + j + 1];
-                normalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
+                featureVector[i] = (featureVector[i] - Mean[i]) / StandardDeviation[i];
             }
-            offset += nTrajectoryDimensions;
-            // FutureTrajectoryLocalDirection
-            for (int j = 0; j < nTrajectoryDimensions; j += 2)
-            {
-                int float2Index = j / 2;
-                float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
-                value.x = (value.x - Mean[offset + j]) / StandardDeviation[offset + j];
-                value.y = (value.y - Mean[offset + j + 1]) / StandardDeviation[offset + j + 1];
-                normalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
-            }
-            // offset += nTrajectoryDimensions;
-
-            return normalizedFeatureVector;
         }
 
         /// <summary>
-        /// Returns a copy of the feature vector with normalized features
+        /// Normalizes all features (trajectory + pose)
         /// </summary>
-        public FeatureVector NormalizeFeatureVector(FeatureVector featureVector)
+        public void NormalizeFeatureVector(NativeArray<float> featureVector)
         {
             Debug.Assert(Mean != null, "Mean is not initialized");
             Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
+            Debug.Assert(featureVector.Length == FeatureSize, "Feature vector size does not match");
 
-            const int nTrajectoryDimensions = 6;
-            const int nPosAndVelDimensions = 3;
-
-            FeatureVector normalizedFeatureVector = new FeatureVector();
-            normalizedFeatureVector.IsValid = featureVector.IsValid;
-
-            int offset = 0;
-            // FutureTrajectoryLocalPosition
-            for (int j = 0; j < nTrajectoryDimensions; j += 2)
+            for (int i = 0; i < featureVector.Length; i++)
             {
-                int float2Index = j / 2;
-                float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
-                value.x = (value.x - Mean[offset + j]) / StandardDeviation[offset + j];
-                value.y = (value.y - Mean[offset + j + 1]) / StandardDeviation[offset + j + 1];
-                normalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
+                featureVector[i] = (featureVector[i] - Mean[i]) / StandardDeviation[i];
             }
-            offset += nTrajectoryDimensions;
-            // FutureTrajectoryLocalDirection
-            for (int j = 0; j < nTrajectoryDimensions; j += 2)
-            {
-                int float2Index = j / 2;
-                float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
-                value.x = (value.x - Mean[offset + j]) / StandardDeviation[offset + j];
-                value.y = (value.y - Mean[offset + j + 1]) / StandardDeviation[offset + j + 1];
-                normalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
-            }
-            offset += nTrajectoryDimensions;
-            // LeftFootLocalPosition
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.LeftFootLocalPosition[j];
-                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
-                normalizedFeatureVector.LeftFootLocalPosition[j] = value;
-            }
-            offset += nPosAndVelDimensions;
-            // RightFootLocalPosition
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.RightFootLocalPosition[j];
-                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
-                normalizedFeatureVector.RightFootLocalPosition[j] = value;
-            }
-            offset += nPosAndVelDimensions;
-            // LeftFootLocalVelocity
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.LeftFootLocalVelocity[j];
-                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
-                normalizedFeatureVector.LeftFootLocalVelocity[j] = value;
-            }
-            offset += nPosAndVelDimensions;
-            // RightFootLocalVelocity
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.RightFootLocalVelocity[j];
-                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
-                normalizedFeatureVector.RightFootLocalVelocity[j] = value;
-            }
-            offset += nPosAndVelDimensions;
-            // HipsLocalVelocity
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.HipsLocalVelocity[j];
-                value = (value - Mean[offset + j]) / StandardDeviation[offset + j];
-                normalizedFeatureVector.HipsLocalVelocity[j] = value;
-            }
-            // offset += nPosAndVelDimensions;
-
-            return normalizedFeatureVector;
         }
 
         /// <summary>
         /// Returns a copy of the feature vector with the features before normalization
         /// </summary>
-        public FeatureVector DenormalizeFeatureVector(FeatureVector featureVector)
+        public void DenormalizeFeatureVector(NativeArray<float> featureVector)
         {
             Debug.Assert(Mean != null, "Mean is not initialized");
             Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
+            Debug.Assert(featureVector.Length == FeatureSize, "Feature vector size does not match");
 
-            const int nTrajectoryDimensions = 6;
-            const int nPosAndVelDimensions = 3;
-
-            FeatureVector denormalizedFeatureVector = new FeatureVector();
-            denormalizedFeatureVector.IsValid = featureVector.IsValid;
-
-            int offset = 0;
-            // FutureTrajectoryLocalPosition
-            for (int j = 0; j < nTrajectoryDimensions; j += 2)
+            for (int i = 0; i < featureVector.Length; i++)
             {
-                int float2Index = j / 2;
-                float2 value = featureVector.GetFutureTrajectoryLocalPosition(float2Index);
-                value.x = value.x * StandardDeviation[offset + j] + Mean[offset + j];
-                value.y = value.y * StandardDeviation[offset + j + 1] + Mean[offset + j + 1];
-                denormalizedFeatureVector.SetFutureTrajectoryLocalPosition(float2Index, value);
+                featureVector[i] = featureVector[i] * StandardDeviation[i] + Mean[i];
             }
-            offset += nTrajectoryDimensions;
-            // FutureTrajectoryLocalDirection
-            for (int j = 0; j < nTrajectoryDimensions; j += 2)
-            {
-                int float2Index = j / 2;
-                float2 value = featureVector.GetFutureTrajectoryLocalDirection(float2Index);
-                value.x = value.x * StandardDeviation[offset + j] + Mean[offset + j];
-                value.y = value.y * StandardDeviation[offset + j + 1] + Mean[offset + j + 1];
-                denormalizedFeatureVector.SetFutureTrajectoryLocalDirection(float2Index, value);
-            }
-            offset += nTrajectoryDimensions;
-            // LeftFootLocalPosition
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.LeftFootLocalPosition[j];
-                value = value * StandardDeviation[offset + j] + Mean[offset + j];
-                denormalizedFeatureVector.LeftFootLocalPosition[j] = value;
-            }
-            offset += nPosAndVelDimensions;
-            // RightFootLocalPosition
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.RightFootLocalPosition[j];
-                value = value * StandardDeviation[offset + j] + Mean[offset + j];
-                denormalizedFeatureVector.RightFootLocalPosition[j] = value;
-            }
-            offset += nPosAndVelDimensions;
-            // LeftFootLocalVelocity
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.LeftFootLocalVelocity[j];
-                value = value * StandardDeviation[offset + j] + Mean[offset + j];
-                denormalizedFeatureVector.LeftFootLocalVelocity[j] = value;
-            }
-            offset += nPosAndVelDimensions;
-            // RightFootLocalVelocity
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.RightFootLocalVelocity[j];
-                value = value * StandardDeviation[offset + j] + Mean[offset + j];
-                denormalizedFeatureVector.RightFootLocalVelocity[j] = value;
-            }
-            offset += nPosAndVelDimensions;
-            // HipsLocalVelocity
-            for (int j = 0; j < nPosAndVelDimensions; j++)
-            {
-                float value = featureVector.HipsLocalVelocity[j];
-                value = value * StandardDeviation[offset + j] + Mean[offset + j];
-                denormalizedFeatureVector.HipsLocalVelocity[j] = value;
-            }
-            // offset += nPosAndVelDimensions;
-
-            return denormalizedFeatureVector;
         }
 
         /// <summary>
@@ -262,22 +203,22 @@ namespace MotionMatching
             ComputeMeanAndStandardDeviation();
 
             // Normalize all feature vectors
-            for (int i = 0; i < Features.Length; i++)
+            for (int i = 0; i < NumberFeatureVectors; i++)
             {
-                if (Features[i].IsValid)
+                int featureIndex = i * FeatureSize;
+                if (Valid[i])
                 {
-                    Features[i] = NormalizeFeatureVector(Features[i]);
+                    for (int j = 0; j < FeatureSize; j++)
+                    {
+                        Features[featureIndex + j] = (Features[featureIndex + j] - Mean[j]) / StandardDeviation[j];
+                    }
                 }
             }
         }
 
         private void ComputeMeanAndStandardDeviation()
         {
-            const int nFeaturesTrajectory = 2;
-            const int nFeaturesPosAndVel = 5;
-            const int nTrajectoryDimensions = 6;
-            const int nPosAndVelDimensions = 3;
-            const int nTotalDimensions = nFeaturesTrajectory * nTrajectoryDimensions + nFeaturesPosAndVel * nPosAndVelDimensions;
+            int nTotalDimensions = FeatureSize;
             // Mean for each dimension
             Mean = new float[nTotalDimensions];
             // Variance for each dimension
@@ -286,174 +227,267 @@ namespace MotionMatching
             StandardDeviation = new float[nTotalDimensions];
 
             // Compute Means for each dimension of each feature
-            Span<int> counts = stackalloc int[nTotalDimensions]; // counts is only updated in the first loop (then the values are always the same)
-            int offset = 0;
-            for (int i = 0; i < Features.Length; i++)
+            int count = 0;
+            for (int i = 0; i < NumberFeatureVectors; i++)
             {
-                if (Features[i].IsValid)
+                if (Valid[i])
                 {
-                    // Future Trajectory Local Position
-                    for (int j = 0; j < nTrajectoryDimensions; j++)
+                    int featureIndex = i * FeatureSize;
+                    for (int j = 0; j < nTotalDimensions; j++)
                     {
-                        int float2Index = j / 2;
-                        int floatIndex = j % 2;
-                        Mean[offset + j] += Features[i].GetFutureTrajectoryLocalPosition(float2Index)[floatIndex];
-                        counts[offset + j]++;
+                        Mean[j] += Features[featureIndex + j];
                     }
-                    offset += nTrajectoryDimensions;
-                    // Future Trajectory Local Direction
-                    for (int j = 0; j < nTrajectoryDimensions; j++)
-                    {
-                        int float2Index = j / 2;
-                        int floatIndex = j % 2;
-                        Mean[offset + j] += Features[i].GetFutureTrajectoryLocalDirection(float2Index)[floatIndex];
-                        counts[offset + j]++;
-                    }
-                    offset += nTrajectoryDimensions;
-                    // Left Foot Local Position
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        Mean[offset + j] += Features[i].LeftFootLocalPosition[j];
-                        counts[offset + j]++;
-                    }
-                    offset += nPosAndVelDimensions;
-                    // Right Foot Local Position
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        Mean[offset + j] += Features[i].RightFootLocalPosition[j];
-                        counts[offset + j]++;
-                    }
-                    offset += nPosAndVelDimensions;
-                    // Left Foot Local Velocity
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        Mean[offset + j] += Features[i].LeftFootLocalVelocity[j];
-                        counts[offset + j]++;
-                    }
-                    offset += nPosAndVelDimensions;
-                    // Right Foot Local Velocity
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        Mean[offset + j] += Features[i].RightFootLocalVelocity[j];
-                        counts[offset + j]++;
-                    }
-                    offset += nPosAndVelDimensions;
-                    // Hips Local Velocity
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        Mean[offset + j] += Features[i].HipsLocalVelocity[j];
-                        counts[offset + j]++;
-                    }
-                    offset = 0;
+                    count += 1;
                 }
             }
             for (int i = 0; i < nTotalDimensions; i++)
             {
-                Mean[i] /= counts[i];
+                Mean[i] /= count;
             }
-
             // Compute Variance for each dimension of each feature - variance = (x - mean)^2 / n
-            offset = 0;
-            for (int i = 0; i < Features.Length; i++)
+            for (int i = 0; i < NumberFeatureVectors; i++)
             {
-                if (Features[i].IsValid)
+                int featureIndex = i * FeatureSize;
+                if (Valid[i])
                 {
-                    // Future Trajectory Local Position
-                    for (int j = 0; j < nTrajectoryDimensions; j++)
+                    for (int j = 0; j < nTotalDimensions; j++)
                     {
-                        int float2Index = j / 2;
-                        int floatIndex = j % 2;
-                        float x = Features[i].GetFutureTrajectoryLocalPosition(float2Index)[floatIndex] - Mean[offset + j];
-                        variance[offset + j] += x * x;
+                        float diff = Features[featureIndex + j] - Mean[j];
+                        variance[j] += diff * diff;
                     }
-                    offset += nTrajectoryDimensions;
-                    // Future Trajectory Local Direction
-                    for (int j = 0; j < nTrajectoryDimensions; j++)
-                    {
-                        int float2Index = j / 2;
-                        int floatIndex = j % 2;
-                        float x = Features[i].GetFutureTrajectoryLocalDirection(float2Index)[floatIndex] - Mean[offset + j];
-                        variance[offset + j] += x * x;
-                    }
-                    offset += nTrajectoryDimensions;
-                    // Left Foot Local Position
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        float x = Features[i].LeftFootLocalPosition[j] - Mean[offset + j];
-                        variance[offset + j] += x * x;
-                    }
-                    offset += nPosAndVelDimensions;
-                    // Right Foot Local Position
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        float x = Features[i].RightFootLocalPosition[j] - Mean[offset + j];
-                        variance[offset + j] += x * x;
-                    }
-                    offset += nPosAndVelDimensions;
-                    // Left Foot Local Velocity
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        float x = Features[i].LeftFootLocalVelocity[j] - Mean[offset + j];
-                        variance[offset + j] += x * x;
-                    }
-                    offset += nPosAndVelDimensions;
-                    // Right Foot Local Velocity
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        float x = Features[i].RightFootLocalVelocity[j] - Mean[offset + j];
-                        variance[offset + j] += x * x;
-                    }
-                    offset += nPosAndVelDimensions;
-                    // Hips Local Velocity
-                    for (int j = 0; j < nPosAndVelDimensions; j++)
-                    {
-                        float x = Features[i].HipsLocalVelocity[j] - Mean[offset + j];
-                        variance[offset + j] += x * x;
-                    }
-                    offset = 0;
                 }
             }
             for (int i = 0; i < nTotalDimensions; i++)
             {
-                variance[i] /= counts[i];
+                variance[i] /= count;
             }
 
             // Compute Standard Deviations of a feature as the average std across all dimensions - std = sqrt(variance)
-            offset = 0;
-            for (int i = 0; i < nFeaturesTrajectory; i++)
+            for (int d = 0; d < NumberTrajectoryFeatures; d++)
             {
+                int offset = TrajectoryOffset[d];
+                int nDimensions = NumberPredictionsTrajectory[d] * NumberFloatsTrajectory[d];
                 float std = 0;
-                for (int j = 0; j < nTrajectoryDimensions; j++)
+                for (int j = 0; j < nDimensions; j++)
                 {
                     std += math.sqrt(variance[offset + j]);
                 }
-                std /= nTrajectoryDimensions;
+                std /= nDimensions;
                 Debug.Assert(std > 0, "Standard deviation is zero, feature with no variation is probably a bug");
-                for (int j = 0; j < nTrajectoryDimensions; j++)
+                for (int j = 0; j < nDimensions; j++)
                 {
                     StandardDeviation[offset + j] = std;
                 }
-                offset += nTrajectoryDimensions;
             }
-            for (int i = 0; i < nFeaturesPosAndVel; i++)
+            for (int d = 0; d < NumberPoseFeatures; d++)
             {
+                int offset = PoseOffset + d * NumberFloatsPose;
                 float std = 0;
-                for (int j = 0; j < nPosAndVelDimensions; j++)
+                for (int j = 0; j < NumberFloatsPose; j++)
                 {
                     std += math.sqrt(variance[offset + j]);
                 }
-                std /= nPosAndVelDimensions;
+                std /= NumberFloatsPose;
                 Debug.Assert(std > 0, "Standard deviation is zero, feature with no variation is probably a bug");
-                for (int j = 0; j < nPosAndVelDimensions; j++)
+                for (int j = 0; j < NumberFloatsPose; j++)
                 {
                     StandardDeviation[offset + j] = std;
                 }
-                offset += nPosAndVelDimensions;
             }
+        }
+
+        /// <summary>
+        /// Extract the feature vectors from poseSet
+        /// </summary>
+        public void Extract(PoseSet poseSet, MotionMatchingData mmData)
+        {
+            // Init
+            int nPoses = poseSet.NumberPoses;
+            Valid = new NativeArray<bool>(nPoses, Allocator.Persistent);
+            Features = new NativeArray<float>(nPoses * FeatureSize, Allocator.Persistent);
+            // Check skeleton has all needed joints
+            Joint[] jointsTrajectory = new Joint[NumberTrajectoryFeatures];
+            int i = 0;
+            foreach (var trajectoryFeature in mmData.TrajectoryFeatures)
+            {
+                if (!poseSet.Skeleton.Find(trajectoryFeature.Bone, out jointsTrajectory[i++])) Debug.Assert(false, "The skeleton does not contain any joint of type " + trajectoryFeature.Bone);
+            }
+            Joint[] jointsPose = new Joint[NumberPoseFeatures];
+            i = 0;
+            foreach (var poseFeature in mmData.PoseFeatures)
+            {
+                if (!poseSet.Skeleton.Find(poseFeature.Bone, out jointsPose[i++])) Debug.Assert(false, "The skeleton does not contain any joint of type " + poseFeature.Bone);
+            }
+            // Extract Features
+            for (int poseIndex = 0; poseIndex < nPoses; ++poseIndex)
+            {
+                if (poseSet.IsPoseValidForPrediction(poseIndex))
+                {
+                    Valid[poseIndex] = true;
+                    ExtractFeature(poseSet, poseIndex, jointsTrajectory, jointsPose, mmData);
+                }
+                else Valid[poseIndex] = false;
+            }
+        }
+
+        /// <summary>
+        /// Extract the feature vectors from poseSet
+        /// </summary>
+        private void ExtractFeature(PoseSet poseSet, int poseIndex, Joint[] jointsTrajectory, Joint[] jointsPose, MotionMatchingData mmData)
+        {
+            int featureIndex = poseIndex * FeatureSize;
+            poseSet.GetPose(poseIndex, out PoseVector pose);
+            poseSet.GetPose(poseIndex + 1, out PoseVector poseNext);
+            // Compute local features based on the projection of the hips in the ZX plane (ground)
+            // so hips and feet are local to a stable position with respect to the character
+            // this solution only works for one type of skeleton
+            GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, mmData.HipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
+            // Trajectory
+            for (int i = 0; i < NumberTrajectoryFeatures; i++)
+            {
+                MotionMatchingData.TrajectoryFeature trajectoryFeature = mmData.TrajectoryFeatures[i];
+                int featureOffset = featureIndex + TrajectoryOffset[i];
+                int featureSize = NumberPredictionsTrajectory[i] * NumberFloatsTrajectory[i];
+                for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; ++p)
+                {
+                    int predictionOffset = featureOffset + p * NumberFloatsTrajectory[i];
+                    poseSet.GetPose(poseIndex + trajectoryFeature.FramesPrediction[p], out PoseVector futurePose);
+                    float3 value = new float3();
+                    float2 projectedValue = new float2();
+                    switch (trajectoryFeature.FeatureType)
+                    {
+                        case MotionMatchingData.TrajectoryFeature.Type.Position:
+                            GetTrajectoryPosition(futurePose, characterOrigin, characterForward,
+                                                  out value);
+                            if (trajectoryFeature.Project)
+                            {
+                                projectedValue = new float2(value.x, value.z);
+                            }
+                            break;
+                        case MotionMatchingData.TrajectoryFeature.Type.Direction:
+                            GetTrajectoryDirection(futurePose, characterOrigin, characterForward, mmData.HipsForwardLocalVector,
+                                                   out value);
+                            if (trajectoryFeature.Project)
+                            {
+                                projectedValue = math.normalize(new float2(value.x, value.z));
+                            }
+                            break;
+                        default:
+                            Debug.Assert(false, "Unsupported TrajectoryFeature.Type: " + trajectoryFeature.FeatureType);
+                            break;
+                    }
+                    if (trajectoryFeature.Project)
+                    {
+                        Features[predictionOffset] = projectedValue.x;
+                        Features[predictionOffset + 1] = projectedValue.y;
+                    }
+                    else
+                    {
+                        Features[predictionOffset] = value.x;
+                        Features[predictionOffset + 1] = value.y;
+                        Features[predictionOffset + 2] = value.z;
+                    }
+                }
+            }
+
+            // Pose
+            for (int i = 0; i < NumberPoseFeatures; i++)
+            {
+                MotionMatchingData.PoseFeature poseFeature = mmData.PoseFeatures[i];
+                int featureOffset = featureIndex + PoseOffset + i * NumberFloatsPose;
+                float3 feature = new float3();
+                switch (poseFeature.FeatureType)
+                {
+                    case MotionMatchingData.PoseFeature.Type.Position:
+                        GetJointPosition(pose, poseSet.Skeleton, jointsPose[i], characterOrigin, characterForward,
+                                         out feature);
+                        break;
+                    case MotionMatchingData.PoseFeature.Type.Velocity:
+                        GetJointVelocity(pose, poseNext, poseSet.Skeleton, jointsPose[i], characterOrigin, characterForward, poseSet.FrameTime,
+                                         out feature);
+                        break;
+                    default:
+                        Debug.Assert(false, "Unknown PoseFeature.Type: " + poseFeature.FeatureType);
+                        break;
+                }
+                Features[featureOffset + 0] = feature.x;
+                Features[featureOffset + 1] = feature.y;
+                Features[featureOffset + 2] = feature.z;
+            }
+        }
+
+        private static void GetTrajectoryPosition(PoseVector pose, float3 characterOrigin, float3 characterForward,
+                                                  out float3 futureLocalPosition)
+        {
+            futureLocalPosition = GetLocalPositionFromCharacter(pose.RootWorld, characterOrigin, characterForward);
+        }
+        private static void GetTrajectoryDirection(PoseVector pose, float3 characterOrigin, float3 characterForward, float3 hipsForwardLocalVector,
+                                                   out float3 futureLocalDirection)
+        {
+            futureLocalDirection = GetLocalDirectionFromCharacter(math.mul(pose.RootWorldRot, hipsForwardLocalVector), characterForward);
+        }
+
+        private static void GetJointPosition(PoseVector pose, Skeleton skeleton, Joint joint, float3 characterOrigin, float3 characterForward,
+                                             out float3 localPosition)
+        {
+            float3 worldPosition = ForwardKinematics(skeleton, pose, joint);
+            localPosition = GetLocalPositionFromCharacter(worldPosition, characterOrigin, characterForward);
+        }
+        private static void GetJointVelocity(PoseVector pose, PoseVector poseNext, Skeleton skeleton, Joint joint, float3 characterOrigin, float3 characterForward, float frameTime,
+                                             out float3 localVelocity)
+        {
+            float3 worldPosition = ForwardKinematics(skeleton, pose, joint);
+            float3 worldPositionNext = ForwardKinematics(skeleton, poseNext, joint);
+            float3 localPosition = GetLocalPositionFromCharacter(worldPosition, characterOrigin, characterForward);
+            localVelocity = (GetLocalPositionFromCharacter(worldPositionNext, characterOrigin, characterForward) - localPosition) / frameTime;
+        }
+
+        /// <summary>
+        /// Returns the position of the joint in world space after applying FK using the pose
+        /// </summary>
+        private static float3 ForwardKinematics(Skeleton skeleton, PoseVector pose, Joint joint)
+        {
+            float3 localOffset = pose.JointLocalPositions[joint.Index];
+            Matrix4x4 localToWorld = Matrix4x4.identity;
+            while (joint.ParentIndex != 0) // while not root
+            {
+                localToWorld = Matrix4x4.TRS(pose.JointLocalPositions[joint.ParentIndex], pose.JointLocalRotations[joint.ParentIndex], new float3(1.0f, 1.0f, 1.0f)) * localToWorld;
+                joint = skeleton.GetParent(joint);
+            }
+            localToWorld = Matrix4x4.TRS(pose.RootWorld, pose.RootWorldRot, new float3(1.0f, 1.0f, 1.0f)) * localToWorld; // root
+            return localToWorld.MultiplyPoint3x4(localOffset);
+        }
+
+        /// <summary>
+        /// Returns the position and forward vector of the character in world space considering the hips position and rotation
+        /// </summary>
+        /// <param name="hipsForwardLocalVector">forward vector of the hips in world space when in bind pose</param>
+        public static void GetWorldOriginCharacter(float3 worldHips, quaternion worldRotHips, float3 hipsForwardLocalVector, out float3 center, out float3 forward)
+        {
+            center = worldHips;
+            center.y = 0.0f; // Projected hips
+            forward = math.mul(worldRotHips, hipsForwardLocalVector);
+            forward.y = 0.0f; // Projected forward (hips)
+            forward = math.normalize(forward);
+        }
+
+        public static float3 GetLocalPositionFromCharacter(float3 worldPos, float3 centerCharacter, float3 forwardCharacter)
+        {
+            float3 localPos = worldPos;
+            localPos -= centerCharacter;
+            localPos = math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, new float3(0.0f, 1.0f, 0.0f))), localPos);
+            return localPos;
+        }
+
+        public static float3 GetLocalDirectionFromCharacter(float3 worldDir, float3 forwardCharacter)
+        {
+            float3 localDir = math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, new float3(0.0f, 1.0f, 0.0f))), worldDir);
+            return localDir;
         }
 
         public void Dispose()
         {
+            if (Valid != null && Valid.IsCreated) Valid.Dispose();
             if (Features != null && Features.IsCreated) Features.Dispose();
         }
     }

@@ -81,9 +81,9 @@ namespace MotionMatching
         /// in the specified path with name filename and extension .mmpose and .mmskeleton
         /// Returns true if poseSet was successfully deserialized, false otherwise
         /// </summary>
-        public bool Deserialize(string path, string fileName, out PoseSet poseSet)
+        public bool Deserialize(string path, string fileName, MotionMatchingData mmData, out PoseSet poseSet)
         {
-            poseSet = new PoseSet();
+            poseSet = new PoseSet(mmData);
 
             // Read Skeleton
             Skeleton skeleton = new Skeleton();

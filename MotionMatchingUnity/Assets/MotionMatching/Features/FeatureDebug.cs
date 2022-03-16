@@ -10,40 +10,26 @@ using Unity.Mathematics;
 public class FeatureDebug : MonoBehaviour
 {
     public MotionMatchingData MMData;
-    public int BVHIndex = 0;
     public bool Play;
     public float SpheresRadius = 0.1f;
-    public float VectorLength = 1.0f;
     public bool LockFPS = true;
 
-    private BVHAnimation Animation;
     private PoseSet PoseSet;
     private FeatureSet FeatureSet;
     private Transform[] SkeletonTransforms;
-    private int CurrentFrame;
+    [SerializeField] private int CurrentFrame;
 
     private void Awake()
     {
-        BVHImporter importer = new BVHImporter();
-        Animation = importer.Import(MMData.BVHs[BVHIndex], MMData.UnitScale);
+        // PoseSet
+        PoseSet = MMData.GetOrImportPoseSet();
 
-        // Add Mecanim mapping information
-        Animation.UpdateMecanimInformation(MMData);
-
-        PoseExtractor poseExtractor = new PoseExtractor();
-        PoseSet = new PoseSet();
-        PoseSet.SetSkeleton(Animation.Skeleton);
-        if (!poseExtractor.Extract(Animation, PoseSet, MMData))
-        {
-            Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation");
-        }
-
-        FeatureExtractor featureExtractor = new FeatureExtractor();
-        FeatureSet = featureExtractor.Extract(PoseSet, MMData);
+        // FeatureSet
+        FeatureSet = MMData.GetOrImportFeatureSet();
 
         // Skeleton
-        SkeletonTransforms = new Transform[Animation.Skeleton.Joints.Count];
-        foreach (Skeleton.Joint joint in Animation.Skeleton.Joints)
+        SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
+        foreach (Skeleton.Joint joint in PoseSet.Skeleton.Joints)
         {
             Transform t = (new GameObject()).transform;
             t.name = joint.Name;
@@ -56,7 +42,7 @@ public class FeatureDebug : MonoBehaviour
         // FPS
         if (LockFPS)
         {
-            Application.targetFrameRate = (int)(1.0f / Animation.FrameTime);
+            Application.targetFrameRate = (int)(1.0f / PoseSet.FrameTime);
             Debug.Log("[BVHDebug] Updated Target FPS: " + Application.targetFrameRate);
         }
         else
@@ -69,13 +55,14 @@ public class FeatureDebug : MonoBehaviour
     {
         if (Play)
         {
-            BVHAnimation.Frame frame = Animation.Frames[CurrentFrame];
-            SkeletonTransforms[0].localPosition = frame.RootMotion;
-            for (int i = 0; i < frame.LocalRotations.Length; i++)
+            PoseSet.GetPose(CurrentFrame, out PoseVector pose);
+            SkeletonTransforms[0].localPosition = pose.RootWorld;
+            SkeletonTransforms[0].localRotation = pose.RootWorldRot;
+            for (int i = 1; i < pose.JointLocalRotations.Length; i++)
             {
-                SkeletonTransforms[i].localRotation = frame.LocalRotations[i];
+                SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
             }
-            CurrentFrame = (CurrentFrame + 1) % Animation.Frames.Length;
+            CurrentFrame = (CurrentFrame + 1) % PoseSet.NumberPoses;
         }
         else
         {
@@ -103,7 +90,7 @@ public class FeatureDebug : MonoBehaviour
     private void OnDrawGizmos()
     {
         // Skeleton
-        if (SkeletonTransforms == null || Animation == null || Animation.EndSites == null) return;
+        if (SkeletonTransforms == null || PoseSet == null) return;
 
         Gizmos.color = Color.red;
         for (int i = 1; i < SkeletonTransforms.Length; i++)
@@ -111,64 +98,87 @@ public class FeatureDebug : MonoBehaviour
             Transform t = SkeletonTransforms[i];
             Gizmos.DrawLine(t.parent.position, t.position);
         }
-        foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
-        {
-            Transform t = SkeletonTransforms[endSite.ParentIndex];
-            Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
-        }
-
-        // Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
-        // foreach (Transform t in SkeletonTransforms)
-        // {
-        //     if (t.name == "End Site") continue;
-        //     Gizmos.DrawWireSphere(t.position, SpheresRadius);
-        // }
 
         if (!Play) return;
         // Character
-        if (PoseSet == null) return;
-        int currentFrame = CurrentFrame - 1; // OnDrawGizmos is called after Update
-        if (currentFrame < 0) currentFrame = Animation.Frames.Length - 1;
+        int currentFrame = CurrentFrame;
         PoseSet.GetPose(currentFrame, out PoseVector pose);
-        FeatureExtractor.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, MMData.HipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
+        FeatureSet.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, MMData.HipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
-        Gizmos.DrawWireSphere(characterOrigin, SpheresRadius);
-        Debug.Assert(math.length(characterForward) > 0.99f && math.length(characterForward) < 1.01f, "characterForward.magnitude = " + math.length(characterForward) + " should be 1");
-        GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * VectorLength, 0.25f * VectorLength);
+        Gizmos.DrawSphere(characterOrigin, SpheresRadius);
+        GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward);
 
         // Feature Set
         if (FeatureSet == null) return;
 
-        FeatureVector fv = FeatureSet.GetFeature(currentFrame);
-        if (fv.IsValid)
+        DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
+                          SkeletonTransforms, PoseSet.Skeleton);
+    }
+
+    public static void DrawFeatureGizmos(FeatureSet set, MotionMatchingData mmData, float spheresRadius, int currentFrame,
+                                         float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton,
+                                         bool debugPose = true, bool debugTrajectory = true)
+    {
+        if (!set.IsValidFeature(currentFrame)) return;
+
+        quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
+        // Trajectory
+        if (debugTrajectory)
         {
-            quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
-            // Left Foot
-            Gizmos.color = Color.cyan;
-            float3 leftFootWorld = characterOrigin + math.mul(characterRot, fv.LeftFootLocalPosition);
-            Gizmos.DrawWireSphere(leftFootWorld, SpheresRadius);
-            float3 leftFootVelWorld = math.mul(characterRot, fv.LeftFootLocalVelocity);
-            GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * math.length(leftFootVelWorld) * 0.1f);
-            // Right Foot
-            Gizmos.color = Color.yellow;
-            float3 rightFootWorld = characterOrigin + math.mul(characterRot, fv.RightFootLocalPosition);
-            Gizmos.DrawWireSphere(rightFootWorld, SpheresRadius);
-            float3 rightFootVelWorld = math.mul(characterRot, fv.RightFootLocalVelocity);
-            GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * math.length(rightFootVelWorld) * 0.1f);
-            // Hips
-            Gizmos.color = Color.green;
-            float3 hipsVelWorld = math.mul(characterRot, fv.HipsLocalVelocity);
-            GizmosExtensions.DrawArrow(pose.RootWorld, pose.RootWorld + hipsVelWorld * 0.1f, 0.25f * math.length(hipsVelWorld) * 0.1f);
-            // Trajectory
-            for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); ++i)
+            Gizmos.color = Color.blue;
+            for (int t = 0; t < mmData.TrajectoryFeatures.Count; t++)
             {
-                Gizmos.color = Color.blue * (1.0f - (float)i / (FeatureVector.GetFutureTrajectoryLength() * 1.25f));
-                float2 futurePos = fv.GetFutureTrajectoryLocalPosition(i);
-                float3 futureWorld = characterOrigin + math.mul(characterRot, (new float3(futurePos.x, 0.0f, futurePos.y)));
-                Gizmos.DrawWireSphere(futureWorld, SpheresRadius);
-                float2 futureDir = fv.GetFutureTrajectoryLocalDirection(i);
-                float3 futureDirWorld = math.mul(characterRot, (new float3(futureDir.x, 0.0f, futureDir.y)));
-                GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld * VectorLength, 0.25f * VectorLength);
+                var trajectoryFeature = mmData.TrajectoryFeatures[t];
+                for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
+                {
+                    float3 value;
+                    if (trajectoryFeature.Project)
+                    {
+                        float2 value2D = set.GetProjectedTrajectoryFeature(currentFrame, t, p, true);
+                        value = new float3(value2D.x, 0.0f, value2D.y);
+                    }
+                    else
+                    {
+                        value = set.GetTrajectoryFeature(currentFrame, t, p, true);
+                    }
+                    switch (trajectoryFeature.FeatureType)
+                    {
+                        case MotionMatchingData.TrajectoryFeature.Type.Position:
+                            value = characterOrigin + math.mul(characterRot, value);
+                            Gizmos.DrawSphere(value, spheresRadius);
+                            break;
+                        case MotionMatchingData.TrajectoryFeature.Type.Direction:
+                            value = math.mul(characterRot, value);
+                            GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + value * 0.25f, 0.1f);
+                            break;
+                    }
+                }
+            }
+        }
+        // Pose
+        if (debugPose)
+        {
+            Gizmos.color = Color.cyan;
+            for (int p = 0; p < mmData.PoseFeatures.Count; p++)
+            {
+                var poseFeature = mmData.PoseFeatures[p];
+                float3 value = set.GetPoseFeature(currentFrame, p, true);
+                switch (poseFeature.FeatureType)
+                {
+                    case MotionMatchingData.PoseFeature.Type.Position:
+                        value = characterOrigin + math.mul(characterRot, value);
+                        Gizmos.DrawWireSphere(value, spheresRadius);
+                        break;
+                    case MotionMatchingData.PoseFeature.Type.Velocity:
+                        value = math.mul(characterRot, value);
+                        if (math.length(value) > 0.001f)
+                        {
+                            skeleton.Find(poseFeature.Bone, out Skeleton.Joint joint);
+                            float3 jointPos = joints[joint.Index].position;
+                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.1f, 0.25f * math.length(value) * 0.1f);
+                        }
+                        break;
+                }
             }
         }
     }

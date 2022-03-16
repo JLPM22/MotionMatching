@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace MotionMatching
@@ -13,7 +15,7 @@ namespace MotionMatching
         /// Stores the features for Motion Matching in a binary format
         /// in the specified path with name filename and extension .mmfeatures
         /// </summary>
-        public void Serialize(FeatureSet featureSet, string path, string fileName)
+        public void Serialize(FeatureSet featureSet, MotionMatchingData mmData, string path, string fileName)
         {
             Directory.CreateDirectory(path); // create directory and parent directories if they don't exist
 
@@ -25,70 +27,60 @@ namespace MotionMatching
                     // Serialize Number Feature Vectors
                     writer.Write((uint)featureSet.NumberFeatureVectors);
                     // Serialize Number Features Dimension
-                    // HARDCODED: allow for variable dimension
-                    const uint featuresDimension = 27;
-                    writer.Write(featuresDimension);
+                    writer.Write((uint)featureSet.FeatureSize);
                     // Serialize Number Features
-                    // HARDCODED: allow for variable number of features
-                    const uint numberFeatures = 7;
-                    writer.Write(numberFeatures);
+                    writer.Write((uint)(featureSet.NumberTrajectoryFeatures + featureSet.NumberPoseFeatures));
 
                     // Serialize Mean & StandardDeviation
-                    for (int i = 0; i < featuresDimension; ++i)
+                    for (int i = 0; i < featureSet.FeatureSize; ++i)
                     {
                         writer.Write(featureSet.GetMean(i));
                         writer.Write(featureSet.GetStandardDeviation(i));
                     }
 
                     // Serialize Features
-                    // HARDCODED: allow for variable number of features
-                    writer.Write("FutureTrajectoryLocalPosition");
-                    writer.Write((uint)2);
-                    writer.Write((uint)3);
-
-                    writer.Write("FutureTrajectoryLocalDirection");
-                    writer.Write((uint)2);
-                    writer.Write((uint)3);
-
-                    writer.Write("LeftFootLocalPosition");
-                    writer.Write((uint)3);
-                    writer.Write((uint)1);
-
-                    writer.Write("RightFootLocalPosition");
-                    writer.Write((uint)3);
-                    writer.Write((uint)1);
-
-                    writer.Write("LeftFootLocalVelocity");
-                    writer.Write((uint)3);
-                    writer.Write((uint)1);
-
-                    writer.Write("RightFootLocalVelocity");
-                    writer.Write((uint)3);
-                    writer.Write((uint)1);
-
-                    writer.Write("HipsLocalVelocity");
-                    writer.Write((uint)3);
-                    writer.Write((uint)1);
+                    for (int t = 0; t < mmData.TrajectoryFeatures.Count; ++t)
+                    {
+                        var trajectoryFeature = mmData.TrajectoryFeatures[t];
+                        writer.Write(trajectoryFeature.Name);
+                        writer.Write(trajectoryFeature.Project ? 2u : 3u);
+                        writer.Write((uint)trajectoryFeature.FramesPrediction.Length);
+                    }
+                    for (int p = 0; p < mmData.PoseFeatures.Count; ++p)
+                    {
+                        var poseFeature = mmData.PoseFeatures[p];
+                        writer.Write(poseFeature.Name);
+                        writer.Write(3u);
+                        writer.Write(1u);
+                    }
 
                     // Serialize Feature Vectors
                     for (int i = 0; i < featureSet.NumberFeatureVectors; ++i)
                     {
-                        FeatureVector featureVector = featureSet.GetFeature(i);
-                        writer.Write((uint)(featureVector.IsValid ? 1 : 0));
-                        // HARDCODED: allow for variable number of features
-                        for (int j = 0; j < 3; ++j)
+                        writer.Write(featureSet.IsValidFeature(i) ? 1u : 0u);
+                        // Trajectory
+                        for (int t = 0; t < mmData.TrajectoryFeatures.Count; ++t)
                         {
-                            WriteFloat2(writer, featureVector.GetFutureTrajectoryLocalPosition(j));
+                            var trajectoryFeature = mmData.TrajectoryFeatures[t];
+                            for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; ++p)
+                            {
+                                if (trajectoryFeature.Project)
+                                {
+                                    float2 value2D = featureSet.GetProjectedTrajectoryFeature(i, t, p);
+                                    WriteFloat2(writer, value2D);
+                                }
+                                else
+                                {
+                                    float3 value3D = featureSet.GetTrajectoryFeature(i, t, p);
+                                    WriteFloat3(writer, value3D);
+                                }
+                            }
                         }
-                        for (int j = 0; j < 3; ++j)
+                        // Pose
+                        for (int p = 0; p < mmData.PoseFeatures.Count; ++p)
                         {
-                            WriteFloat2(writer, featureVector.GetFutureTrajectoryLocalDirection(j));
+                            WriteFloat3(writer, featureSet.GetPoseFeature(i, p));
                         }
-                        WriteFloat3(writer, featureVector.LeftFootLocalPosition);
-                        WriteFloat3(writer, featureVector.RightFootLocalPosition);
-                        WriteFloat3(writer, featureVector.LeftFootLocalVelocity);
-                        WriteFloat3(writer, featureVector.RightFootLocalVelocity);
-                        WriteFloat3(writer, featureVector.HipsLocalVelocity);
                     }
                 }
             }
@@ -99,7 +91,7 @@ namespace MotionMatching
         /// from the specified path with name filename and extension .mmfeatures
         /// Returns true if featureSet was successfully deserialized, false otherwise
         /// </summary>
-        public bool Deserialize(string path, string fileName, out FeatureSet featureSet)
+        public bool Deserialize(string path, string fileName, MotionMatchingData mmData, out FeatureSet featureSet)
         {
             featureSet = null;
 
@@ -127,39 +119,45 @@ namespace MotionMatching
                             standardDeviation[i] = reader.ReadSingle();
                         }
 
-                        // Deserialize Features
-                        // HARDCODED: allow for variable number of features
-                        for (int i = 0; i < numberFeatures; ++i)
+                        // Deserialize Features (basically check that everything is correct)
+                        Debug.Assert(numberFeatures == (mmData.TrajectoryFeatures.Count + mmData.PoseFeatures.Count), "Number of features in file does not match number of features in Motion Matching Data");
+                        for (int t = 0; t < mmData.TrajectoryFeatures.Count; ++t)
                         {
-                            reader.ReadString();
-                            reader.ReadUInt32();
-                            reader.ReadUInt32();
+                            var trajectoryFeature = mmData.TrajectoryFeatures[t];
+                            string name = reader.ReadString();
+                            uint nFloatsType = reader.ReadUInt32();
+                            uint nElements = reader.ReadUInt32();
+                            Debug.Assert(name == trajectoryFeature.Name, "Name of trajectory feature does not match");
+                            Debug.Assert(nFloatsType == (trajectoryFeature.Project ? 2u : 3u), "Projection type of trajectory feature does not match");
+                            Debug.Assert(nElements == (uint)trajectoryFeature.FramesPrediction.Length, "Number of frames prediction of trajectory feature does not match");
+                        }
+                        for (int p = 0; p < mmData.PoseFeatures.Count; ++p)
+                        {
+                            var poseFeature = mmData.PoseFeatures[p];
+                            string name = reader.ReadString();
+                            uint nFloatsType = reader.ReadUInt32();
+                            uint nElements = reader.ReadUInt32();
+                            Debug.Assert(name == poseFeature.Name, "Name of pose feature does not match");
+                            Debug.Assert(nFloatsType == 3u, "Projection type of pose feature does not match");
+                            Debug.Assert(nElements == 1u, "Number of frames prediction of pose feature does not match");
                         }
 
                         // Deserialize Feature Vectors
-                        FeatureVector[] featureVectors = new FeatureVector[numberFeatureVectors];
+                        NativeArray<bool> valid = new NativeArray<bool>((int)numberFeatureVectors, Allocator.Persistent);
+                        NativeArray<float> features = new NativeArray<float>((int)(numberFeatureVectors * featuresDimension), Allocator.Persistent);
                         for (int i = 0; i < numberFeatureVectors; ++i)
                         {
-                            FeatureVector featureVector = new FeatureVector();
-                            featureVector.IsValid = reader.ReadUInt32() != 0;
-                            // HARDCODED: allow for variable number of features
-                            for (int j = 0; j < 3; ++j)
+                            int featureIndex = i * (int)featuresDimension;
+                            valid[i] = reader.ReadUInt32() != 0u;
+                            for (int f = 0; f < featuresDimension; ++f)
                             {
-                                featureVector.SetFutureTrajectoryLocalPosition(j, ReadFloat2(reader));
+                                features[featureIndex + f] = reader.ReadSingle();
                             }
-                            for (int j = 0; j < 3; ++j)
-                            {
-                                featureVector.SetFutureTrajectoryLocalDirection(j, ReadFloat2(reader));
-                            }
-                            featureVector.LeftFootLocalPosition = ReadFloat3(reader);
-                            featureVector.RightFootLocalPosition = ReadFloat3(reader);
-                            featureVector.LeftFootLocalVelocity = ReadFloat3(reader);
-                            featureVector.RightFootLocalVelocity = ReadFloat3(reader);
-                            featureVector.HipsLocalVelocity = ReadFloat3(reader);
-                            featureVectors[i] = featureVector;
                         }
 
-                        featureSet = new FeatureSet(featureVectors);
+                        featureSet = new FeatureSet(mmData, (int)numberFeatureVectors);
+                        featureSet.SetValid(valid);
+                        featureSet.SetFeatures(features);
                         featureSet.SetMean(mean);
                         featureSet.SetStandardDeviation(standardDeviation);
                     }

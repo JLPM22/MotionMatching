@@ -7,13 +7,19 @@ using Unity.Mathematics;
 
 namespace MotionMatching
 {
+    using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
+
     // Adjustment between Character Controller and Motion Matching Character Entity
     /* https://theorangeduck.com/page/code-vs-data-driven-displacement */
 
     public class SpringCharacterController : MotionMatchingCharacterController
     {
-
+        // Features ----------------------------------------------------------
+        [Header("Features")]
+        public string TrajectoryPositionFeatureName = "FuturePosition";
+        public string TrajectoryDirectionFeatureName = "FutureDirection";
         // General ----------------------------------------------------------
+        [Header("General")]
         public float MaxSpeed = 1.0f;
         [Range(0.0f, 1.0f)] public float ResponsivenessPositions = 0.75f;
         [Range(0.0f, 1.0f)] public float ResponsivenessDirections = 0.75f;
@@ -49,16 +55,44 @@ namespace MotionMatching
         private float2[] PredictedVelocity;
         private float2 Acceleration;
         private float2[] PredictedAcceleration;
+        // Features -----------------------------------------------------------------
+        private int TrajectoryPosFeatureIndex;
+        private int TrajectoryRotFeatureIndex;
+        private int[] TrajectoryPosPredictionFrames;
+        private int[] TrajectoryRotPredictionFrames;
+        private int NumberPredictionPos { get { return TrajectoryPosPredictionFrames.Length; } }
+        private int NumberPredictionRot { get { return TrajectoryRotPredictionFrames.Length; } }
+        // --------------------------------------------------------------------------
 
         // FUNCTIONS ---------------------------------------------------------------
         private void Start()
         {
-            PredictedPosition = new float2[NumberPrediction];
-            PredictedVelocity = new float2[NumberPrediction];
-            PredictedAcceleration = new float2[NumberPrediction];
+            // Get the feature indices
+            TrajectoryPosFeatureIndex = -1;
+            TrajectoryRotFeatureIndex = -1;
+            for (int i = 0; i < SimulationBone.MMData.TrajectoryFeatures.Count; ++i)
+            {
+                if (SimulationBone.MMData.TrajectoryFeatures[i].Name == TrajectoryPositionFeatureName) TrajectoryPosFeatureIndex = i;
+                if (SimulationBone.MMData.TrajectoryFeatures[i].Name == TrajectoryDirectionFeatureName) TrajectoryRotFeatureIndex = i;
+            }
+            Debug.Assert(TrajectoryPosFeatureIndex != -1, "Trajectory Position Feature not found");
+            Debug.Assert(TrajectoryRotFeatureIndex != -1, "Trajectory Direction Feature not found");
+
+            TrajectoryPosPredictionFrames = SimulationBone.MMData.TrajectoryFeatures[TrajectoryPosFeatureIndex].FramesPrediction;
+            TrajectoryRotPredictionFrames = SimulationBone.MMData.TrajectoryFeatures[TrajectoryRotFeatureIndex].FramesPrediction;
+            // TODO: generalize this... allow different number of prediction frames for different features
+            Debug.Assert(TrajectoryPosPredictionFrames.Length == TrajectoryRotPredictionFrames.Length, "Trajectory Position and Trajectory Direction Prediction Frames must be the same for SpringCharacterController");
+            for (int i = 0; i < TrajectoryPosPredictionFrames.Length; ++i)
+            {
+                Debug.Assert(TrajectoryPosPredictionFrames[i] == TrajectoryRotPredictionFrames[i], "Trajectory Position and Trajectory Direction Prediction Frames must be the same for SpringCharacterController");
+            }
+
+            PredictedPosition = new float2[NumberPredictionPos];
+            PredictedVelocity = new float2[NumberPredictionPos];
+            PredictedAcceleration = new float2[NumberPredictionPos];
             DesiredRotation = quaternion.LookRotation(transform.forward, transform.up);
-            PredictedRotations = new quaternion[NumberPrediction];
-            PredictedAngularVelocities = new float3[NumberPrediction];
+            PredictedRotations = new quaternion[NumberPredictionRot];
+            PredictedAngularVelocities = new float3[NumberPredictionRot];
         }
 
         // Input a change in the movement direction
@@ -115,21 +149,22 @@ namespace MotionMatching
 
         private void PredictRotations(quaternion currentRotation, float averagedDeltaTime)
         {
-            for (int i = 0; i < NumberPrediction; i++)
+            for (int i = 0; i < NumberPredictionRot; i++)
             {
                 // Init Predicted values
                 PredictedRotations[i] = currentRotation;
                 PredictedAngularVelocities[i] = AngularVelocity;
                 // Predict
                 Spring.SimpleSpringDamperImplicit(ref PredictedRotations[i], ref PredictedAngularVelocities[i],
-                                                  DesiredRotation, 1.0f - ResponsivenessDirections, (i + 1) * NumberPrediction * averagedDeltaTime);
+                                                  DesiredRotation, 1.0f - ResponsivenessDirections, TrajectoryRotPredictionFrames[i] * averagedDeltaTime);
             }
         }
 
         /* https://theorangeduck.com/page/spring-roll-call#controllers */
         private void PredictPositions(float2 currentPos, float2 desiredSpeed, float averagedDeltaTime)
         {
-            for (int i = 0; i < NumberPrediction; ++i)
+            int predictionFrames = 0;
+            for (int i = 0; i < NumberPredictionPos; ++i)
             {
                 if (i == 0)
                 {
@@ -143,8 +178,9 @@ namespace MotionMatching
                     PredictedVelocity[i] = PredictedVelocity[i - 1];
                     PredictedAcceleration[i] = PredictedAcceleration[i - 1];
                 }
+                predictionFrames = TrajectoryPosPredictionFrames[i] - predictionFrames;
                 Spring.CharacterPositionUpdate(ref PredictedPosition[i], ref PredictedVelocity[i], ref PredictedAcceleration[i],
-                                               desiredSpeed, 1.0f - ResponsivenessPositions, SimulationBone.MMData.PredictionFrames * averagedDeltaTime);
+                                               desiredSpeed, 1.0f - ResponsivenessPositions, predictionFrames * averagedDeltaTime);
             }
         }
 
@@ -219,12 +255,24 @@ namespace MotionMatching
             return transform.rotation;
         }
 
-        public override float2 GetWorldPredictedPosition(int index)
+        public override float3 GetWorldSpacePrediction(TrajectoryFeature feature, int index)
         {
-            return PredictedPosition[index];
+            switch (feature.FeatureType)
+            {
+                case TrajectoryFeature.Type.Position:
+                    float2 value = PredictedPosition[index];
+                    return new float3(value.x, 0.0f, value.y);
+                case TrajectoryFeature.Type.Direction:
+                    float2 dirProjected = GetWorldSpaceDirectionPrediction(index);
+                    return new float3(dirProjected.x, 0.0f, dirProjected.y);
+                default:
+                    Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
+                    break;
+            }
+            return float3.zero;
         }
 
-        public override float2 GetWorldPredictedDirection(int index)
+        private float2 GetWorldSpaceDirectionPrediction(int index)
         {
             float3 dir = math.mul(PredictedRotations[index], new float3(0, 0, 1));
             return math.normalize(new float2(dir.x, dir.z));
@@ -263,7 +311,7 @@ namespace MotionMatching
                 for (int i = 0; i < PredictedPosition.Length; ++i)
                 {
                     float3 predictedPos = new float3(PredictedPosition[i].x, verticalOffset, PredictedPosition[i].y);
-                    float2 predictedDir = GetWorldPredictedDirection(i);
+                    float2 predictedDir = GetWorldSpaceDirectionPrediction(i);
                     float3 predictedDir3D = new float3(predictedDir.x, 0.0f, predictedDir.y);
                     Gizmos.DrawSphere(predictedPos, radius);
                     Gizmos.DrawLine(predictedPos, predictedPos + predictedDir3D * vectorReduction);

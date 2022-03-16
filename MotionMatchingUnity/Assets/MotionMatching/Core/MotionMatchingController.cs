@@ -8,6 +8,9 @@ using Unity.Jobs;
 
 namespace MotionMatching
 {
+    using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
+    using PoseFeature = MotionMatchingData.PoseFeature;
+
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
@@ -21,13 +24,12 @@ namespace MotionMatching
         [Range(0.0f, 1.0f)] public float InertializeHalfLife = 0.1f; // Time needed to move half of the distance between the source to the target pose
         [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Tooltip("How important is the current pose")][Range(0.0f, 1.0f)] public float Quality = 1.0f;
-        // TODO: generalize this and do custom editor
-        public float[] FeatureWeights = { 1, 1, 1, 1, 1, 1, 1 };
+        [HideInInspector] public float[] FeatureWeights;
         [Header("Debug")]
         public float SpheresRadius = 0.1f;
         public bool DebugSkeleton = true;
         public bool DebugCurrent = true;
-        public bool DebugJoints = true;
+        public bool DebugPose = true;
         public bool DebugTrajectory = true;
 
         public float3 Velocity { get; private set; }
@@ -37,9 +39,9 @@ namespace MotionMatching
         private Transform[] SkeletonTransforms;
         private int CurrentFrame;
         private int SearchFrameCount;
-        private FeatureVector QueryFeature;
+        private NativeArray<float> QueryFeature;
         private NativeArray<int> SearchResult;
-        private NativeArray<float> FeaturesWeightsNativeArray; // TODO: remove this... maybe it is not necessary float[] + Native Array with Custom Editor 
+        private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
 
         private void Awake()
@@ -78,11 +80,13 @@ namespace MotionMatching
 
             // Other initialization
             SearchResult = new NativeArray<int>(1, Allocator.Persistent);
-            FeaturesWeightsNativeArray = new NativeArray<float>(FeatureWeights.Length, Allocator.Persistent);
+            Debug.Assert(FeatureWeights.Length == (MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count), "Number of FeatureWeights is not correct. It should be the same as the number of features.");
+            FeaturesWeightsNativeArray = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
+            QueryFeature = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
             // Search first Frame valid (to start with a valid pose)
-            for (int i = 0; i < FeatureSet.GetFeatures().Length; i++)
+            for (int i = 0; i < FeatureSet.NumberFeatureVectors; i++)
             {
-                if (FeatureSet.GetFeature(i).IsValid)
+                if (FeatureSet.IsValidFeature(i))
                 {
                     CurrentFrame = i;
                     break;
@@ -104,11 +108,6 @@ namespace MotionMatching
         {
             CharacterController.OnUpdated -= OnCharacterControllerUpdated;
             CharacterController.OnInputChangedQuickly -= OnInputChangedQuickly;
-        }
-
-        private void Start()
-        {
-            QueryFeature = new FeatureVector();
         }
 
         private void OnCharacterControllerUpdated(float deltaTime)
@@ -151,31 +150,79 @@ namespace MotionMatching
         private int SearchMotionMatching()
         {
             // Init Query Vector
-            for (int i = 0; i < CharacterController.NumberPrediction; ++i)
+            FeatureSet.GetFeature(QueryFeature, CurrentFrame);
+            int offset = 0;
+            for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
-                float2 worldPredictedPos = CharacterController.GetWorldPredictedPosition(i);
-                QueryFeature.SetFutureTrajectoryLocalPosition(i, GetPositionLocalCharacter(worldPredictedPos));
-                float2 worldPredictedDir = CharacterController.GetWorldPredictedDirection(i);
-                QueryFeature.SetFutureTrajectoryLocalDirection(i, GetDirectionLocalCharacter(worldPredictedDir));
+                TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
+                for (int p = 0; p < feature.FramesPrediction.Length; ++p)
+                {
+                    float3 value = CharacterController.GetWorldSpacePrediction(feature, p);
+                    switch (feature.FeatureType)
+                    {
+                        case TrajectoryFeature.Type.Position:
+                            value = GetPositionLocalCharacter(value);
+                            break;
+                        case TrajectoryFeature.Type.Direction:
+                            value = GetDirectionLocalCharacter(value);
+                            break;
+                        default:
+                            Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
+                            break;
+                    }
+                    if (feature.Project)
+                    {
+                        QueryFeature[offset + 0] = value.x;
+                        QueryFeature[offset + 1] = value.z;
+                        offset += 2;
+                    }
+                    else
+                    {
+                        QueryFeature[offset + 0] = value.x;
+                        QueryFeature[offset + 1] = value.y;
+                        QueryFeature[offset + 2] = value.z;
+                        offset += 3;
+                    }
+                }
             }
-            FeatureVector current = FeatureSet.GetFeature(CurrentFrame);
-            QueryFeature.LeftFootLocalPosition = current.LeftFootLocalPosition;
-            QueryFeature.LeftFootLocalVelocity = current.LeftFootLocalVelocity;
-            QueryFeature.RightFootLocalPosition = current.RightFootLocalPosition;
-            QueryFeature.RightFootLocalVelocity = current.RightFootLocalVelocity;
-            QueryFeature.HipsLocalVelocity = current.HipsLocalVelocity;
             // Normalize (only trajectory... because current FeatureVector is already normalized)
-            QueryFeature = FeatureSet.NormalizeTrajectory(QueryFeature);
+            FeatureSet.NormalizeTrajectory(QueryFeature);
             // Weights
-            for (int i = 0; i < FeatureWeights.Length; i++) FeaturesWeightsNativeArray[i] = FeatureWeights[i];
+            offset = 0;
+            for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
+            {
+                TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
+                float weight = FeatureWeights[i];
+                for (int p = 0; p < feature.FramesPrediction.Length; ++p)
+                {
+                    for (int f = 0; f < (feature.Project ? 2 : 3); f++)
+                    {
+                        FeaturesWeightsNativeArray[offset + f] = weight;
+                    }
+                    offset += (feature.Project ? 2 : 3);
+                }
+            }
+            for (int i = 0; i < MMData.PoseFeatures.Count; i++)
+            {
+                PoseFeature feature = MMData.PoseFeatures[i];
+                float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count];
+                FeaturesWeightsNativeArray[offset + 0] = weight;
+                FeaturesWeightsNativeArray[offset + 1] = weight;
+                FeaturesWeightsNativeArray[offset + 2] = weight;
+                offset += 3;
+            }
             // Search
             var job = new LinearMotionMatchingSearchBurst
             {
+                Valid = FeatureSet.GetValid(),
                 Features = FeatureSet.GetFeatures(),
                 QueryFeature = QueryFeature,
+                FeatureWeights = FeaturesWeightsNativeArray,
                 Responsiveness = Responsiveness,
                 Quality = Quality,
-                FeatureWeights = FeaturesWeightsNativeArray,
+                NumberFeatureVectors = FeatureSet.NumberFeatureVectors,
+                FeatureSize = FeatureSet.FeatureSize,
+                PoseOffset = FeatureSet.PoseOffset,
                 BestIndex = SearchResult
             };
             job.Schedule().Complete();
@@ -222,16 +269,14 @@ namespace MotionMatching
             if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke();
         }
 
-        private float2 GetPositionLocalCharacter(float2 worldPosition)
+        private float3 GetPositionLocalCharacter(float3 worldPosition)
         {
-            float3 localPosition = transform.InverseTransformPoint(new float3(worldPosition.x, 0.0f, worldPosition.y));
-            return new float2(localPosition.x, localPosition.z);
+            return transform.InverseTransformPoint(worldPosition);
         }
 
-        private float2 GetDirectionLocalCharacter(float2 worldDir)
+        private float3 GetDirectionLocalCharacter(float3 worldDir)
         {
-            float3 localDir = transform.InverseTransformDirection(new float3(worldDir.x, 0.0f, worldDir.y));
-            return new float2(localDir.x, localDir.z);
+            return transform.InverseTransformDirection(worldDir);
         }
 
         /// <summary>
@@ -261,15 +306,14 @@ namespace MotionMatching
         private void OnDestroy()
         {
             if (FeatureSet != null) FeatureSet.Dispose();
+            if (QueryFeature != null && QueryFeature.IsCreated) QueryFeature.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
         }
 
         private void OnApplicationQuit()
         {
-            if (FeatureSet != null) FeatureSet.Dispose();
-            if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
-            if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
+            OnDestroy();
         }
 
 #if UNITY_EDITOR
@@ -305,54 +349,8 @@ namespace MotionMatching
             // Feature Set
             if (FeatureSet == null) return;
 
-            FeatureVector fv = FeatureSet.GetFeature(currentFrame);
-            fv = FeatureSet.DenormalizeFeatureVector(fv);
-            if (fv.IsValid)
-            {
-                quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
-                if (DebugJoints)
-                {
-                    // Left Foot
-                    Gizmos.color = Color.cyan;
-                    float3 leftFootWorld = characterOrigin + math.mul(characterRot, fv.LeftFootLocalPosition);
-                    Gizmos.DrawWireSphere(leftFootWorld, SpheresRadius);
-                    float3 leftFootVelWorld = math.mul(characterRot, fv.LeftFootLocalVelocity);
-                    if (math.length(leftFootVelWorld) > 0.001f)
-                    {
-                        GizmosExtensions.DrawArrow(leftFootWorld, leftFootWorld + leftFootVelWorld * 0.1f, 0.25f * math.length(leftFootVelWorld) * 0.1f);
-                    }
-                    // Right Foot
-                    Gizmos.color = Color.yellow;
-                    float3 rightFootWorld = characterOrigin + math.mul(characterRot, fv.RightFootLocalPosition);
-                    Gizmos.DrawWireSphere(rightFootWorld, SpheresRadius);
-                    float3 rightFootVelWorld = math.mul(characterRot, fv.RightFootLocalVelocity);
-                    if (math.length(rightFootVelWorld) > 0.001f)
-                    {
-                        GizmosExtensions.DrawArrow(rightFootWorld, rightFootWorld + rightFootVelWorld * 0.1f, 0.25f * math.length(rightFootVelWorld) * 0.1f);
-                    }
-                    // Hips
-                    Gizmos.color = Color.green;
-                    float3 hipsVelWorld = math.mul(characterRot, fv.HipsLocalVelocity);
-                    if (math.length(hipsVelWorld) > 0.001f)
-                    {
-                        GizmosExtensions.DrawArrow(SkeletonTransforms[0].position, SkeletonTransforms[0].position + (Vector3)(hipsVelWorld * 0.1f), 0.25f * math.length(hipsVelWorld) * 0.1f);
-                    }
-                }
-                if (DebugTrajectory)
-                {
-                    // Trajectory
-                    for (int i = 0; i < FeatureVector.GetFutureTrajectoryLength(); ++i)
-                    {
-                        Gizmos.color = Color.blue * (1.0f - (float)i / (FeatureVector.GetFutureTrajectoryLength() * 1.25f));
-                        float2 futurePos = fv.GetFutureTrajectoryLocalPosition(i);
-                        float3 futureWorld = characterOrigin + math.mul(characterRot, (new float3(futurePos.x, 0.0f, futurePos.y)));
-                        Gizmos.DrawSphere(futureWorld, SpheresRadius);
-                        float2 futureDir = fv.GetFutureTrajectoryLocalDirection(i);
-                        float3 futureDirWorld = math.mul(characterRot, (new float3(futureDir.x, 0.0f, futureDir.y)));
-                        GizmosExtensions.DrawArrow(futureWorld, futureWorld + futureDirWorld);
-                    }
-                }
-            }
+            FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
+                                           SkeletonTransforms, PoseSet.Skeleton, DebugPose, DebugTrajectory);
         }
 #endif
     }

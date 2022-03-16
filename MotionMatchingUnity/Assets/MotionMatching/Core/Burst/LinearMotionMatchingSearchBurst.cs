@@ -9,11 +9,15 @@ namespace MotionMatching
     [BurstCompile]
     public struct LinearMotionMatchingSearchBurst : IJob
     {
-        [ReadOnly] public NativeArray<FeatureVector> Features;
-        [ReadOnly] public FeatureVector QueryFeature;
+        [ReadOnly] public NativeArray<bool> Valid;
+        [ReadOnly] public NativeArray<float> Features;
+        [ReadOnly] public NativeArray<float> QueryFeature;
+        [ReadOnly] public NativeArray<float> FeatureWeights; // Size = FeatureSize
         [ReadOnly] public float Responsiveness;
-        [ReadOnly] public NativeArray<float> FeatureWeights;
         [ReadOnly] public float Quality;
+        [ReadOnly] public int NumberFeatureVectors;
+        [ReadOnly] public int FeatureSize;
+        [ReadOnly] public int PoseOffset;
 
         [WriteOnly] public NativeArray<int> BestIndex;
 
@@ -21,12 +25,29 @@ namespace MotionMatching
         {
             float min = float.MaxValue;
             int bestIndex = -1;
-            for (int i = 0; i < Features.Length; ++i)
+            for (int i = 0; i < NumberFeatureVectors; ++i)
             {
-                FeatureVector fv = Features[i];
-                if (fv.IsValid)
+                if (Valid[i])
                 {
-                    float sqrDistance = QueryFeature.SqrDistance(fv, Responsiveness, Quality, FeatureWeights);
+                    int featureIndex = i * FeatureSize;
+                    // Trajectory
+                    float sqrDistanceTrajectory = 0.0f;
+                    for (int j = 0; j < PoseOffset; ++j)
+                    {
+                        float diff = Features[featureIndex + j] - QueryFeature[j];
+                        sqrDistanceTrajectory += diff * diff * FeatureWeights[j];
+                    }
+                    sqrDistanceTrajectory *= Responsiveness;
+                    // Pose
+                    float sqrDistance = 0.0f;
+                    for (int j = PoseOffset; j < FeatureSize; ++j)
+                    {
+                        float diff = Features[featureIndex + j] - QueryFeature[j];
+                        sqrDistance += diff * diff * FeatureWeights[j];
+                    }
+                    sqrDistance *= Quality;
+                    sqrDistance += sqrDistanceTrajectory;
+                    // Compare
                     if (sqrDistance < min)
                     {
                         min = sqrDistance;

@@ -365,10 +365,11 @@ MonoBehaviour:
   - 1
   - 1
   - 1
+  - 1
   SpheresRadius: 0.05
   DebugSkeleton: 1
   DebugCurrent: 1
-  DebugJoints: 1
+  DebugPose: 1
   DebugTrajectory: 1
 --- !u!4 &488265981
 Transform:
@@ -415,7 +416,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SimulationBone: {fileID: 845368627}
-  NumberPrediction: 3
+  TrajectoryPositionFeatureName: FuturePosition
+  TrajectoryDirectionFeatureName: FutureDirection
   Path:
   - Position:
       x: -10
@@ -690,7 +692,8 @@ MonoBehaviour:
   Responsiveness: 1
   Quality: 1
   FeatureWeights:
-  - 5
+  - 1
+  - 1
   - 1
   - 1
   - 1
@@ -700,7 +703,7 @@ MonoBehaviour:
   SpheresRadius: 0.05
   DebugSkeleton: 1
   DebugCurrent: 1
-  DebugJoints: 1
+  DebugPose: 1
   DebugTrajectory: 1
 --- !u!4 &845368628
 Transform:
@@ -749,7 +752,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SimulationBone: {fileID: 845368627}
-  NumberPrediction: 3
+  TrajectoryPositionFeatureName: FuturePosition
+  TrajectoryDirectionFeatureName: FutureDirection
   MaxSpeed: 3
   ResponsivenessPositions: 0.75
   ResponsivenessDirections: 0.95
@@ -1105,7 +1109,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SimulationBone: {fileID: 1702772098}
-  NumberPrediction: 3
+  TrajectoryPositionFeatureName: FuturePosition
+  TrajectoryDirectionFeatureName: FutureDirection
   Path:
   - Position:
       x: -10
@@ -1296,10 +1301,11 @@ MonoBehaviour:
   - 1
   - 1
   - 1
+  - 1
   SpheresRadius: 0.05
   DebugSkeleton: 1
   DebugCurrent: 1
-  DebugJoints: 1
+  DebugPose: 1
   DebugTrajectory: 1
 --- !u!4 &1702772099
 Transform:
@@ -1464,7 +1470,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SimulationBone: {fileID: 488265980}
-  NumberPrediction: 3
+  TrajectoryPositionFeatureName: FuturePosition
+  TrajectoryDirectionFeatureName: FutureDirection
   Path:
   - Position:
       x: -10

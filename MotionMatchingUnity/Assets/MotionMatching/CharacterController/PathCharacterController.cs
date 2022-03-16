@@ -5,8 +5,12 @@ using UnityEngine;
 
 namespace MotionMatching
 {
+    using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
+
     public class PathCharacterController : MotionMatchingCharacterController
     {
+        public string TrajectoryPositionFeatureName = "FuturePosition";
+        public string TrajectoryDirectionFeatureName = "FutureDirection";
         public KeyPoint[] Path; // The key points of the path
 
         private int CurrentKeyPoint; // The current key point index
@@ -17,18 +21,47 @@ namespace MotionMatching
         private float2[] PredictedPositions;
         private float2[] PredictedDirections;
 
+        // Features -----------------------------------------------------------------
+        private int TrajectoryPosFeatureIndex;
+        private int TrajectoryRotFeatureIndex;
+        private int[] TrajectoryPosPredictionFrames;
+        private int[] TrajectoryRotPredictionFrames;
+        private int NumberPredictionPos { get { return TrajectoryPosPredictionFrames.Length; } }
+        private int NumberPredictionRot { get { return TrajectoryRotPredictionFrames.Length; } }
+        // --------------------------------------------------------------------------
+
         private void Start()
         {
-            PredictedPositions = new float2[NumberPrediction];
-            PredictedDirections = new float2[NumberPrediction];
+            // Get the feature indices
+            TrajectoryPosFeatureIndex = -1;
+            TrajectoryRotFeatureIndex = -1;
+            for (int i = 0; i < SimulationBone.MMData.TrajectoryFeatures.Count; ++i)
+            {
+                if (SimulationBone.MMData.TrajectoryFeatures[i].Name == TrajectoryPositionFeatureName) TrajectoryPosFeatureIndex = i;
+                if (SimulationBone.MMData.TrajectoryFeatures[i].Name == TrajectoryDirectionFeatureName) TrajectoryRotFeatureIndex = i;
+            }
+            Debug.Assert(TrajectoryPosFeatureIndex != -1, "Trajectory Position Feature not found");
+            Debug.Assert(TrajectoryRotFeatureIndex != -1, "Trajectory Direction Feature not found");
+
+            TrajectoryPosPredictionFrames = SimulationBone.MMData.TrajectoryFeatures[TrajectoryPosFeatureIndex].FramesPrediction;
+            TrajectoryRotPredictionFrames = SimulationBone.MMData.TrajectoryFeatures[TrajectoryRotFeatureIndex].FramesPrediction;
+            // TODO: generilize this, allow for different number of prediction frames
+            Debug.Assert(TrajectoryPosPredictionFrames.Length == TrajectoryRotPredictionFrames.Length, "Trajectory Position and Trajectory Direction Prediction Frames must be the same for PathCharacterController");
+            for (int i = 0; i < TrajectoryPosPredictionFrames.Length; ++i)
+            {
+                Debug.Assert(TrajectoryPosPredictionFrames[i] == TrajectoryRotPredictionFrames[i], "Trajectory Position and Trajectory Direction Prediction Frames must be the same for PathCharacterController");
+            }
+
+            PredictedPositions = new float2[NumberPredictionPos];
+            PredictedDirections = new float2[NumberPredictionRot];
         }
 
         protected override void OnUpdate()
         {
             // Predict the future positions and directions
-            for (int i = 0; i < NumberPrediction; i++)
+            for (int i = 0; i < NumberPredictionPos; i++)
             {
-                SimulatePath(AveragedDeltaTime * (i + 1) * SimulationBone.MMData.PredictionFrames, CurrentKeyPoint, CurrentKeyPointT,
+                SimulatePath(AveragedDeltaTime * TrajectoryPosPredictionFrames[i], CurrentKeyPoint, CurrentKeyPointT,
                              out _, out _,
                              out PredictedPositions[i], out PredictedDirections[i]);
             }
@@ -94,11 +127,28 @@ namespace MotionMatching
             return rot * transform.rotation;
         }
 
-        public override float2 GetWorldPredictedPosition(int index)
+        public override float3 GetWorldSpacePrediction(TrajectoryFeature feature, int index)
+        {
+            switch (feature.FeatureType)
+            {
+                case TrajectoryFeature.Type.Position:
+                    float2 value = GetWorldPredictedPos(index);
+                    return new float3(value.x, 0.0f, value.y);
+                case TrajectoryFeature.Type.Direction:
+                    float2 dir = GetWorldPredictedDir(index);
+                    return new float3(dir.x, 0.0f, dir.y);
+                default:
+                    Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
+                    break;
+            }
+            return float3.zero;
+        }
+
+        private float2 GetWorldPredictedPos(int index)
         {
             return PredictedPositions[index] + new float2(transform.position.x, transform.position.z);
         }
-        public override float2 GetWorldPredictedDirection(int index)
+        private float2 GetWorldPredictedDir(int index)
         {
             return PredictedDirections[index];
         }
@@ -174,15 +224,15 @@ namespace MotionMatching
             Gizmos.DrawSphere(currentPos, 0.1f);
             Gizmos.DrawLine(currentPos, currentPos + (Quaternion)GetCurrentRotation() * Vector3.forward);
             // Draw Prediction
-            if (PredictedPositions == null || PredictedPositions.Length != NumberPrediction ||
-                PredictedDirections == null || PredictedDirections.Length != NumberPrediction) return;
+            if (PredictedPositions == null || PredictedPositions.Length != NumberPredictionPos ||
+                PredictedDirections == null || PredictedDirections.Length != NumberPredictionRot) return;
             Gizmos.color = new Color(0.6f, 0.3f, 0.8f, 1.0f);
-            for (int i = 0; i < NumberPrediction; i++)
+            for (int i = 0; i < NumberPredictionPos; i++)
             {
-                float2 predictedPosf2 = GetWorldPredictedPosition(i);
+                float2 predictedPosf2 = GetWorldPredictedPos(i);
                 Vector3 predictedPos = new Vector3(predictedPosf2.x, heightOffset * 2, predictedPosf2.y);
                 Gizmos.DrawSphere(predictedPos, 0.1f);
-                float2 dirf2 = GetWorldPredictedDirection(i);
+                float2 dirf2 = GetWorldPredictedDir(i);
                 Gizmos.DrawLine(predictedPos, predictedPos + new Vector3(dirf2.x, 0.0f, dirf2.y));
             }
         }

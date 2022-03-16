@@ -8,6 +8,7 @@ namespace MotionMatching
     [CustomEditor(typeof(MotionMatchingController))]
     public class MotionMatchingControllerEditor : Editor
     {
+        private bool ToggleFeatureWeights;
         private bool ToggleProfiling;
         private bool ToggleDebug;
 
@@ -17,6 +18,38 @@ namespace MotionMatching
 
             MotionMatchingController controller = (MotionMatchingController)target;
 
+            // Feature Weights
+            if (controller.FeatureWeights.Length != (controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count))
+            {
+                float[] newWeights = new float[controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count];
+                for (int i = 0; i < newWeights.Length; ++i) newWeights[i] = 1.0f;
+                for (int i = 0; i < Mathf.Min(controller.FeatureWeights.Length, newWeights.Length); i++) newWeights[i] = controller.FeatureWeights[i];
+                controller.FeatureWeights = newWeights;
+            }
+            ToggleFeatureWeights = EditorGUILayout.BeginFoldoutHeaderGroup(ToggleFeatureWeights, "Feature Weights");
+            if (ToggleFeatureWeights)
+            {
+                EditorGUI.indentLevel++;
+                EditorGUILayout.BeginVertical(GUI.skin.box);
+                for (int i = 0; i < controller.MMData.TrajectoryFeatures.Count; ++i)
+                {
+                    string name = controller.MMData.TrajectoryFeatures[i].Name;
+                    controller.FeatureWeights[i] = EditorGUILayout.FloatField(name, controller.FeatureWeights[i]);
+                }
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.BeginVertical(GUI.skin.box);
+                for (int i = 0; i < controller.MMData.PoseFeatures.Count; ++i)
+                {
+                    string name = controller.MMData.PoseFeatures[i].Name;
+                    int index = controller.MMData.TrajectoryFeatures.Count + i;
+                    controller.FeatureWeights[index] = EditorGUILayout.FloatField(name, controller.FeatureWeights[index]);
+                }
+                EditorGUILayout.EndVertical();
+                EditorGUI.indentLevel--;
+            }
+            EditorGUILayout.EndFoldoutHeaderGroup();
+
+            // Debug & Profiling
             if (!Application.isPlaying) return;
 
             ToggleDebug = EditorGUILayout.BeginFoldoutHeaderGroup(ToggleDebug, "Debug");

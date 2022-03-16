@@ -177,12 +177,12 @@ namespace MotionMatching
                 quaternion hipsRotWorldOnlyY = MathExtensions.GetYAxisRotation(FrameLocalRotations[0]);
                 JointLocalRotations[0] = math.mul(math.inverse(hipsRotWorldOnlyY), FrameLocalRotations[0]);
                 // Local Root Displacement
-                FeatureExtractor.GetWorldOriginCharacter(FrameRootMotion, FrameLocalRotations[0], HipsForwardLocalVector, out _, out float3 characterForward);
+                FeatureSet.GetWorldOriginCharacter(FrameRootMotion, FrameLocalRotations[0], HipsForwardLocalVector, out _, out float3 characterForward);
 
                 float3 hipsWorldXZ = new float3(FrameRootMotion.x, 0.0f, FrameRootMotion.z);
                 float3 prevHipsWorldXZ = new float3(PrevFrameRootMotion.x, 0.0f, PrevFrameRootMotion.z);
                 float3 tmpRootDisplacement = hipsWorldXZ - prevHipsWorldXZ;
-                RootDisplacement[0] = FeatureExtractor.GetLocalDirectionFromCharacter(tmpRootDisplacement, characterForward);
+                RootDisplacement[0] = FeatureSet.GetLocalDirectionFromCharacter(tmpRootDisplacement, characterForward);
                 // Root Rot
                 quaternion yRot = MathExtensions.GetYAxisRotation(FrameLocalRotations[0]);
                 quaternion yPrevRot = MathExtensions.GetYAxisRotation(PrevFrameLocalRotations[0]);
