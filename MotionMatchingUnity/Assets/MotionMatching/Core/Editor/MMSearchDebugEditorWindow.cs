@@ -57,7 +57,7 @@ namespace MotionMatching
             GroupQuery = EditorGUILayout.BeginFoldoutHeaderGroup(GroupQuery, "Query");
             if (GroupQuery)
             {
-                DisplayFeatureVector(queryFeature, "Query Feature", mmData);
+                DisplayFeatureVector(queryFeature, "Last MM Search Query Feature", mmData);
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 

@@ -67,4 +67,30 @@ MonoBehaviour:
     MecanimBone: 16
   - Name: RightHand
     MecanimBone: 18
-  PredictionFrames: 10
+  TrajectoryFeatures:
+  - Name: FuturePosition
+    FeatureType: 0
+    FramesPrediction: 14000000280000003c000000
+    Bone: 0
+    Project: 1
+  - Name: FutureDirection
+    FeatureType: 1
+    FramesPrediction: 14000000280000003c000000
+    Bone: 0
+    Project: 1
+  PoseFeatures:
+  - Name: LeftFootPos
+    FeatureType: 0
+    Bone: 5
+  - Name: RightFootPos
+    FeatureType: 0
+    Bone: 6
+  - Name: LeftFootVelocity
+    FeatureType: 1
+    Bone: 5
+  - Name: RightFootVelocity
+    FeatureType: 1
+    Bone: 6
+  - Name: HipsVelocity
+    FeatureType: 1
+    Bone: 0

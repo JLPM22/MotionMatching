@@ -399,7 +399,7 @@ MonoBehaviour:
   SpheresRadius: 0.05
   DebugSkeleton: 0
   DebugCurrent: 1
-  DebugJoints: 0
+  DebugPose: 1
   DebugTrajectory: 0
 --- !u!4 &845368628
 Transform:
@@ -448,7 +448,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SimulationBone: {fileID: 845368627}
-  NumberPrediction: 3
+  TrajectoryPositionFeatureName: FuturePosition
+  TrajectoryDirectionFeatureName: FutureDirection
   MaxSpeed: 4
   ResponsivenessPositions: 0.5
   ResponsivenessDirections: 0.8
@@ -811,11 +812,84 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MMData: {fileID: 11400000, guid: 54f129c1522b5774abec5da428c6b3b3, type: 2}
-  BVHIndex: 0
   Play: 0
   SpheresRadius: 0.05
-  VectorLength: 1
   LockFPS: 1
+  CurrentFrame: 0
+--- !u!1001 &2630387281809608326
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2525316760737696347, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2630387280897977790, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: MotionMatching
+      value: 
+      objectReference: {fileID: 845368627}
+    - target: {fileID: 2900435371020783841, guid: 4b0914d14abc37e4fa9854bf9c6874da,
+        type: 3}
+      propertyPath: m_Name
+      value: JoeUbisoft
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4b0914d14abc37e4fa9854bf9c6874da, type: 3}
 --- !u!1001 &6067459809107847325
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -887,6 +961,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: XsensAvatar
+      objectReference: {fileID: 0}
+    - target: {fileID: 6409356043868785727, guid: 474caad134da2e04682d38661766f90c,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 474caad134da2e04682d38661766f90c, type: 3}
