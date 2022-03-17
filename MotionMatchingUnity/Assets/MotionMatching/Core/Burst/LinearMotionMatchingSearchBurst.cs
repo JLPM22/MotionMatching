@@ -27,7 +27,7 @@ namespace MotionMatching
             float4 min = new float4(CurrentDistance);
             int4 bestIndex = new int4(-1);
             int count4 = Valid.Length >> 2;
-            int lastCount = Valid.Length % 4;
+            int lastCount = Valid.Length & 0b011;
             for (int i = 0; i < count4; ++i)
             {
                 int index = i << 2;
@@ -37,7 +37,7 @@ namespace MotionMatching
                 for (int j = 0; j < FeatureSize; ++j)
                 {
                     float4 query = new float4(QueryFeature[j]);
-                    float4 features = new float4(Features[featureIndex + j], Features[featureIndex + j + 1], Features[featureIndex + j + 2], Features[featureIndex + j + 3]);
+                    float4 features = new float4(Features[featureIndex + j], Features[featureIndex + j + FeatureSize], Features[featureIndex + j + 2 * FeatureSize], Features[featureIndex + j + 3 * FeatureSize]);
                     features = features - query;
                     sqrDistance += features * features * FeatureWeights[j];
                 }

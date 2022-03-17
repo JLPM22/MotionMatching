@@ -300,7 +300,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &378866566
 Transform:
   m_ObjectHideFlags: 0
@@ -693,12 +693,12 @@ MonoBehaviour:
   Quality: 1
   FeatureWeights:
   - 1
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
   SpheresRadius: 0.05
   DebugSkeleton: 1
   DebugCurrent: 1
@@ -852,7 +852,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1212519218
 Transform:
   m_ObjectHideFlags: 0

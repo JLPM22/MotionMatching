@@ -37,7 +37,8 @@ namespace MotionMatching
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
         private Transform[] SkeletonTransforms;
-        private int CurrentFrame;
+        private int LastMMSearchFrame; // Frame before the last Motion Matching Search
+        private int CurrentFrame; // Current frame index in the pose/feature set
         private int SearchFrameCount;
         private NativeArray<float> QueryFeature;
         private NativeArray<int> SearchResult;
@@ -95,6 +96,7 @@ namespace MotionMatching
             {
                 if (FeatureSet.IsValidFeature(i))
                 {
+                    LastMMSearchFrame = i;
                     CurrentFrame = i;
                     break;
                 }
@@ -133,6 +135,7 @@ namespace MotionMatching
                     {
                         Inertialization.PoseTransition(PoseSet, CurrentFrame, bestFrame);
                     }
+                    LastMMSearchFrame = CurrentFrame;
                     CurrentFrame = bestFrame;
                 }
                 SearchFrameCount = SearchFrames;
@@ -157,29 +160,7 @@ namespace MotionMatching
         private int SearchMotionMatching()
         {
             // Weights
-            int offset = 0;
-            for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
-            {
-                TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
-                float weight = FeatureWeights[i] * Responsiveness;
-                for (int p = 0; p < feature.FramesPrediction.Length; ++p)
-                {
-                    for (int f = 0; f < (feature.Project ? 2 : 3); f++)
-                    {
-                        FeaturesWeightsNativeArray[offset + f] = weight;
-                    }
-                    offset += (feature.Project ? 2 : 3);
-                }
-            }
-            for (int i = 0; i < MMData.PoseFeatures.Count; i++)
-            {
-                PoseFeature feature = MMData.PoseFeatures[i];
-                float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count] * Quality;
-                FeaturesWeightsNativeArray[offset + 0] = weight;
-                FeaturesWeightsNativeArray[offset + 1] = weight;
-                FeaturesWeightsNativeArray[offset + 2] = weight;
-                offset += 3;
-            }
+            UpdateAndGetFeatureWeights();
 
             // Init Query Vector
             FeatureSet.GetFeature(QueryFeature, CurrentFrame);
@@ -311,12 +292,52 @@ namespace MotionMatching
             return transform.InverseTransformDirection(worldDir);
         }
 
-        /// <summary>
-        /// Returns the current frame index in the pose set
-        /// </summary>
         public int GetCurrentFrame()
         {
             return CurrentFrame;
+        }
+        public int GetLastFrame()
+        {
+            return LastMMSearchFrame;
+        }
+        public void SetCurrentFrame(int frame)
+        {
+            CurrentFrame = frame;
+        }
+        public FeatureSet GetFeatureSet()
+        {
+            return FeatureSet;
+        }
+        public NativeArray<float> GetQueryFeature()
+        {
+            return QueryFeature;
+        }
+        public NativeArray<float> UpdateAndGetFeatureWeights()
+        {
+            int offset = 0;
+            for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
+            {
+                TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
+                float weight = FeatureWeights[i] * Responsiveness;
+                for (int p = 0; p < feature.FramesPrediction.Length; ++p)
+                {
+                    for (int f = 0; f < (feature.Project ? 2 : 3); f++)
+                    {
+                        FeaturesWeightsNativeArray[offset + f] = weight;
+                    }
+                    offset += (feature.Project ? 2 : 3);
+                }
+            }
+            for (int i = 0; i < MMData.PoseFeatures.Count; i++)
+            {
+                PoseFeature feature = MMData.PoseFeatures[i];
+                float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count] * Quality;
+                FeaturesWeightsNativeArray[offset + 0] = weight;
+                FeaturesWeightsNativeArray[offset + 1] = weight;
+                FeaturesWeightsNativeArray[offset + 2] = weight;
+                offset += 3;
+            }
+            return FeaturesWeightsNativeArray;
         }
 
         /// <summary>
