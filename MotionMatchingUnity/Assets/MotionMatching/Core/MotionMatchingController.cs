@@ -80,7 +80,14 @@ namespace MotionMatching
 
             // Other initialization
             SearchResult = new NativeArray<int>(1, Allocator.Persistent);
-            Debug.Assert(FeatureWeights.Length == (MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count), "Number of FeatureWeights is not correct. It should be the same as the number of features.");
+            int numberFeatures = (MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count);
+            if (FeatureWeights == null || FeatureWeights.Length != numberFeatures)
+            {
+                float[] newWeights = new float[numberFeatures];
+                for (int i = 0; i < newWeights.Length; ++i) newWeights[i] = 1.0f;
+                for (int i = 0; i < Mathf.Min(FeatureWeights.Length, newWeights.Length); i++) newWeights[i] = FeatureWeights[i];
+                FeatureWeights = newWeights;
+            }
             FeaturesWeightsNativeArray = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
             QueryFeature = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
             // Search first Frame valid (to start with a valid pose)
