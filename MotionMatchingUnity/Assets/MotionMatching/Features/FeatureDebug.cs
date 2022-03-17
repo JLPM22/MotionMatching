@@ -96,7 +96,7 @@ public class FeatureDebug : MonoBehaviour
         for (int i = 1; i < SkeletonTransforms.Length; i++)
         {
             Transform t = SkeletonTransforms[i];
-            Gizmos.DrawLine(t.parent.position, t.position);
+            GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
         }
 
         if (!Play) return;
@@ -106,7 +106,7 @@ public class FeatureDebug : MonoBehaviour
         FeatureSet.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, MMData.HipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
         Gizmos.DrawSphere(characterOrigin, SpheresRadius);
-        GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward);
+        GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward, thickness: 3);
 
         // Feature Set
         if (FeatureSet == null) return;
@@ -125,12 +125,12 @@ public class FeatureDebug : MonoBehaviour
         // Trajectory
         if (debugTrajectory)
         {
-            Gizmos.color = Color.blue;
             for (int t = 0; t < mmData.TrajectoryFeatures.Count; t++)
             {
                 var trajectoryFeature = mmData.TrajectoryFeatures[t];
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
                 {
+                    Gizmos.color = Color.blue * (1.25f - (float)p / trajectoryFeature.FramesPrediction.Length);
                     float3 value;
                     if (trajectoryFeature.Project)
                     {
@@ -149,7 +149,7 @@ public class FeatureDebug : MonoBehaviour
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Direction:
                             value = math.mul(characterRot, value);
-                            GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + value * 0.25f, 0.1f);
+                            GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + value * 0.5f, 0.1f, thickness: 3);
                             break;
                     }
                 }
@@ -167,7 +167,7 @@ public class FeatureDebug : MonoBehaviour
                 {
                     case MotionMatchingData.PoseFeature.Type.Position:
                         value = characterOrigin + math.mul(characterRot, value);
-                        Gizmos.DrawWireSphere(value, spheresRadius);
+                        Gizmos.DrawSphere(value, spheresRadius);
                         break;
                     case MotionMatchingData.PoseFeature.Type.Velocity:
                         value = math.mul(characterRot, value);
@@ -175,7 +175,7 @@ public class FeatureDebug : MonoBehaviour
                         {
                             skeleton.Find(poseFeature.Bone, out Skeleton.Joint joint);
                             float3 jointPos = joints[joint.Index].position;
-                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.1f, 0.25f * math.length(value) * 0.1f);
+                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.1f, 0.25f * math.length(value) * 0.1f, thickness: 3);
                         }
                         break;
                 }

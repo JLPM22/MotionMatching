@@ -195,12 +195,12 @@ namespace MotionMatching
             {
                 float3 pos = Path[i].GetWorldPosition(transform);
                 float3 nextPos = Path[i + 1].GetWorldPosition(transform);
-                Gizmos.DrawLine(new Vector3(pos.x, heightOffset, pos.z), new Vector3(nextPos.x, heightOffset, nextPos.z));
+                GizmosExtensions.DrawLine(new Vector3(pos.x, heightOffset, pos.z), new Vector3(nextPos.x, heightOffset, nextPos.z), 6);
             }
             // Last Line
             float3 lastPos = Path[Path.Length - 1].GetWorldPosition(transform);
             float3 firstPos = Path[0].GetWorldPosition(transform);
-            Gizmos.DrawLine(new Vector3(lastPos.x, heightOffset, lastPos.z), new Vector3(firstPos.x, heightOffset, firstPos.z));
+            GizmosExtensions.DrawLine(new Vector3(lastPos.x, heightOffset, lastPos.z), new Vector3(firstPos.x, heightOffset, firstPos.z), 6);
             // Draw Velocity
             for (int i = 0; i < Path.Length - 1; i++)
             {
@@ -208,21 +208,21 @@ namespace MotionMatching
                 float3 nextPos = Path[i + 1].GetWorldPosition(transform);
                 Vector3 start = new Vector3(pos.x, heightOffset, pos.z);
                 Vector3 end = new Vector3(nextPos.x, heightOffset, nextPos.z);
-                GizmosExtensions.DrawArrow(start, start + (end - start).normalized * math.min(Path[i].Velocity, math.distance(pos, nextPos)));
+                GizmosExtensions.DrawArrow(start, start + (end - start).normalized * math.min(Path[i].Velocity, math.distance(pos, nextPos)), thickness: 6);
             }
             // Last Line
             float3 lastPos2 = Path[Path.Length - 1].GetWorldPosition(transform);
             float3 firstPos2 = Path[0].GetWorldPosition(transform);
             Vector3 start2 = new Vector3(lastPos2.x, heightOffset, lastPos2.z);
             Vector3 end2 = new Vector3(firstPos2.x, heightOffset, firstPos2.z);
-            GizmosExtensions.DrawArrow(start2, start2 + (end2 - start2).normalized * Path[Path.Length - 1].Velocity);
+            GizmosExtensions.DrawArrow(start2, start2 + (end2 - start2).normalized * Path[Path.Length - 1].Velocity, thickness: 3);
 
             // Draw Current Position And Direction
             if (!Application.isPlaying) return;
             Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
             Vector3 currentPos = (Vector3)GetCurrentPosition() + Vector3.up * heightOffset * 2;
             Gizmos.DrawSphere(currentPos, 0.1f);
-            Gizmos.DrawLine(currentPos, currentPos + (Quaternion)GetCurrentRotation() * Vector3.forward);
+            GizmosExtensions.DrawLine(currentPos, currentPos + (Quaternion)GetCurrentRotation() * Vector3.forward, 12);
             // Draw Prediction
             if (PredictedPositions == null || PredictedPositions.Length != NumberPredictionPos ||
                 PredictedDirections == null || PredictedDirections.Length != NumberPredictionRot) return;
@@ -233,7 +233,7 @@ namespace MotionMatching
                 Vector3 predictedPos = new Vector3(predictedPosf2.x, heightOffset * 2, predictedPosf2.y);
                 Gizmos.DrawSphere(predictedPos, 0.1f);
                 float2 dirf2 = GetWorldPredictedDir(i);
-                Gizmos.DrawLine(predictedPos, predictedPos + new Vector3(dirf2.x, 0.0f, dirf2.y));
+                GizmosExtensions.DrawLine(predictedPos, predictedPos + new Vector3(dirf2.x, 0.0f, dirf2.y), 12);
             }
         }
 #endif

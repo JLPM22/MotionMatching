@@ -1,10 +1,17 @@
 using System;
+using UnityEditor;
 using UnityEngine;
 
 namespace MotionMatching
 {
     public static class GizmosExtensions
     {
+        public static void DrawLine(Vector3 startPosition, Vector3 endPosition, float thickness)
+        {
+            if (Camera.current == null) return;
+            float d = Mathf.Min(Vector3.Distance(Camera.current.transform.position, startPosition), Vector3.Distance(Camera.current.transform.position, endPosition));
+            Handles.DrawBezier(startPosition, endPosition, startPosition, endPosition, Gizmos.color, null, thickness * Mathf.Min(1.0f, (3.0f / d)));
+        }
 
         /// <summary>
         /// Draws a wire cube with a given rotation 
@@ -22,15 +29,15 @@ namespace MotionMatching
             Gizmos.matrix = old;
         }
 
-        public static void DrawArrow(Vector3 from, Vector3 to, float arrowHeadLength = 0.25f, float arrowHeadAngle = 20.0f)
+        public static void DrawArrow(Vector3 from, Vector3 to, float arrowHeadLength = 0.25f, float arrowHeadAngle = 20.0f, float thickness = 3.0f)
         {
-            Gizmos.DrawLine(from, to);
+            DrawLine(from, to, thickness);
             var direction = to - from;
             if (direction.magnitude < 0.001f) return;
             var right = Quaternion.LookRotation(direction) * Quaternion.Euler(0, 180 + arrowHeadAngle, 0) * new Vector3(0, 0, 1);
             var left = Quaternion.LookRotation(direction) * Quaternion.Euler(0, 180 - arrowHeadAngle, 0) * new Vector3(0, 0, 1);
-            Gizmos.DrawLine(to, to + right * arrowHeadLength);
-            Gizmos.DrawLine(to, to + left * arrowHeadLength);
+            DrawLine(to, to + right * arrowHeadLength, thickness);
+            DrawLine(to, to + left * arrowHeadLength, thickness);
         }
 
         public static void DrawWireSphere(Vector3 center, float radius, Quaternion rotation = default(Quaternion))
@@ -51,9 +58,9 @@ namespace MotionMatching
         /// <param name="radius"></param>
         /// <param name="segments"></param>
         /// <param name="rotation"></param>
-        public static void DrawWireCircle(Vector3 center, float radius, Quaternion rotation, int segments = 20)
+        public static void DrawWireCircle(Vector3 center, float radius, Quaternion rotation, int segments = 20, float thickness = 1.0f)
         {
-            DrawWireArc(center, radius, 360, rotation, segments);
+            DrawWireArc(center, radius, 360, rotation, segments, thickness);
         }
 
         /// <summary>
@@ -64,7 +71,7 @@ namespace MotionMatching
         /// <param name="angle">angle in degrees</param>
         /// <param name="segments">number of segments</param>
         /// <param name="rotation">rotation around the center</param>
-        public static void DrawWireArc(Vector3 center, float radius, float angle, Quaternion rotation, int segments = 20)
+        public static void DrawWireArc(Vector3 center, float radius, float angle, Quaternion rotation, int segments = 20, float thickness = 1.0f)
         {
             var old = Gizmos.matrix;
 
@@ -74,7 +81,7 @@ namespace MotionMatching
             for (int i = 0; i <= angle; i += step)
             {
                 var to = new Vector3(radius * Mathf.Sin(i * Mathf.Deg2Rad), 0, radius * Mathf.Cos(i * Mathf.Deg2Rad));
-                Gizmos.DrawLine(from, to);
+                DrawLine(from, to, thickness);
                 from = to;
             }
 
@@ -91,7 +98,7 @@ namespace MotionMatching
         /// <param name="segments">number of segments</param>
         /// <param name="rotation">rotation around the centerOfRotation</param>
         /// <param name="centerOfRotation">center of rotation</param>
-        public static void DrawWireArc(Vector3 center, float radius, float angle, int segments, Quaternion rotation, Vector3 centerOfRotation)
+        public static void DrawWireArc(Vector3 center, float radius, float angle, int segments, Quaternion rotation, Vector3 centerOfRotation, float thickness)
         {
 
             var old = Gizmos.matrix;
@@ -104,7 +111,7 @@ namespace MotionMatching
             for (int i = 0; i <= angle; i += step)
             {
                 var to = new Vector3(radius * Mathf.Sin(i * Mathf.Deg2Rad), 0, radius * Mathf.Cos(i * Mathf.Deg2Rad)) + deltaTranslation;
-                Gizmos.DrawLine(from, to);
+                DrawLine(from, to, thickness);
                 from = to;
             }
 
@@ -118,7 +125,7 @@ namespace MotionMatching
         /// <param name="radius">radius</param>
         /// <param name="angle">angle in degrees</param>
         /// <param name="segments">number of segments</param>
-        public static void DrawWireArc(Matrix4x4 matrix, float radius, float angle, int segments)
+        public static void DrawWireArc(Matrix4x4 matrix, float radius, float angle, int segments, float thickness = 1.0f)
         {
             var old = Gizmos.matrix;
             Gizmos.matrix = matrix;
@@ -127,7 +134,7 @@ namespace MotionMatching
             for (int i = 0; i <= angle; i += step)
             {
                 var to = new Vector3(radius * Mathf.Sin(i * Mathf.Deg2Rad), 0, radius * Mathf.Cos(i * Mathf.Deg2Rad));
-                Gizmos.DrawLine(from, to);
+                DrawLine(from, to, thickness);
                 from = to;
             }
 
@@ -141,7 +148,7 @@ namespace MotionMatching
         /// <param name="radius"></param>
         /// <param name="height"></param>
         /// <param name="rotation"></param>
-        public static void DrawWireCylinder(Vector3 center, float radius, Quaternion rotation, float height)
+        public static void DrawWireCylinder(Vector3 center, float radius, Quaternion rotation, float height, float thickness = 1.0f)
         {
             var old = Gizmos.matrix;
             if (rotation.Equals(default(Quaternion)))
@@ -150,14 +157,14 @@ namespace MotionMatching
             var half = height / 2;
 
             //draw the 4 outer lines
-            Gizmos.DrawLine(Vector3.right * radius - Vector3.up * half, Vector3.right * radius + Vector3.up * half);
-            Gizmos.DrawLine(-Vector3.right * radius - Vector3.up * half, -Vector3.right * radius + Vector3.up * half);
-            Gizmos.DrawLine(Vector3.forward * radius - Vector3.up * half, Vector3.forward * radius + Vector3.up * half);
-            Gizmos.DrawLine(-Vector3.forward * radius - Vector3.up * half, -Vector3.forward * radius + Vector3.up * half);
+            DrawLine(Vector3.right * radius - Vector3.up * half, Vector3.right * radius + Vector3.up * half, thickness);
+            DrawLine(-Vector3.right * radius - Vector3.up * half, -Vector3.right * radius + Vector3.up * half, thickness);
+            DrawLine(Vector3.forward * radius - Vector3.up * half, Vector3.forward * radius + Vector3.up * half, thickness);
+            DrawLine(-Vector3.forward * radius - Vector3.up * half, -Vector3.forward * radius + Vector3.up * half, thickness);
 
             //draw the 2 cricles with the center of rotation being the center of the cylinder, not the center of the circle itself
-            DrawWireArc(center + Vector3.up * half, radius, 360, 20, rotation, center);
-            DrawWireArc(center + Vector3.down * half, radius, 360, 20, rotation, center);
+            DrawWireArc(center + Vector3.up * half, radius, 360, 20, rotation, center, thickness);
+            DrawWireArc(center + Vector3.down * half, radius, 360, 20, rotation, center, thickness);
             Gizmos.matrix = old;
         }
 
@@ -168,7 +175,7 @@ namespace MotionMatching
         /// <param name="radius"></param>
         /// <param name="height"></param>
         /// <param name="rotation"></param>
-        public static void DrawWireCapsule(Vector3 center, float radius, float height, Quaternion rotation)
+        public static void DrawWireCapsule(Vector3 center, float radius, float height, Quaternion rotation, float thickness = 1.0f)
         {
             if (rotation.Equals(default(Quaternion)))
                 rotation = Quaternion.identity;
@@ -177,20 +184,20 @@ namespace MotionMatching
             var half = height / 2 - radius;
 
             //draw cylinder base
-            DrawWireCylinder(center, radius, rotation, height - radius * 2);
+            DrawWireCylinder(center, radius, rotation, height - radius * 2, thickness);
 
             //draw upper cap
             //do some cool stuff with orthogonal matrices
             var mat = Matrix4x4.Translate(center + rotation * Vector3.up * half) * Matrix4x4.Rotate(rotation * Quaternion.AngleAxis(90, Vector3.forward));
-            DrawWireArc(mat, radius, 180, 20);
+            DrawWireArc(mat, radius, 180, 20, thickness);
             mat = Matrix4x4.Translate(center + rotation * Vector3.up * half) * Matrix4x4.Rotate(rotation * Quaternion.AngleAxis(90, Vector3.up) * Quaternion.AngleAxis(90, Vector3.forward));
-            DrawWireArc(mat, radius, 180, 20);
+            DrawWireArc(mat, radius, 180, 20, thickness);
 
             //draw lower cap
             mat = Matrix4x4.Translate(center + rotation * Vector3.down * half) * Matrix4x4.Rotate(rotation * Quaternion.AngleAxis(90, Vector3.up) * Quaternion.AngleAxis(-90, Vector3.forward));
-            DrawWireArc(mat, radius, 180, 20);
+            DrawWireArc(mat, radius, 180, 20, thickness);
             mat = Matrix4x4.Translate(center + rotation * Vector3.down * half) * Matrix4x4.Rotate(rotation * Quaternion.AngleAxis(-90, Vector3.forward));
-            DrawWireArc(mat, radius, 180, 20);
+            DrawWireArc(mat, radius, 180, 20, thickness);
 
             Gizmos.matrix = old;
 

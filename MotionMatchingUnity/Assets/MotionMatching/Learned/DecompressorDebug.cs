@@ -158,7 +158,7 @@ namespace MotionMatching
                 for (int i = 1; i < SkeletonTransforms.Length; i++)
                 {
                     Transform t = SkeletonTransforms[i];
-                    Gizmos.DrawLine(t.parent.position, t.position);
+                    GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
                 }
             }
             else
@@ -167,7 +167,7 @@ namespace MotionMatching
                 for (int i = 1; i < DecompressorTransforms.Length; i++)
                 {
                     Transform t = DecompressorTransforms[i];
-                    Gizmos.DrawLine(t.parent.position, t.position);
+                    GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
                 }
             }
         }

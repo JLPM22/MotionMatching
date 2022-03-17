@@ -381,7 +381,7 @@ namespace MotionMatching
                 for (int i = 1; i < SkeletonTransforms.Length; i++)
                 {
                     Transform t = SkeletonTransforms[i];
-                    Gizmos.DrawLine(t.parent.position, t.position);
+                    GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
                 }
             }
 
@@ -396,7 +396,7 @@ namespace MotionMatching
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
                 Gizmos.DrawSphere(characterOrigin, SpheresRadius);
-                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward);
+                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward, thickness: 3);
             }
 
             // Feature Set

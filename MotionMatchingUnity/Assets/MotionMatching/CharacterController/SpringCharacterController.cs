@@ -299,7 +299,7 @@ namespace MotionMatching
                 // Draw Current Position & Velocity
                 Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
                 Gizmos.DrawSphere(transformPos, radius);
-                Gizmos.DrawLine(transformPos, transformPos + ((Quaternion)GetCurrentRotation() * Vector3.forward) * vectorReduction);
+                GizmosExtensions.DrawLine(transformPos, transformPos + ((Quaternion)GetCurrentRotation() * Vector3.forward) * vectorReduction, 3);
             }
 
             if (PredictedPosition == null || PredictedRotations == null) return;
@@ -314,7 +314,7 @@ namespace MotionMatching
                     float2 predictedDir = GetWorldSpaceDirectionPrediction(i);
                     float3 predictedDir3D = new float3(predictedDir.x, 0.0f, predictedDir.y);
                     Gizmos.DrawSphere(predictedPos, radius);
-                    Gizmos.DrawLine(predictedPos, predictedPos + predictedDir3D * vectorReduction);
+                    GizmosExtensions.DrawLine(predictedPos, predictedPos + predictedDir3D * vectorReduction, 3);
                 }
             }
 

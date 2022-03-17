@@ -77,12 +77,12 @@ public class BVHDebug : MonoBehaviour
         for (int i = 1; i < Skeleton.Length; i++)
         {
             Transform t = Skeleton[i];
-            Gizmos.DrawLine(t.parent.position, t.position);
+            GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
         }
         foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
         {
             Transform t = Skeleton[endSite.ParentIndex];
-            Gizmos.DrawLine(t.position, t.TransformPoint(endSite.Offset));
+            GizmosExtensions.DrawLine(t.position, t.TransformPoint(endSite.Offset), 3);
         }
 
         Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);

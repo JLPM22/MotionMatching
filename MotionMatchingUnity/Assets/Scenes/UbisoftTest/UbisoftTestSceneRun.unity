@@ -397,7 +397,7 @@ MonoBehaviour:
   - 1
   - 1
   SpheresRadius: 0.05
-  DebugSkeleton: 0
+  DebugSkeleton: 1
   DebugCurrent: 1
   DebugPose: 1
   DebugTrajectory: 0
