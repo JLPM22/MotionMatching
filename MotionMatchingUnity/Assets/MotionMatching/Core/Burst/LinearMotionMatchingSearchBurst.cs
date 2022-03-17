@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace MotionMatching
 {
@@ -9,53 +10,85 @@ namespace MotionMatching
     [BurstCompile]
     public struct LinearMotionMatchingSearchBurst : IJob
     {
-        [ReadOnly] public NativeArray<bool> Valid;
+        [ReadOnly] public NativeArray<bool> Valid; // TODO: If all features are valid, this will be unnecessary
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> QueryFeature;
         [ReadOnly] public NativeArray<float> FeatureWeights; // Size = FeatureSize
-        [ReadOnly] public float Responsiveness;
-        [ReadOnly] public float Quality;
-        [ReadOnly] public int NumberFeatureVectors;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int PoseOffset;
 
         [WriteOnly] public NativeArray<int> BestIndex;
 
+        // I use float4 (even if the code is less readable) to let Burst vectorize the code
+        // after profiling... it is way faster than using float directly
         public void Execute()
         {
-            float min = float.MaxValue;
-            int bestIndex = -1;
-            for (int i = 0; i < NumberFeatureVectors; ++i)
+            float4 min = new float4(float.MaxValue);
+            int4 bestIndex = new int4(-1);
+            int count4 = Valid.Length >> 2;
+            int lastCount = Valid.Length % 4;
+            for (int i = 0; i < count4; ++i)
             {
-                if (Valid[i])
+                int index = i << 2;
+                int featureIndex = index * FeatureSize;
+                // Trajectory
+                float4 sqrDistance = new float4(0.0f);
+                for (int j = 0; j < FeatureSize; ++j)
                 {
-                    int featureIndex = i * FeatureSize;
-                    // Trajectory
-                    float sqrDistanceTrajectory = 0.0f;
-                    for (int j = 0; j < PoseOffset; ++j)
+                    float4 query = new float4(QueryFeature[j]);
+                    float4 features = new float4(Features[featureIndex + j], Features[featureIndex + j + 1], Features[featureIndex + j + 2], Features[featureIndex + j + 3]);
+                    features = features - query;
+                    sqrDistance += features * features * FeatureWeights[j];
+                }
+                // Compare
+                if (math.any(sqrDistance < min)) // most of the time this will be false... (profiling: 5-10% speedup)
+                {
+                    if (sqrDistance.x < min.x && Valid[index]) // Checking Valid here is more performant than using it to avoid calculations... probably most of the time sqrDistance < min is false and reduces memory accesses (Valid is not used)
                     {
-                        float diff = Features[featureIndex + j] - QueryFeature[j];
-                        sqrDistanceTrajectory += diff * diff * FeatureWeights[j];
+                        min.x = sqrDistance.x;
+                        bestIndex.x = index;
                     }
-                    sqrDistanceTrajectory *= Responsiveness;
-                    // Pose
-                    float sqrDistance = 0.0f;
-                    for (int j = PoseOffset; j < FeatureSize; ++j)
+                    if (sqrDistance.y < min.y && Valid[index + 1])
                     {
-                        float diff = Features[featureIndex + j] - QueryFeature[j];
-                        sqrDistance += diff * diff * FeatureWeights[j];
+                        min.y = sqrDistance.y;
+                        bestIndex.y = index + 1;
                     }
-                    sqrDistance *= Quality;
-                    sqrDistance += sqrDistanceTrajectory;
-                    // Compare
-                    if (sqrDistance < min)
+                    if (sqrDistance.z < min.z && Valid[index + 2])
                     {
-                        min = sqrDistance;
-                        bestIndex = i;
+                        min.z = sqrDistance.z;
+                        bestIndex.z = index + 2;
+                    }
+                    if (sqrDistance.w < min.w && Valid[index + 3])
+                    {
+                        min.w = sqrDistance.w;
+                        bestIndex.w = index + 3;
                     }
                 }
             }
-            BestIndex[0] = bestIndex;
+            float _min = float.MaxValue;
+            int _bestIndex = -1;
+            if (min.x < _min) { _min = min.x; _bestIndex = bestIndex.x; }
+            if (min.y < _min) { _min = min.y; _bestIndex = bestIndex.y; }
+            if (min.z < _min) { _min = min.z; _bestIndex = bestIndex.z; }
+            if (min.w < _min) { _min = min.w; _bestIndex = bestIndex.w; }
+            // Last items (not multiple of 4)
+            for (int i = 0; i < lastCount; ++i)
+            {
+                int index = Valid.Length - lastCount + i;
+                int featureIndex = index * FeatureSize;
+                float sqrDistance = 0.0f;
+                for (int j = 0; j < FeatureSize; ++j)
+                {
+                    float diff = Features[featureIndex + j] - QueryFeature[j];
+                    sqrDistance += diff * diff * FeatureWeights[j];
+                }
+                if (sqrDistance < _min && Valid[index])
+                {
+                    _min = sqrDistance;
+                    _bestIndex = index;
+                }
+            }
+            BestIndex[0] = _bestIndex;
         }
     }
 }

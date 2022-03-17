@@ -192,7 +192,7 @@ namespace MotionMatching
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
                 TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
-                float weight = FeatureWeights[i];
+                float weight = FeatureWeights[i] * Responsiveness;
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
                     for (int f = 0; f < (feature.Project ? 2 : 3); f++)
@@ -205,7 +205,7 @@ namespace MotionMatching
             for (int i = 0; i < MMData.PoseFeatures.Count; i++)
             {
                 PoseFeature feature = MMData.PoseFeatures[i];
-                float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count];
+                float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count] * Quality;
                 FeaturesWeightsNativeArray[offset + 0] = weight;
                 FeaturesWeightsNativeArray[offset + 1] = weight;
                 FeaturesWeightsNativeArray[offset + 2] = weight;
@@ -218,9 +218,6 @@ namespace MotionMatching
                 Features = FeatureSet.GetFeatures(),
                 QueryFeature = QueryFeature,
                 FeatureWeights = FeaturesWeightsNativeArray,
-                Responsiveness = Responsiveness,
-                Quality = Quality,
-                NumberFeatureVectors = FeatureSet.NumberFeatureVectors,
                 FeatureSize = FeatureSet.FeatureSize,
                 PoseOffset = FeatureSet.PoseOffset,
                 BestIndex = SearchResult
