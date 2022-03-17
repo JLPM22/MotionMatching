@@ -88,14 +88,14 @@ namespace MotionMatching
         {
             if (FeatureSet == null)
             {
-                PROFILE.BEGIN_SAMPLE_PROFILING("Feature Import", true);
+                PROFILE.BEGIN_SAMPLE_PROFILING("Feature Import");
                 FeatureSerializer serializer = new FeatureSerializer();
                 if (!serializer.Deserialize(GetAssetPath(), name, this, out FeatureSet))
                 {
                     Debug.LogError("Failed to read feature set. Creating it in runtime instead.");
                     ImportFeatureSet();
                 }
-                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Import", true);
+                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Import");
             }
             return FeatureSet;
         }
@@ -184,20 +184,20 @@ namespace MotionMatching
 
         public void GenerateDatabases()
         {
-            PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract", true);
+            PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract");
             ImportPoseSet();
-            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Extract", true);
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Extract");
 
-            PROFILE.BEGIN_SAMPLE_PROFILING("Pose Serialize", true);
+            PROFILE.BEGIN_SAMPLE_PROFILING("Pose Serialize");
             PoseSerializer poseSerializer = new PoseSerializer();
             poseSerializer.Serialize(PoseSet, GetAssetPath(), this.name);
-            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize", true);
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize");
 
-            PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract", true);
+            PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract");
             ImportFeatureSet();
-            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract", true);
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Extract");
 
-            PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize", true);
+            PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize");
             FeatureSerializer featureSerializer = new FeatureSerializer();
             featureSerializer.Serialize(FeatureSet, this, GetAssetPath(), this.name);
             if (FeatureSet != null)
@@ -205,7 +205,7 @@ namespace MotionMatching
                 FeatureSet.Dispose();
                 FeatureSet = null;
             }
-            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize", true);
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize");
 
             AssetDatabase.Refresh();
         }

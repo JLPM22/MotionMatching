@@ -16,6 +16,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<float> FeatureWeights; // Size = FeatureSize
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int PoseOffset;
+        [ReadOnly] public float CurrentDistance;
 
         [WriteOnly] public NativeArray<int> BestIndex;
 
@@ -23,7 +24,7 @@ namespace MotionMatching
         // after profiling... it is way faster than using float directly
         public void Execute()
         {
-            float4 min = new float4(float.MaxValue);
+            float4 min = new float4(CurrentDistance);
             int4 bestIndex = new int4(-1);
             int count4 = Valid.Length >> 2;
             int lastCount = Valid.Length % 4;

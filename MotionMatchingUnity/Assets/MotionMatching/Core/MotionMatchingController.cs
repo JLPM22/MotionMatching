@@ -156,46 +156,8 @@ namespace MotionMatching
 
         private int SearchMotionMatching()
         {
-            // Init Query Vector
-            FeatureSet.GetFeature(QueryFeature, CurrentFrame);
-            int offset = 0;
-            for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
-            {
-                TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
-                for (int p = 0; p < feature.FramesPrediction.Length; ++p)
-                {
-                    float3 value = CharacterController.GetWorldSpacePrediction(feature, p);
-                    switch (feature.FeatureType)
-                    {
-                        case TrajectoryFeature.Type.Position:
-                            value = GetPositionLocalCharacter(value);
-                            break;
-                        case TrajectoryFeature.Type.Direction:
-                            value = GetDirectionLocalCharacter(value);
-                            break;
-                        default:
-                            Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
-                            break;
-                    }
-                    if (feature.Project)
-                    {
-                        QueryFeature[offset + 0] = value.x;
-                        QueryFeature[offset + 1] = value.z;
-                        offset += 2;
-                    }
-                    else
-                    {
-                        QueryFeature[offset + 0] = value.x;
-                        QueryFeature[offset + 1] = value.y;
-                        QueryFeature[offset + 2] = value.z;
-                        offset += 3;
-                    }
-                }
-            }
-            // Normalize (only trajectory... because current FeatureVector is already normalized)
-            FeatureSet.NormalizeTrajectory(QueryFeature);
             // Weights
-            offset = 0;
+            int offset = 0;
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
                 TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
@@ -218,6 +180,26 @@ namespace MotionMatching
                 FeaturesWeightsNativeArray[offset + 2] = weight;
                 offset += 3;
             }
+
+            // Init Query Vector
+            FeatureSet.GetFeature(QueryFeature, CurrentFrame);
+            FillTrajectory(QueryFeature);
+
+            // Get next feature vector (when doing motion matching search, they need less error than this)
+            float currentDistance = float.MaxValue;
+            bool currentValid = false;
+            if (FeatureSet.IsValidFeature(CurrentFrame))
+            {
+                currentValid = true;
+                currentDistance = 0.0f;
+                // the pose is the same... the distance is only the trajectory
+                for (int j = 0; j < FeatureSet.PoseOffset; j++)
+                {
+                    float diff = FeatureSet.GetFeatures()[CurrentFrame * FeatureSet.FeatureSize + j] - QueryFeature[j];
+                    currentDistance += diff * diff * FeaturesWeightsNativeArray[j];
+                }
+            }
+
             // Search
             var job = new LinearMotionMatchingSearchBurst
             {
@@ -227,10 +209,56 @@ namespace MotionMatching
                 FeatureWeights = FeaturesWeightsNativeArray,
                 FeatureSize = FeatureSet.FeatureSize,
                 PoseOffset = FeatureSet.PoseOffset,
+                CurrentDistance = currentDistance,
                 BestIndex = SearchResult
             };
             job.Schedule().Complete();
-            return SearchResult[0];
+
+            // Check if use current or best
+            int best = SearchResult[0];
+            if (currentValid && best == -1) best = CurrentFrame;
+
+            return best;
+        }
+
+        private void FillTrajectory(NativeArray<float> vector)
+        {
+            int offset = 0;
+            for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
+            {
+                TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
+                for (int p = 0; p < feature.FramesPrediction.Length; ++p)
+                {
+                    float3 value = CharacterController.GetWorldSpacePrediction(feature, p);
+                    switch (feature.FeatureType)
+                    {
+                        case TrajectoryFeature.Type.Position:
+                            value = GetPositionLocalCharacter(value);
+                            break;
+                        case TrajectoryFeature.Type.Direction:
+                            value = GetDirectionLocalCharacter(value);
+                            break;
+                        default:
+                            Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
+                            break;
+                    }
+                    if (feature.Project)
+                    {
+                        vector[offset + 0] = value.x;
+                        vector[offset + 1] = value.z;
+                        offset += 2;
+                    }
+                    else
+                    {
+                        vector[offset + 0] = value.x;
+                        vector[offset + 1] = value.y;
+                        vector[offset + 2] = value.z;
+                        offset += 3;
+                    }
+                }
+            }
+            // Normalize (only trajectory... because current FeatureVector is already normalized)
+            FeatureSet.NormalizeTrajectory(vector);
         }
 
         private void UpdateTransformAndSkeleton(int frameIndex)

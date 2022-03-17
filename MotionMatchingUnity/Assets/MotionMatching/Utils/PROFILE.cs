@@ -18,24 +18,10 @@ namespace MotionMatching
         // We need a separated ProfileSamples (instead of using Stopwatches) because we don't know when the ms/ticks will be queried
         // it may happen just after a stopwatch has been reseted
         private static Dictionary<string, DATA> ProfileDatas = new Dictionary<string, DATA>();
-        private static Dictionary<string, long> StartMemory = new Dictionary<string, long>();
-        private static Dictionary<string, long> EndMemory = new Dictionary<string, long>();
 #endif
         // Functions must have empty body if PROFILE_MOTION_MATCHING is not defined
         // Compiler will remove them from the build
-        public static void BEGIN_MEMORY_PROFILING(string tag)
-        {
-#if PROFILE_MOTION_MATCHING
-            StartMemory[tag] = System.GC.GetTotalMemory(true);
-#endif
-        }
-        public static void END_MEMORY_PROFILING(string tag)
-        {
-#if PROFILE_MOTION_MATCHING
-            EndMemory[tag] = System.GC.GetTotalMemory(true);
-#endif
-        }
-        public static void BEGIN_SAMPLE_PROFILING(string tag, bool sampleMemory = false)
+        public static void BEGIN_SAMPLE_PROFILING(string tag)
         {
 #if PROFILE_MOTION_MATCHING
             if (!Stopwatches.TryGetValue(tag, out Stopwatch stopwatch))
@@ -44,16 +30,14 @@ namespace MotionMatching
                 Stopwatches.Add(tag, stopwatch);
             }
             stopwatch.Reset();
-            if (sampleMemory) BEGIN_MEMORY_PROFILING(tag);
             stopwatch.Start();
 #endif
         }
-        public static void END_SAMPLE_PROFILING(string tag, bool sampleMemory = false)
+        public static void END_SAMPLE_PROFILING(string tag)
         {
 #if PROFILE_MOTION_MATCHING
             Stopwatch stopwatch = Stopwatches[tag];
             stopwatch.Stop();
-            if (sampleMemory) END_MEMORY_PROFILING(tag);
             if (!ProfileDatas.TryGetValue(tag, out DATA data))
             {
                 data = new DATA();
@@ -62,10 +46,10 @@ namespace MotionMatching
             data.AddSample((float)stopwatch.Elapsed.TotalMilliseconds, stopwatch.ElapsedTicks);
 #endif
         }
-        public static void END_AND_PRINT_SAMPLE_PROFILING(string tag, bool sampleMemory = false)
+        public static void END_AND_PRINT_SAMPLE_PROFILING(string tag)
         {
 #if PROFILE_MOTION_MATCHING
-            END_SAMPLE_PROFILING(tag, sampleMemory);
+            END_SAMPLE_PROFILING(tag);
             Stopwatch stopwatch = Stopwatches[tag];
             Debug.Log("[PROFILER]" + tag + ": " + stopwatch.ElapsedMilliseconds + "ms" + "(" + stopwatch.ElapsedTicks + " ticks)");
 #endif
@@ -80,28 +64,7 @@ namespace MotionMatching
             return null;
 #endif
         }
-        /// <summary>
-        /// Memory returned in bytes
-        /// </summary>
-        public static long GET_MEMORY(string tag)
-        {
-#if PROFILE_MOTION_MATCHING
-            if (StartMemory.ContainsKey(tag) && EndMemory.ContainsKey(tag))
-            {
-                return EndMemory[tag] - StartMemory[tag];
-            }
-            return -1;
-#endif
-        }
-        public static void PRINT_MEMORY(string tag)
-        {
-#if PROFILE_MOTION_MATCHING
-            if (StartMemory.ContainsKey(tag) && EndMemory.ContainsKey(tag))
-            {
-                Debug.Log(tag + ": " + ((EndMemory[tag] - StartMemory[tag]) / (1024 * 1024)) + " MiB");
-            }
-#endif
-        }
+
         /// <summary>
         /// Use it only for Editor functions, otherwise is better to use a compiler directive such as #define
         /// </summary>

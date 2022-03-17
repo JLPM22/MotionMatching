@@ -83,17 +83,6 @@ namespace MotionMatching
                         EditorGUILayout.LabelField("Max: " + searchMotionMatchingData.MaxMs.ToString("F2") + "ms" + " (" + searchMotionMatchingData.MaxTicks.ToString("F0") + " ticks)");
                         EditorGUILayout.LabelField("Avg: " + searchMotionMatchingData.GetAverageMs().ToString("F2") + "ms" + " (" + searchMotionMatchingData.GetAverageTicks().ToString("F0") + " ticks)");
                     }
-
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Memory is approximated", EditorStyles.boldLabel);
-
-                    EditorGUILayout.Space();
-                    long MiB = PROFILE.GET_MEMORY("Pose Extract") / (1024 * 1024);
-                    EditorGUILayout.LabelField("Pose Memory: " + MiB + " MiB");
-
-                    EditorGUILayout.Space();
-                    MiB = PROFILE.GET_MEMORY("Feature Extract") / (1024 * 1024);
-                    EditorGUILayout.LabelField("Feature Memory: " + MiB + " MiB");
                 }
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
