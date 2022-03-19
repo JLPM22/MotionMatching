@@ -33,6 +33,8 @@ namespace MotionMatching
         public bool DebugTrajectory = true;
 
         public float3 Velocity { get; private set; }
+        public float3 AngularVelocity { get; private set; }
+        public float FrameTime { get; private set; }
 
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
@@ -69,9 +71,10 @@ namespace MotionMatching
             Inertialization = new Inertialization(PoseSet.Skeleton);
 
             // FPS
+            FrameTime = PoseSet.FrameTime;
             if (LockFPS)
             {
-                Application.targetFrameRate = (int)(1.0f / PoseSet.FrameTime);
+                Application.targetFrameRate = (int)(1.0f / FrameTime); ;
                 Debug.Log("[Motion Matching] Updated Target FPS: " + Application.targetFrameRate);
             }
             else
@@ -252,9 +255,11 @@ namespace MotionMatching
             }
             // Simulation Bone
             float3 previousPosition = transform.position;
+            quaternion previousRotation = transform.rotation;
             transform.position += transform.TransformDirection(pose.RootDisplacement);
             transform.rotation = transform.rotation * pose.RootRotDisplacement;
             Velocity = ((float3)transform.position - previousPosition) / Time.deltaTime;
+            AngularVelocity = MathExtensions.AngularVelocity(previousRotation, transform.rotation, Time.deltaTime);
             // Joints
             if (Inertialize)
             {

@@ -30,8 +30,9 @@ namespace MotionMatching
         [Header("Adjustment")] // Move Simulation Bone towards the Simulation Object (motion matching towards character controller)
         public bool DoAdjustment = true;
         [Range(0.0f, 2.0f)] public float PositionAdjustmentHalflife = 0.1f; // Time needed to move half of the distance between SimulationBone and SimulationObject
-        // [Range(0.0f, 1.0f)] public float RotationAdjustmentHalflife = 0.2f;
-        [Range(0.0f, 2.0f)] public float MaximumAdjustmentRatio = 0.5f; // Ratio between the adjustment and the character's velocity to clamp the adjustment
+        [Range(0.0f, 2.0f)] public float RotationAdjustmentHalflife = 0.1f;
+        [Range(0.0f, 2.0f)] public float PosMaximumAdjustmentRatio = 0.5f; // Ratio between the adjustment and the character's velocity to clamp the adjustment
+        [Range(0.0f, 2.0f)] public float RotMaximumAdjustmentRatio = 0.5f; // Ratio between the adjustment and the character's velocity to clamp the adjustment
         public bool DoClamping = true;
         [Range(0.0f, 2.0f)] public float MaxDistanceSimulationBoneAndObject = 0.1f; // Max distance between SimulationBone and SimulationObject
         [Header("DEBUG")]
@@ -163,7 +164,7 @@ namespace MotionMatching
         /* https://theorangeduck.com/page/spring-roll-call#controllers */
         private void PredictPositions(float2 currentPos, float2 desiredSpeed, float averagedDeltaTime)
         {
-            int predictionFrames = 0;
+            int lastPredictionFrames = 0;
             for (int i = 0; i < NumberPredictionPos; ++i)
             {
                 if (i == 0)
@@ -178,9 +179,10 @@ namespace MotionMatching
                     PredictedVelocity[i] = PredictedVelocity[i - 1];
                     PredictedAcceleration[i] = PredictedAcceleration[i - 1];
                 }
-                predictionFrames = TrajectoryPosPredictionFrames[i] - predictionFrames;
+                int diffPredictionFrames = TrajectoryPosPredictionFrames[i] - lastPredictionFrames;
+                lastPredictionFrames = TrajectoryPosPredictionFrames[i];
                 Spring.CharacterPositionUpdate(ref PredictedPosition[i], ref PredictedVelocity[i], ref PredictedAcceleration[i],
-                                               desiredSpeed, 1.0f - ResponsivenessPositions, predictionFrames * averagedDeltaTime);
+                                               desiredSpeed, 1.0f - ResponsivenessPositions, diffPredictionFrames * averagedDeltaTime);
             }
         }
 
@@ -201,7 +203,7 @@ namespace MotionMatching
         private void AdjustSimulationBone()
         {
             AdjustCharacterPosition();
-            //AdjustCharacterRotation();
+            AdjustCharacterRotation();
         }
 
         private void ClampSimulationBone()
@@ -224,7 +226,7 @@ namespace MotionMatching
             float3 adjustmentPosition = Spring.DampAdjustmentImplicit(differencePosition, PositionAdjustmentHalflife, Time.deltaTime);
             // Clamp adjustment if the length is greater than the character velocity
             // multiplied by the ratio
-            float maxLength = MaximumAdjustmentRatio * math.length(SimulationBone.Velocity) * Time.deltaTime;
+            float maxLength = PosMaximumAdjustmentRatio * math.length(SimulationBone.Velocity) * Time.deltaTime;
             if (math.length(adjustmentPosition) > maxLength)
             {
                 adjustmentPosition = maxLength * math.normalize(adjustmentPosition);
@@ -233,18 +235,25 @@ namespace MotionMatching
             SimulationBone.transform.position = simulationBone + adjustmentPosition;
         }
 
-        // private void AdjustCharacterRotation()
-        // {
-        //     quaternion simulationObject = transform.rotation;
-        //     quaternion simulationBone = SimulationBone.transform.rotation;
-        //     // Find the difference in rotation (from character to simulation object)
-        //     // Note: if numerically unstable, try quaternion.Normalize(quaternion.Inverse(simulationObject) * simulationBone)
-        //     quaternion differenceRotation = quaternion.Inverse(simulationObject) * simulationBone;
-        //     // Damp the difference using the adjustment halflife and dt
-        //     quaternion adjustmentRotation = Spring.DampAdjustmentImplicit(differenceRotation, RotationAdjustmentHalflife, Time.deltaTime);
-        //     // Rotate the simulation bone towards the simulation object
-        //     SimulationBone.transform.rotation = simulationBone * adjustmentRotation;
-        // }
+        private void AdjustCharacterRotation()
+        {
+            quaternion simulationObject = transform.rotation;
+            quaternion simulationBone = SimulationBone.transform.rotation;
+            // Find the difference in rotation (from character to simulation object)
+            // Note: if numerically unstable, try quaternion.Normalize(quaternion.Inverse(simulationObject) * simulationBone)
+            quaternion differenceRotation = math.mul(math.inverse(simulationBone), simulationObject);
+            // Damp the difference using the adjustment halflife and dt
+            quaternion adjustmentRotation = Spring.DampAdjustmentImplicit(differenceRotation, RotationAdjustmentHalflife, Time.deltaTime);
+            // Clamp adjustment if the length is greater than the character angular velocity
+            // multiplied by the ratio
+            float maxLength = RotMaximumAdjustmentRatio * math.length(SimulationBone.AngularVelocity) * Time.deltaTime;
+            if (math.length(MathExtensions.QuaternionToScaledAngleAxis(adjustmentRotation)) > maxLength)
+            {
+                adjustmentRotation = MathExtensions.QuaternionFromScaledAngleAxis(maxLength * math.normalize(MathExtensions.QuaternionToScaledAngleAxis(adjustmentRotation)));
+            }
+            // Rotate the simulation bone towards the simulation object
+            SimulationBone.transform.rotation = math.mul(simulationBone, adjustmentRotation);
+        }
 
         public override float3 GetCurrentPosition()
         {

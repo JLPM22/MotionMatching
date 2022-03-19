@@ -16,14 +16,22 @@ namespace MotionMatching
         public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
 
         // Accumulated Delta Time
+        public bool LockFPS { get { return SimulationBone.LockFPS; } }
         public float AveragedDeltaTime { get; private set; }
         private Queue<float> LastDeltaTime = new Queue<float>();
         private float SumDeltaTime;
 
         private void Update()
         {
-            // Average DeltaTime (for prediction... it is better to have a stable frame rate)
-            AveragedDeltaTime = GetAveragedDeltaTime();
+            if (LockFPS)
+            {
+                AveragedDeltaTime = SimulationBone.FrameTime;
+            }
+            else
+            {
+                // Average DeltaTime (for prediction... it is better to have a stable frame rate)
+                AveragedDeltaTime = GetAveragedDeltaTime();
+            }
             // Update the character
             OnUpdate();
             // Update other components depending on the character controller
