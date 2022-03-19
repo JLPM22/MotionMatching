@@ -426,7 +426,6 @@ MonoBehaviour:
   - 1
   - 1
   - 1
-  - 1
   SpheresRadius: 0.05
   DebugSkeleton: 1
   DebugCurrent: 1
@@ -488,7 +487,9 @@ MonoBehaviour:
   InputBigChangeThreshold: 0.5
   DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
-  MaximumAdjustmentRatio: 0.25
+  RotationAdjustmentHalflife: 0.1
+  PosMaximumAdjustmentRatio: 0.1
+  RotMaximumAdjustmentRatio: 0.1
   DoClamping: 0
   MaxDistanceSimulationBoneAndObject: 1
   DebugCurrent: 1

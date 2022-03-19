@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MotionMatching
 {
-    public class Skeleton : IEquatable<Skeleton>
+    public class Skeleton
     {
         public List<Joint> Joints { get; private set; }
 
@@ -17,18 +17,6 @@ namespace MotionMatching
         public void AddJoint(Joint joint)
         {
             Joints.Add(joint);
-        }
-
-        public bool Equals(Skeleton other)
-        {
-            for (int i = 0; i < Joints.Count; i++)
-            {
-                if (!Joints[i].Equals(other.Joints[i]))
-                {
-                    return false;
-                }
-            }
-            return true;
         }
 
         public bool Find(HumanBodyBones type, out Joint joint)

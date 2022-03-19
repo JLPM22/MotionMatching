@@ -457,7 +457,9 @@ MonoBehaviour:
   InputBigChangeThreshold: 0.5
   DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
-  MaximumAdjustmentRatio: 0.5
+  RotationAdjustmentHalflife: 0.1
+  PosMaximumAdjustmentRatio: 0.5
+  RotMaximumAdjustmentRatio: 0.1
   DoClamping: 1
   MaxDistanceSimulationBoneAndObject: 0.25
   DebugCurrent: 0

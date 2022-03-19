@@ -27,167 +27,179 @@ namespace MotionMatching
             PoseVector[] poses = new PoseVector[nFrames];
             for (int i = 0; i < nFrames; i++)
             {
-                poses[i] = ExtractPose(bvhAnimation, i, mmData, nFrames);
+                poses[i] = ExtractPose(bvhAnimation, i, mmData, poseSet, poses);
             }
-            return poseSet.AddClip(bvhAnimation.Skeleton, poses, bvhAnimation.FrameTime);
+            return poseSet.AddClip(poses, bvhAnimation.FrameTime);
         }
 
-        private PoseVector ExtractPose(BVHAnimation bvhAnimation, int frameIndex, MotionMatchingData mmData, int nFrames)
+        private PoseVector ExtractPose(BVHAnimation bvhAnimation, int frameIndex, MotionMatchingData mmData, PoseSet poseSet, PoseVector[] poseCache)
         {
             BVHAnimation.Frame frame = bvhAnimation.Frames[frameIndex];
-            BVHAnimation.Frame prevFrame = frameIndex == 0 ? frame : bvhAnimation.Frames[frameIndex - 1];
 
             int nJoints = bvhAnimation.Skeleton.Joints.Count;
+            int outNJoint = nJoints + 1; // +1 for SimulationBone
 
             // Native Arrays used by Burst for Output
-            NativeArray<float3> jointLocalPositions = new NativeArray<float3>(nJoints, Allocator.TempJob);
-            NativeArray<quaternion> jointLocalRotations = new NativeArray<quaternion>(nJoints, Allocator.TempJob);
-            NativeArray<float3> jointVelocities = new NativeArray<float3>(nJoints, Allocator.TempJob);
-            NativeArray<float3> jointAngularVelocities = new NativeArray<float3>(nJoints, Allocator.TempJob);
-            NativeArray<float3> rootDisplacement = new NativeArray<float3>(1, Allocator.TempJob);
-            NativeArray<quaternion> rootRotDisplacement = new NativeArray<quaternion>(1, Allocator.TempJob);
-            NativeArray<float3> rootRotAngularVelocity = new NativeArray<float3>(1, Allocator.TempJob);
-
+            NativeArray<float3> jointLocalPositions = new NativeArray<float3>(outNJoint, Allocator.TempJob);
+            NativeArray<quaternion> jointLocalRotations = new NativeArray<quaternion>(outNJoint, Allocator.TempJob);
+            NativeArray<float3> jointVelocities = new NativeArray<float3>(outNJoint, Allocator.TempJob);
+            NativeArray<float3> jointAngularVelocities = new NativeArray<float3>(outNJoint, Allocator.TempJob);
 
             // Native Arrays used by Burst for Input
             NativeArray<float3> jointOffsets = new NativeArray<float3>(nJoints, Allocator.TempJob);
             for (int i = 0; i < nJoints; i++) jointOffsets[i] = bvhAnimation.Skeleton.Joints[i].LocalOffset;
-            NativeArray<int> jointParents = new NativeArray<int>(nJoints, Allocator.TempJob);
-            for (int i = 0; i < nJoints; i++) jointParents[i] = bvhAnimation.Skeleton.Joints[i].ParentIndex;
             NativeArray<quaternion> frameLocalRotations = new NativeArray<quaternion>(nJoints, Allocator.TempJob);
             for (int i = 0; i < nJoints; i++) frameLocalRotations[i] = frame.LocalRotations[i];
-            NativeArray<quaternion> prevFrameLocalRotations = new NativeArray<quaternion>(nJoints, Allocator.TempJob);
-            for (int i = 0; i < nJoints; i++) prevFrameLocalRotations[i] = prevFrame.LocalRotations[i];
 
             // Use Burst (way faster than doing it in regular C#)
-            var job = new ExtractPoseBurst
+            var jobSB = new AddSimulationBoneBurst
             {
                 // Input
                 Njoints = nJoints,
-                FrameTime = bvhAnimation.FrameTime,
                 JointOffsets = jointOffsets,
-                JointParents = jointParents,
                 FrameLocalRotations = frameLocalRotations,
-                PrevFrameLocalRotations = prevFrameLocalRotations,
                 FrameRootMotion = frame.RootMotion,
-                PrevFrameRootMotion = prevFrame.RootMotion,
                 HipsForwardLocalVector = mmData.HipsForwardLocalVector,
                 // Output
-                JointLocalPositions = jointLocalPositions,
-                JointLocalRotations = jointLocalRotations,
-                JointVelocities = jointVelocities,
-                JointAngularVelocities = jointAngularVelocities,
-                RootDisplacement = rootDisplacement,
-                RootRotDisplacement = rootRotDisplacement,
-                RootRotAngularVelocity = rootRotAngularVelocity
+                OutJointLocalPositions = jointLocalPositions,
+                OutJointLocalRotations = jointLocalRotations,
             };
-            job.Schedule().Complete();
+            jobSB.Schedule().Complete();
 
-            // Dispose Input Native Arrays
+            // Dispose
             jointOffsets.Dispose();
-            jointParents.Dispose();
             frameLocalRotations.Dispose();
-            prevFrameLocalRotations.Dispose();
+
+            if (frameIndex == 0)
+            {
+                for (int i = 0; i < jointVelocities.Length; i++) jointVelocities[i] = float3.zero;
+                for (int i = 0; i < jointAngularVelocities.Length; i++) jointAngularVelocities[i] = float3.zero;
+            }
+            else
+            {
+                PoseVector prevPos = poseCache[frameIndex - 1];
+
+                // Native Arrays used by Burst for Input
+                NativeArray<int> jointParents = new NativeArray<int>(outNJoint, Allocator.TempJob);
+                for (int i = 0; i < outNJoint; i++) jointParents[i] = poseSet.Skeleton.Joints[i].ParentIndex; // poseSet skeleton already includes SimulationBone
+                NativeArray<float3> prevLocalPositions = new NativeArray<float3>(outNJoint, Allocator.TempJob);
+                for (int i = 0; i < outNJoint; i++) prevLocalPositions[i] = prevPos.JointLocalPositions[i];
+                NativeArray<quaternion> prevLocalRotations = new NativeArray<quaternion>(outNJoint, Allocator.TempJob);
+                for (int i = 0; i < outNJoint; i++) prevLocalRotations[i] = prevPos.JointLocalRotations[i];
+
+                var jobVelocities = new ExtractVelocitiesBurst
+                {
+                    // Input
+                    Njoints = outNJoint,
+                    FrameTime = bvhAnimation.FrameTime,
+                    JointParents = jointParents,
+                    LocalPositions = jointLocalPositions,
+                    PrevLocalPositions = prevLocalPositions,
+                    LocalRotations = jointLocalRotations,
+                    PrevLocalRotations = prevLocalRotations,
+                    // Output
+                    OutJointVelocities = jointVelocities,
+                    OutJointAngularVelocities = jointAngularVelocities,
+                };
+                jobVelocities.Schedule().Complete();
+
+                // Dispose
+                jointParents.Dispose();
+                prevLocalPositions.Dispose();
+                prevLocalRotations.Dispose();
+            }
 
             // Copy to managed arrays
-            float3[] _jointLocalPositions = new float3[nJoints];
-            for (int i = 0; i < nJoints; i++) _jointLocalPositions[i] = jointLocalPositions[i];
-            quaternion[] _jointLocalRotations = new quaternion[nJoints];
-            for (int i = 0; i < nJoints; i++) _jointLocalRotations[i] = jointLocalRotations[i];
-            float3[] _jointVelocities = new float3[nJoints];
-            for (int i = 0; i < nJoints; i++) _jointVelocities[i] = jointVelocities[i];
-            float3[] _jointAngularVelocities = new float3[nJoints];
-            for (int i = 0; i < nJoints; i++) _jointAngularVelocities[i] = jointAngularVelocities[i];
-            float3 _rootDisplacement = float3.zero;
-            _rootDisplacement = rootDisplacement[0];
-            quaternion _rootRotDisplacement = quaternion.identity;
-            _rootRotDisplacement = rootRotDisplacement[0];
-            float3 _rootRotAngularVelocity = float3.zero;
-            _rootRotAngularVelocity = rootRotAngularVelocity[0];
+            float3[] _jointLocalPositions = new float3[outNJoint];
+            for (int i = 0; i < outNJoint; i++) _jointLocalPositions[i] = jointLocalPositions[i];
+            quaternion[] _jointLocalRotations = new quaternion[outNJoint];
+            for (int i = 0; i < outNJoint; i++) _jointLocalRotations[i] = jointLocalRotations[i];
+            float3[] _jointVelocities = new float3[outNJoint];
+            for (int i = 0; i < outNJoint; i++) _jointVelocities[i] = jointVelocities[i];
+            float3[] _jointAngularVelocities = new float3[outNJoint];
+            for (int i = 0; i < outNJoint; i++) _jointAngularVelocities[i] = jointAngularVelocities[i];
 
             // Dispose Output Native Arrays
             jointLocalPositions.Dispose();
             jointLocalRotations.Dispose();
             jointVelocities.Dispose();
             jointAngularVelocities.Dispose();
-            rootDisplacement.Dispose();
-            rootRotDisplacement.Dispose();
-            rootRotAngularVelocity.Dispose();
 
             // Result
             return new PoseVector(_jointLocalPositions, _jointLocalRotations,
-                                  _jointVelocities, _jointAngularVelocities,
-                                  _rootDisplacement, _rootRotDisplacement, _rootRotAngularVelocity,
-                                  frame.RootMotion, frame.LocalRotations[0]);
+                                  _jointVelocities, _jointAngularVelocities);
         }
 
         [BurstCompile]
-        public struct ExtractPoseBurst : IJob
+        public struct AddSimulationBoneBurst : IJob
         {
+            // Input arrays are of size nJoints (not including SimulationBone)
             [ReadOnly] public int Njoints;
-            [ReadOnly] public float FrameTime;
             [ReadOnly] public NativeArray<float3> JointOffsets;
-            [ReadOnly] public NativeArray<int> JointParents;
             [ReadOnly] public NativeArray<quaternion> FrameLocalRotations;
             [ReadOnly] public float3 FrameRootMotion;
-            [ReadOnly] public NativeArray<quaternion> PrevFrameLocalRotations;
-            [ReadOnly] public float3 PrevFrameRootMotion;
             [ReadOnly] public float3 HipsForwardLocalVector;
 
-            public NativeArray<float3> JointLocalPositions;
-            [WriteOnly] public NativeArray<quaternion> JointLocalRotations;
-            [WriteOnly] public NativeArray<float3> JointVelocities;
-            [WriteOnly] public NativeArray<float3> JointAngularVelocities;
-            [WriteOnly] public NativeArray<float3> RootDisplacement;
-            [WriteOnly] public NativeArray<quaternion> RootRotDisplacement;
-            [WriteOnly] public NativeArray<float3> RootRotAngularVelocity;
+            // Output arrays are of size nJoints + 1 (including SimulationBone)
+            [WriteOnly] public NativeArray<float3> OutJointLocalPositions;
+            [WriteOnly] public NativeArray<quaternion> OutJointLocalRotations;
 
             public void Execute()
             {
                 // Joints
                 for (int i = 0; i < Njoints; i++)
                 {
-                    JointLocalPositions[i] = JointOffsets[i];
-                    JointLocalRotations[i] = FrameLocalRotations[i];
+                    OutJointLocalPositions[i + 1] = JointOffsets[i];
+                    OutJointLocalRotations[i + 1] = FrameLocalRotations[i];
                 }
+                // SimulationBone
+                // position and direction are hips projected on the ground
+                float3 sbPos = new float3(FrameRootMotion.x, 0.0f, FrameRootMotion.z);
+                quaternion hipsForwardCorrection = MathExtensions.FromToRotation(math.mul(FrameLocalRotations[0], new float3(0, 0, 1)),
+                                                                                 math.mul(FrameLocalRotations[0], HipsForwardLocalVector),
+                                                                                 new float3(0, 1, 0));
+                quaternion hipsOnlyY = math.normalize(MathExtensions.GetYAxisRotation(FrameLocalRotations[0]));
+                quaternion sbRot = math.mul(math.normalize(MathExtensions.GetYAxisRotation(hipsForwardCorrection)), hipsOnlyY);
+                OutJointLocalPositions[0] = sbPos;
+                OutJointLocalRotations[0] = sbRot;
+                // make first joint (hips) position and direction relative to the simulation bone
+                OutJointLocalPositions[1] = math.mul(math.inverse(sbRot), FrameRootMotion - sbPos);
+                OutJointLocalRotations[1] = math.mul(math.inverse(sbRot), FrameLocalRotations[0]);
+            }
+        }
+
+        [BurstCompile]
+        public struct ExtractVelocitiesBurst : IJob
+        {
+            // Input arrays include SimulationBone
+            [ReadOnly] public int Njoints;
+            [ReadOnly] public float FrameTime;
+            [ReadOnly] public NativeArray<int> JointParents;
+            [ReadOnly] public NativeArray<float3> LocalPositions;
+            [ReadOnly] public NativeArray<float3> PrevLocalPositions;
+            [ReadOnly] public NativeArray<quaternion> LocalRotations;
+            [ReadOnly] public NativeArray<quaternion> PrevLocalRotations;
+
+            // Output arrays include SimulationBone
+            [WriteOnly] public NativeArray<float3> OutJointVelocities;
+            [WriteOnly] public NativeArray<float3> OutJointAngularVelocities;
+
+            public void Execute()
+            {
                 // Velocities
                 for (int joint = 0; joint < Njoints; joint++)
                 {
                     // Velocity
-                    float3 pos = GetWorldPosition(joint, FrameLocalRotations, FrameRootMotion);
-                    float3 prevPos = GetWorldPosition(joint, PrevFrameLocalRotations, PrevFrameRootMotion);
+                    float3 pos = GetWorldPosition(joint, LocalPositions, LocalRotations);
+                    float3 prevPos = GetWorldPosition(joint, PrevLocalPositions, PrevLocalRotations);
                     float3 vel = (pos - prevPos) / FrameTime;
-                    JointVelocities[joint] = vel;
+                    OutJointVelocities[joint] = vel;
                     // Angular velocity
-                    quaternion rot = GetWorldRotation(joint, FrameLocalRotations);
-                    quaternion prevRot = GetWorldRotation(joint, PrevFrameLocalRotations);
-                    if (joint == 0)
-                    {
-                        // Remove Y world axis rotation from the root...
-                        // so angularVel is consistent with jointLocalRotations[0]
-                        quaternion inverseRotY = math.inverse(MathExtensions.GetYAxisRotation(rot));
-                        rot = math.mul(inverseRotY, rot);
-                        quaternion inversePrevRotY = math.inverse(MathExtensions.GetYAxisRotation(prevRot));
-                        prevRot = math.mul(inversePrevRotY, prevRot);
-                    }
+                    quaternion rot = GetWorldRotation(joint, LocalRotations);
+                    quaternion prevRot = GetWorldRotation(joint, PrevLocalRotations);
                     float3 angularVel = MathExtensions.AngularVelocity(prevRot, rot, FrameTime);
-                    JointAngularVelocities[joint] = angularVel;
+                    OutJointAngularVelocities[joint] = angularVel;
                 }
-                // Root: remove Y world axis rotation
-                quaternion hipsRotWorldOnlyY = MathExtensions.GetYAxisRotation(FrameLocalRotations[0]);
-                JointLocalRotations[0] = math.mul(math.inverse(hipsRotWorldOnlyY), FrameLocalRotations[0]);
-                // Local Root Displacement
-                FeatureSet.GetWorldOriginCharacter(FrameRootMotion, FrameLocalRotations[0], HipsForwardLocalVector, out _, out float3 characterForward);
-
-                float3 hipsWorldXZ = new float3(FrameRootMotion.x, 0.0f, FrameRootMotion.z);
-                float3 prevHipsWorldXZ = new float3(PrevFrameRootMotion.x, 0.0f, PrevFrameRootMotion.z);
-                float3 tmpRootDisplacement = hipsWorldXZ - prevHipsWorldXZ;
-                RootDisplacement[0] = FeatureSet.GetLocalDirectionFromCharacter(tmpRootDisplacement, characterForward);
-                // Root Rot
-                quaternion yRot = MathExtensions.GetYAxisRotation(FrameLocalRotations[0]);
-                quaternion yPrevRot = MathExtensions.GetYAxisRotation(PrevFrameLocalRotations[0]);
-                RootRotDisplacement[0] = math.mul(math.inverse(yPrevRot), yRot);
-                RootRotAngularVelocity[0] = MathExtensions.AngularVelocity(yPrevRot, yRot, FrameTime);
             }
 
             /// <summary>
@@ -211,17 +223,16 @@ namespace MotionMatching
             /// <summary>
             /// Apply forward kinematics to obtain the position of the joint in the world coordinate system.
             /// </summary>
-            private float3 GetWorldPosition(int joint, NativeArray<quaternion> localRotations, float3 rootMotion)
+            private float3 GetWorldPosition(int joint, NativeArray<float3> localPositions, NativeArray<quaternion> localRotations)
             {
                 float4x4 localToWorld = float4x4.identity;
-                while (JointParents[joint] != 0) // while not root
+                while (joint != 0) // while not root
                 {
-                    int parent = JointParents[joint];
-                    localToWorld = float4x4.TRS(JointLocalPositions[parent], localRotations[parent], new float3(1, 1, 1)) * localToWorld;
-                    joint = parent;
+                    localToWorld = float4x4.TRS(localPositions[joint], localRotations[joint], new float3(1, 1, 1)) * localToWorld;
+                    joint = JointParents[joint];
                 }
-                localToWorld = float4x4.TRS(rootMotion, localRotations[0], new float3(1, 1, 1)) * localToWorld;
-                return math.mul(localToWorld, new float4(JointLocalPositions[joint], 1)).xyz;
+                localToWorld = float4x4.TRS(localPositions[0], localRotations[0], new float3(1, 1, 1)) * localToWorld;
+                return math.mul(localToWorld, new float4(0, 0, 0, 1)).xyz;
             }
         }
     }

@@ -39,6 +39,10 @@ namespace MotionMatching
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
         private Transform[] SkeletonTransforms;
+        private float3 AnimationSpaceOriginPos;
+        private quaternion InverseAnimationSpaceOriginRot;
+        private float3 MMTransformOriginPose; // Position of the transform right after motion matching search
+        private quaternion MMTransformOriginRot; // Rotation of the transform right after motion matching search
         private int LastMMSearchFrame; // Frame before the last Motion Matching Search
         private int CurrentFrame; // Current frame index in the pose/feature set
         private int SearchFrameCount;
@@ -57,14 +61,16 @@ namespace MotionMatching
 
             // Skeleton
             SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
-            foreach (Skeleton.Joint joint in PoseSet.Skeleton.Joints)
+            SkeletonTransforms[0] = transform; // Simulation Bone
+            for (int j = 1; j < PoseSet.Skeleton.Joints.Count; j++)
             {
+                // Joints
+                Skeleton.Joint joint = PoseSet.Skeleton.Joints[j];
                 Transform t = (new GameObject()).transform;
                 t.name = joint.Name;
-                if (joint.Index == 0) t.SetParent(transform, false);
-                else t.SetParent(SkeletonTransforms[joint.ParentIndex], false);
+                t.SetParent(SkeletonTransforms[joint.ParentIndex], false);
                 t.localPosition = joint.LocalOffset;
-                SkeletonTransforms[joint.Index] = t;
+                SkeletonTransforms[j] = t;
             }
 
             // Inertialization
@@ -74,7 +80,7 @@ namespace MotionMatching
             FrameTime = PoseSet.FrameTime;
             if (LockFPS)
             {
-                Application.targetFrameRate = (int)(1.0f / FrameTime); ;
+                Application.targetFrameRate = Mathf.RoundToInt(1.0f / FrameTime);
                 Debug.Log("[Motion Matching] Updated Target FPS: " + Application.targetFrameRate);
             }
             else
@@ -105,8 +111,8 @@ namespace MotionMatching
                 }
             }
             // Init Pose
-            transform.position = CharacterController.GetWorldInitPosition();
-            transform.rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
+            SkeletonTransforms[0].position = CharacterController.GetWorldInitPosition();
+            SkeletonTransforms[0].rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
         }
 
         private void OnEnable()
@@ -140,6 +146,12 @@ namespace MotionMatching
                     }
                     LastMMSearchFrame = CurrentFrame;
                     CurrentFrame = bestFrame;
+                    // Update Current Animation Space Origin
+                    PoseSet.GetPose(CurrentFrame, out PoseVector mmPose);
+                    AnimationSpaceOriginPos = mmPose.JointLocalPositions[0];
+                    InverseAnimationSpaceOriginRot = math.inverse(mmPose.JointLocalRotations[0]);
+                    MMTransformOriginPose = SkeletonTransforms[0].position;
+                    MMTransformOriginRot = SkeletonTransforms[0].rotation;
                 }
                 SearchFrameCount = SearchFrames;
             }
@@ -254,47 +266,64 @@ namespace MotionMatching
                 Inertialization.Update(pose, InertializeHalfLife, Time.deltaTime);
             }
             // Simulation Bone
-            float3 previousPosition = transform.position;
-            quaternion previousRotation = transform.rotation;
-            transform.position += transform.TransformDirection(pose.RootDisplacement);
-            transform.rotation = transform.rotation * pose.RootRotDisplacement;
-            Velocity = ((float3)transform.position - previousPosition) / Time.deltaTime;
-            AngularVelocity = MathExtensions.AngularVelocity(previousRotation, transform.rotation, Time.deltaTime);
+            float3 previousPosition = SkeletonTransforms[0].position;
+            quaternion previousRotation = SkeletonTransforms[0].rotation;
+            // animation space to local space
+            float3 localSpacePos = math.mul(InverseAnimationSpaceOriginRot, pose.JointLocalPositions[0] - AnimationSpaceOriginPos);
+            quaternion localSpaceRot = math.mul(InverseAnimationSpaceOriginRot, pose.JointLocalRotations[0]);
+            // local space to world space
+            SkeletonTransforms[0].position = math.mul(MMTransformOriginRot, localSpacePos) + MMTransformOriginPose;
+            SkeletonTransforms[0].rotation = math.mul(MMTransformOriginRot, localSpaceRot);
+            // update velocity and angular velocity
+            Velocity = ((float3)SkeletonTransforms[0].position - previousPosition) / Time.deltaTime;
+            AngularVelocity = MathExtensions.AngularVelocity(previousRotation, SkeletonTransforms[0].rotation, Time.deltaTime);
             // Joints
             if (Inertialize)
             {
-                for (int i = 0; i < Inertialization.InertializedRotations.Length; i++)
+                for (int i = 1; i < Inertialization.InertializedRotations.Length; i++)
                 {
                     SkeletonTransforms[i].localRotation = Inertialization.InertializedRotations[i];
                 }
             }
             else
             {
-                for (int i = 0; i < pose.JointLocalRotations.Length; i++)
+                for (int i = 1; i < pose.JointLocalRotations.Length; i++)
                 {
                     SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
                 }
             }
-            // Correct Root Orientation to match the Simulation Bone
-            float3 characterForward = transform.forward;
-            characterForward = math.normalize(new float3(characterForward.x, 0, characterForward.z));
-            float3 hipsForward = math.mul(SkeletonTransforms[0].rotation, MMData.HipsForwardLocalVector);
-            hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
-            SkeletonTransforms[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward, new float3(0, 1, 0)), SkeletonTransforms[0].rotation);
-            // Root Y Position
-            SkeletonTransforms[0].localPosition = new float3(0, Inertialize ? Inertialization.InertializedHipsY : pose.RootWorld.y, 0);
+            // Hips Position
+            // TODO: Inertialize all Hips Position
+            SkeletonTransforms[1].localPosition = new float3(pose.JointLocalPositions[1].x, Inertialize ? Inertialization.InertializedHipsY : pose.JointLocalPositions[1].y, pose.JointLocalPositions[1].z);
             // Post processing the transforms
             if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke();
         }
 
         private float3 GetPositionLocalCharacter(float3 worldPosition)
         {
-            return transform.InverseTransformPoint(worldPosition);
+            return SkeletonTransforms[0].InverseTransformPoint(worldPosition);
         }
 
         private float3 GetDirectionLocalCharacter(float3 worldDir)
         {
-            return transform.InverseTransformDirection(worldDir);
+            return SkeletonTransforms[0].InverseTransformDirection(worldDir);
+        }
+
+        /// <summary>
+        /// Adds an offset to the current transform space (useful to move the character to a different position)
+        /// Simply changing the transform won't work because motion matching applies root motion based on the current motion matching search space
+        /// </summary>
+        public void SetPosAdjustment(float3 posAdjustment)
+        {
+            MMTransformOriginPose += posAdjustment;
+        }
+        /// <summary>
+        /// Adds a rot offset to the current transform space (useful to rotate the character to a different direction)
+        /// Simply changing the transform won't work because motion matching applies root motion based on the current motion matching search space
+        /// </summary>
+        public void SetRotAdjustment(quaternion rotAdjustment)
+        {
+            MMTransformOriginRot = math.mul(rotAdjustment, MMTransformOriginRot);
         }
 
         public int GetCurrentFrame()
@@ -383,7 +412,7 @@ namespace MotionMatching
             if (DebugSkeleton)
             {
                 Gizmos.color = Color.red;
-                for (int i = 1; i < SkeletonTransforms.Length; i++)
+                for (int i = 2; i < SkeletonTransforms.Length; i++) // skip Simulation Bone
                 {
                     Transform t = SkeletonTransforms[i];
                     GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
@@ -395,8 +424,8 @@ namespace MotionMatching
 
             int currentFrame = CurrentFrame;
             PoseSet.GetPose(currentFrame, out PoseVector pose);
-            float3 characterOrigin = transform.position;
-            float3 characterForward = transform.forward;
+            float3 characterOrigin = SkeletonTransforms[0].position;
+            float3 characterForward = SkeletonTransforms[0].forward;
             if (DebugCurrent)
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);

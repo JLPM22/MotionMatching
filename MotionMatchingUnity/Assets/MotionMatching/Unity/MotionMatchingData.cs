@@ -72,7 +72,7 @@ namespace MotionMatching
         {
             ImportAnimationsIfNeeded();
             PoseSet = new PoseSet(this);
-            PoseSet.SetSkeleton(Animations[0].Skeleton);
+            PoseSet.SetSkeletonFromBVH(Animations[0].Skeleton);
             for (int i = 0; i < Animations.Count; i++)
             {
                 BVHAnimation animation = Animations[i];

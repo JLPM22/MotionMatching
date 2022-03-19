@@ -1,8 +1,5 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Unity.Mathematics;
 
 namespace MotionMatching
@@ -31,8 +28,8 @@ namespace MotionMatching
         public bool DoAdjustment = true;
         [Range(0.0f, 2.0f)] public float PositionAdjustmentHalflife = 0.1f; // Time needed to move half of the distance between SimulationBone and SimulationObject
         [Range(0.0f, 2.0f)] public float RotationAdjustmentHalflife = 0.1f;
-        [Range(0.0f, 2.0f)] public float PosMaximumAdjustmentRatio = 0.5f; // Ratio between the adjustment and the character's velocity to clamp the adjustment
-        [Range(0.0f, 2.0f)] public float RotMaximumAdjustmentRatio = 0.5f; // Ratio between the adjustment and the character's velocity to clamp the adjustment
+        [Range(0.0f, 2.0f)] public float PosMaximumAdjustmentRatio = 0.1f; // Ratio between the adjustment and the character's velocity to clamp the adjustment
+        [Range(0.0f, 2.0f)] public float RotMaximumAdjustmentRatio = 0.1f; // Ratio between the adjustment and the character's velocity to clamp the adjustment
         public bool DoClamping = true;
         [Range(0.0f, 2.0f)] public float MaxDistanceSimulationBoneAndObject = 0.1f; // Max distance between SimulationBone and SimulationObject
         [Header("DEBUG")]
@@ -213,7 +210,8 @@ namespace MotionMatching
             float3 simulationBone = SimulationBone.transform.position;
             if (math.distance(simulationObject, simulationBone) > MaxDistanceSimulationBoneAndObject)
             {
-                SimulationBone.transform.position = MaxDistanceSimulationBoneAndObject * math.normalize(simulationBone - simulationObject) + simulationObject;
+                float3 newSimulationBonePos = MaxDistanceSimulationBoneAndObject * math.normalize(simulationBone - simulationObject) + simulationObject;
+                SimulationBone.SetPosAdjustment(newSimulationBonePos - simulationBone);
             }
         }
 
@@ -232,7 +230,7 @@ namespace MotionMatching
                 adjustmentPosition = maxLength * math.normalize(adjustmentPosition);
             }
             // Move the simulation bone towards the simulation object
-            SimulationBone.transform.position = simulationBone + adjustmentPosition;
+            SimulationBone.SetPosAdjustment(adjustmentPosition);
         }
 
         private void AdjustCharacterRotation()
@@ -252,7 +250,7 @@ namespace MotionMatching
                 adjustmentRotation = MathExtensions.QuaternionFromScaledAngleAxis(maxLength * math.normalize(MathExtensions.QuaternionToScaledAngleAxis(adjustmentRotation)));
             }
             // Rotate the simulation bone towards the simulation object
-            SimulationBone.transform.rotation = math.mul(simulationBone, adjustmentRotation);
+            SimulationBone.SetRotAdjustment(adjustmentRotation);
         }
 
         public override float3 GetCurrentPosition()

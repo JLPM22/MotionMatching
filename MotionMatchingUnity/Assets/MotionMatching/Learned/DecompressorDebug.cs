@@ -102,24 +102,27 @@ namespace MotionMatching
                 // transform.rotation = transform.rotation * pose.RootRotDisplacement;
                 if (RootMotion)
                 {
-                    transform.position = pose.RootWorld;
-                    transform.rotation = pose.RootWorldRot;
+                    transform.position = pose.JointLocalPositions[0];
+                    transform.rotation = pose.JointLocalRotations[0];
                 }
                 // Joints
-                for (int i = 0; i < pose.JointLocalRotations.Length; i++)
+                for (int i = 1; i < pose.JointLocalRotations.Length; i++)
                 {
                     skeleton[i].localRotation = pose.JointLocalRotations[i];
                 }
                 // Correct Root Orientation to match the Simulation Bone
                 if (!RootMotion)
                 {
-                    float3 characterForward = transform.forward;
-                    characterForward = math.normalize(new float3(characterForward.x, 0, characterForward.z));
-                    float3 hipsForward = math.mul(skeleton[0].rotation, MMData.HipsForwardLocalVector);
-                    hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
-                    skeleton[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward, new float3(0, 1, 0)), SkeletonTransforms[0].rotation);
+                    // TODO: revisar... después del refactor ya no creo que funcione
+                    // TODO: en principio ya no hace falta corregir esto
+                    // float3 characterForward = transform.forward;
+                    // characterForward = math.normalize(new float3(characterForward.x, 0, characterForward.z));
+                    // float3 hipsForward = math.mul(skeleton[0].rotation, new float3(0, 0, 1));
+                    // hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
+                    // skeleton[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward, new float3(0, 1, 0)), SkeletonTransforms[0].rotation);
                 }
                 // Root Y Position
+                // TODO: revisar... después del refactor ya no creo que funcione
                 // skeleton[0].localPosition = new float3(0, pose.RootWorld.y, 0);
                 CurrentFrame = (CurrentFrame + 1) % PoseSet.NumberPoses;
             }

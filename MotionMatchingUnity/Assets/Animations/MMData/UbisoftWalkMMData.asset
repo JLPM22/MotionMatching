@@ -66,4 +66,5 @@ MonoBehaviour:
     MecanimBone: 16
   - Name: RightHand
     MecanimBone: 18
-  PredictionFrames: 10
+  TrajectoryFeatures: []
+  PoseFeatures: []

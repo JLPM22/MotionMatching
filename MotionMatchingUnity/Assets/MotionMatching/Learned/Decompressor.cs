@@ -57,16 +57,6 @@ namespace MotionMatching
                 pose.JointAngularVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
             }
             count += 23 * 3;
-            pose.RootDisplacement = new float3(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2]);
-            count += 3;
-            pose.RootRotDisplacement = new quaternion(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2], output[0, 0, 0, count + 3]);
-            count += 4;
-            pose.RootRotAngularVelocity = new float3(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2]);
-            count += 3;
-            pose.RootWorld = new float3(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2]);
-            count += 3;
-            pose.RootWorldRot = new quaternion(output[0, 0, 0, count], output[0, 0, 0, count + 1], output[0, 0, 0, count + 2], output[0, 0, 0, count + 3]);
-            count += 4;
             // Dispose
             input.Dispose();
             output.Dispose();

@@ -29,20 +29,22 @@ public class FeatureDebug : MonoBehaviour
 
         // Skeleton
         SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
-        foreach (Skeleton.Joint joint in PoseSet.Skeleton.Joints)
+        SkeletonTransforms[0] = transform; // Simulation Bone
+        for (int j = 1; j < PoseSet.Skeleton.Joints.Count; j++)
         {
+            // Joints
+            Skeleton.Joint joint = PoseSet.Skeleton.Joints[j];
             Transform t = (new GameObject()).transform;
             t.name = joint.Name;
-            if (joint.Index == 0) t.SetParent(transform, false);
-            else t.SetParent(SkeletonTransforms[joint.ParentIndex], false);
+            t.SetParent(SkeletonTransforms[joint.ParentIndex], false);
             t.localPosition = joint.LocalOffset;
-            SkeletonTransforms[joint.Index] = t;
+            SkeletonTransforms[j] = t;
         }
 
         // FPS
         if (LockFPS)
         {
-            Application.targetFrameRate = (int)(1.0f / PoseSet.FrameTime);
+            Application.targetFrameRate = Mathf.RoundToInt(1.0f / PoseSet.FrameTime);
             Debug.Log("[BVHDebug] Updated Target FPS: " + Application.targetFrameRate);
         }
         else
@@ -56,9 +58,9 @@ public class FeatureDebug : MonoBehaviour
         if (Play)
         {
             PoseSet.GetPose(CurrentFrame, out PoseVector pose);
-            SkeletonTransforms[0].localPosition = pose.RootWorld;
-            SkeletonTransforms[0].localRotation = pose.RootWorldRot;
-            for (int i = 1; i < pose.JointLocalRotations.Length; i++)
+            SkeletonTransforms[0].localPosition = pose.JointLocalPositions[0];
+            SkeletonTransforms[1].localPosition = pose.JointLocalPositions[1];
+            for (int i = 0; i < pose.JointLocalRotations.Length; i++)
             {
                 SkeletonTransforms[i].localRotation = pose.JointLocalRotations[i];
             }
@@ -93,7 +95,7 @@ public class FeatureDebug : MonoBehaviour
         if (SkeletonTransforms == null || PoseSet == null) return;
 
         Gizmos.color = Color.red;
-        for (int i = 1; i < SkeletonTransforms.Length; i++)
+        for (int i = 2; i < SkeletonTransforms.Length; i++) // skip Simulation Bone
         {
             Transform t = SkeletonTransforms[i];
             GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
@@ -103,7 +105,7 @@ public class FeatureDebug : MonoBehaviour
         // Character
         int currentFrame = CurrentFrame;
         PoseSet.GetPose(currentFrame, out PoseVector pose);
-        FeatureSet.GetWorldOriginCharacter(pose.RootWorld, pose.RootWorldRot, MMData.HipsForwardLocalVector, out float3 characterOrigin, out float3 characterForward);
+        FeatureSet.GetWorldOriginCharacter(pose, out float3 characterOrigin, out float3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
         Gizmos.DrawSphere(characterOrigin, SpheresRadius);
         GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward, thickness: 3);

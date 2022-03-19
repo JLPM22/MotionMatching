@@ -66,11 +66,6 @@ namespace MotionMatching
                         WriteQuaternionArray(writer, pose.JointLocalRotations);
                         WriteFloat3Array(writer, pose.JointVelocities);
                         WriteFloat3Array(writer, pose.JointAngularVelocities);
-                        WriteFloat3(writer, pose.RootDisplacement);
-                        WriteQuaternion(writer, pose.RootRotDisplacement);
-                        WriteFloat3(writer, pose.RootRotAngularVelocity);
-                        WriteFloat3(writer, pose.RootWorld);
-                        WriteQuaternion(writer, pose.RootWorldRot);
                     }
                 }
             }
@@ -111,7 +106,7 @@ namespace MotionMatching
             }
             else return false;
             // Set skeleton in poseSet
-            poseSet.SetSkeleton(skeleton);
+            poseSet.SetSkeletonFromFile(skeleton);
 
             // Read Poses
             string posePath = Path.Combine(path, fileName + ".mmpose");
@@ -144,11 +139,6 @@ namespace MotionMatching
                             pose.JointLocalRotations = ReadQuaternionArray(reader, nJoints);
                             pose.JointVelocities = ReadFloat3Array(reader, nJoints);
                             pose.JointAngularVelocities = ReadFloat3Array(reader, nJoints);
-                            pose.RootDisplacement = ReadFloat3(reader);
-                            pose.RootRotDisplacement = ReadQuaternion(reader);
-                            pose.RootRotAngularVelocity = ReadFloat3(reader);
-                            pose.RootWorld = ReadFloat3(reader);
-                            pose.RootWorldRot = ReadQuaternion(reader);
                             poses[i] = pose;
                         }
                         // Set Poses in poseSet

@@ -5,13 +5,15 @@ using UnityEngine;
 
 namespace MotionMatching
 {
+    using Joint = Skeleton.Joint;
+
     /// <summary>
     /// Stores the full pose representation of all poses for Motion Matching
     /// </summary>
     public class PoseSet
     {
         // Public ---
-        public Skeleton Skeleton { get; private set; }
+        public Skeleton Skeleton { get; private set; } // No simulation bone
         public float FrameTime { get; private set; }
         public int NumberPoses { get { return Poses.Count; } }
         public int NumberClips { get { return Clips.Count; } }
@@ -36,7 +38,36 @@ namespace MotionMatching
             }
         }
 
-        public void SetSkeleton(Skeleton skeleton)
+        /// <summary>
+        /// Set skeleton from BVH. Adds simulation bone as root joint
+        /// </summary>
+        public void SetSkeletonFromBVH(Skeleton skeleton)
+        {
+            Skeleton = new Skeleton();
+            // Add Simulation Bone
+            Joint sb = new Joint("SimulationBone", 0, 0, Vector3.zero);
+            Skeleton.AddJoint(sb);
+            // Add Joints (adjusting indices, now SimulationBone is 0 and all indices are shifted by 1)
+            for (int i = 0; i < skeleton.Joints.Count; ++i)
+            {
+                Joint j = skeleton.Joints[i];
+                j.Index = j.Index + 1;
+                if (i == 0) // Root
+                {
+                    j.ParentIndex = 0;
+                }
+                else // Other Joints
+                {
+                    j.ParentIndex = j.ParentIndex + 1;
+                }
+                Skeleton.Joints.Add(j);
+            }
+        }
+
+        /// <summary>
+        /// Set skeleton from File. The skeleton is not modified
+        /// </summary>
+        public void SetSkeletonFromFile(Skeleton skeleton)
         {
             Skeleton = skeleton;
         }
@@ -45,13 +76,12 @@ namespace MotionMatching
         /// Add the animation clip to the current pose set
         /// Returns true if the clip was added, false if the skeleton is not compatible and the clip was not added
         /// </summary>
-        public bool AddClip(Skeleton skeleton, PoseVector[] poses, float frameTime)
+        public bool AddClip(PoseVector[] poses, float frameTime)
         {
             // Check if the skeleton and frameTime are compatible
-            Debug.Assert(skeleton != null, "Skeleton shold be set first. Use SetSkeleton(...)");
+            Debug.Assert(Skeleton != null, "Skeleton shold be set first. Use SetSkeleton(...)");
             if (FrameTime == -1.0f) FrameTime = frameTime;
             Debug.Assert(math.abs(FrameTime - frameTime) < 0.001f, "Frame time should be the same for all clips");
-            if (!IsSkeletonCompatible(skeleton)) return false;
 
             // Add poses
             int start = Poses.Count;
@@ -113,14 +143,6 @@ namespace MotionMatching
         {
             Debug.Assert(clipIndex >= 0 && clipIndex < Clips.Count, "Clip index out of range");
             return Clips[clipIndex];
-        }
-
-        /// <summary>
-        /// True if the animation clip can be added to the pose set, False otherwise
-        /// </summary>
-        private bool IsSkeletonCompatible(Skeleton skeleton)
-        {
-            return Skeleton == null || Skeleton.Equals(skeleton);
         }
 
         public struct AnimationClip
