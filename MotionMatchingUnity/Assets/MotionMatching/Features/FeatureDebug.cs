@@ -103,7 +103,7 @@ public class FeatureDebug : MonoBehaviour
 
         if (!Play) return;
         // Character
-        int currentFrame = CurrentFrame;
+        int currentFrame = CurrentFrame - 1; // FeatureDebug increments CurrentFrame after update... OnDrawGizmos is called after update
         PoseSet.GetPose(currentFrame, out PoseVector pose);
         FeatureSet.GetWorldOriginCharacter(pose, out float3 characterOrigin, out float3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);

@@ -26,6 +26,7 @@ namespace MotionMatching
         public TextAsset BVHTPose; // BVH with a TPose in the first frame, used for retargeting
         public float UnitScale = 1.0f;
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
+        public bool SmoothSimulationBone; // Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
         public List<TrajectoryFeature> TrajectoryFeatures = new List<TrajectoryFeature>();
         public List<PoseFeature> PoseFeatures = new List<PoseFeature>();
@@ -260,6 +261,10 @@ namespace MotionMatching
                 if (GUILayout.Button("Fix")) data.HipsForwardLocalVector = math.normalize(data.HipsForwardLocalVector);
                 EditorGUILayout.EndHorizontal();
             }
+
+            // SmoothSimulationBone
+            data.SmoothSimulationBone = EditorGUILayout.Toggle(new GUIContent("Smooth Simulation Bone", "Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter"),
+                                                               data.SmoothSimulationBone);
 
             // SkeletonToMecanim
             if (GUILayout.Button("Read Skeleton from BVH"))

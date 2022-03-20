@@ -338,9 +338,8 @@ namespace MotionMatching
             int featureIndex = poseIndex * FeatureSize;
             poseSet.GetPose(poseIndex, out PoseVector pose);
             poseSet.GetPose(poseIndex + 1, out PoseVector poseNext);
-            // Compute local features based on the projection of the hips in the ZX plane (ground)
+            // Compute local features based on the Simulation Bone
             // so hips and feet are local to a stable position with respect to the character
-            // this solution only works for one type of skeleton
             GetWorldOriginCharacter(pose, out float3 characterOrigin, out float3 characterForward);
             // Trajectory
             for (int i = 0; i < NumberTrajectoryFeatures; i++)
@@ -424,20 +423,20 @@ namespace MotionMatching
         private static void GetTrajectoryDirection(PoseVector pose, float3 characterForward,
                                                    out float3 futureLocalDirection)
         {
-            futureLocalDirection = GetLocalDirectionFromCharacter(math.mul(pose.JointLocalRotations[0], new float3(0, 0, 1)), characterForward);
+            futureLocalDirection = GetLocalDirectionFromCharacter(math.mul(pose.JointLocalRotations[0], math.forward()), characterForward);
         }
 
         private static void GetJointPosition(PoseVector pose, Skeleton skeleton, Joint joint, float3 characterOrigin, float3 characterForward,
                                              out float3 localPosition)
         {
-            float3 worldPosition = ForwardKinematics(skeleton, pose, joint);
+            float3 worldPosition = GetWorldPosition(skeleton, pose, joint);
             localPosition = GetLocalPositionFromCharacter(worldPosition, characterOrigin, characterForward);
         }
         private static void GetJointVelocity(PoseVector pose, PoseVector poseNext, Skeleton skeleton, Joint joint, float3 characterOrigin, float3 characterForward, float frameTime,
                                              out float3 localVelocity)
         {
-            float3 worldPosition = ForwardKinematics(skeleton, pose, joint);
-            float3 worldPositionNext = ForwardKinematics(skeleton, poseNext, joint);
+            float3 worldPosition = GetWorldPosition(skeleton, pose, joint);
+            float3 worldPositionNext = GetWorldPosition(skeleton, poseNext, joint);
             float3 localPosition = GetLocalPositionFromCharacter(worldPosition, characterOrigin, characterForward);
             localVelocity = (GetLocalPositionFromCharacter(worldPositionNext, characterOrigin, characterForward) - localPosition) / frameTime;
         }
@@ -445,7 +444,7 @@ namespace MotionMatching
         /// <summary>
         /// Returns the position of the joint in world space after applying FK using the pose
         /// </summary>
-        private static float3 ForwardKinematics(Skeleton skeleton, PoseVector pose, Joint joint)
+        public static float3 GetWorldPosition(Skeleton skeleton, PoseVector pose, Joint joint)
         {
             Matrix4x4 localToWorld = Matrix4x4.identity;
             while (joint.Index != 0) // while not root
@@ -458,23 +457,38 @@ namespace MotionMatching
         }
 
         /// <summary>
+        /// Returns the rotation of the joint in world space after applying FK using the pose
+        /// </summary>
+        public static quaternion GetWorldRotation(Skeleton skeleton, PoseVector pose, Joint joint)
+        {
+            quaternion worldRot = quaternion.identity;
+            while (joint.Index != 0) // while not root
+            {
+                worldRot = math.mul(pose.JointLocalRotations[joint.Index], worldRot);
+                joint = skeleton.GetParent(joint);
+            }
+            worldRot = math.mul(pose.JointLocalRotations[0], worldRot); // root
+            return worldRot;
+        }
+
+        /// <summary>
         /// Returns the position and forward vector of the character in world space using the pose vector simulation bone
         /// </summary>
         /// <param name="hipsForwardLocalVector">forward vector of the hips in world space when in bind pose</param>
         public static void GetWorldOriginCharacter(PoseVector poseVector, out float3 center, out float3 forward)
         {
             center = poseVector.JointLocalPositions[0]; // Simulation Bone World Position
-            forward = math.mul(poseVector.JointLocalRotations[0], new float3(0, 0, 1)); // Simulation Bone World Rotation
+            forward = math.mul(poseVector.JointLocalRotations[0], math.forward()); // Simulation Bone World Rotation
         }
 
         public static float3 GetLocalPositionFromCharacter(float3 worldPos, float3 centerCharacter, float3 forwardCharacter)
         {
-            return math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, new float3(0.0f, 1.0f, 0.0f))), worldPos - centerCharacter);
+            return math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, math.up())), worldPos - centerCharacter);
         }
 
         public static float3 GetLocalDirectionFromCharacter(float3 worldDir, float3 forwardCharacter)
         {
-            float3 localDir = math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, new float3(0.0f, 1.0f, 0.0f))), worldDir);
+            float3 localDir = math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, math.up())), worldDir);
             return localDir;
         }
 

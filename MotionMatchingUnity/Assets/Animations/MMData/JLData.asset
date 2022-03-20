@@ -20,6 +20,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: -1
+  SmoothSimulationBone: 1
   SkeletonToMecanim:
   - Name: Hips
     MecanimBone: 0

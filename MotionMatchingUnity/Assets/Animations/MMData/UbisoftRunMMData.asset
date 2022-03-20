@@ -22,6 +22,7 @@ MonoBehaviour:
     x: 0
     y: 1
     z: 0
+  SmoothSimulationBone: 0
   SkeletonToMecanim:
   - Name: Hips
     MecanimBone: 0
@@ -70,12 +71,12 @@ MonoBehaviour:
   TrajectoryFeatures:
   - Name: FuturePosition
     FeatureType: 0
-    FramesPrediction: 14000000280000003c000000
+    FramesPrediction: 0a000000140000001e000000
     Bone: 0
     Project: 1
   - Name: FutureDirection
     FeatureType: 1
-    FramesPrediction: 14000000280000003c000000
+    FramesPrediction: 0a000000140000001e000000
     Bone: 0
     Project: 1
   PoseFeatures:
