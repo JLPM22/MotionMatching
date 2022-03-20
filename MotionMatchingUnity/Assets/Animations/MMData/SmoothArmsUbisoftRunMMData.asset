@@ -1,0 +1,103 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d0bb4b3a7b78d847be4e6490640196f, type: 3}
+  m_Name: SmoothArmsUbisoftRunMMData
+  m_EditorClassIdentifier: 
+  BVHs:
+  - {fileID: 4900000, guid: 1b96f4c13d45c834dbe27f4888e0398c, type: 3}
+  - {fileID: 4900000, guid: 98e594f694c7dcb46b04cd03633e7e20, type: 3}
+  - {fileID: 4900000, guid: b36ca6e97bdd3864181827bca8abaf36, type: 3}
+  BVHTPose: {fileID: 4900000, guid: 19c1bedcf7a688e4a93b23415c96bdae, type: 3}
+  UnitScale: 0.01
+  HipsForwardLocalVector:
+    x: 0
+    y: 1
+    z: 0
+  SmoothSimulationBone: 1
+  SkeletonToMecanim:
+  - Name: Hips
+    MecanimBone: 0
+  - Name: LeftUpLeg
+    MecanimBone: 1
+  - Name: LeftLeg
+    MecanimBone: 3
+  - Name: LeftFoot
+    MecanimBone: 5
+  - Name: LeftToe
+    MecanimBone: 19
+  - Name: RightUpLeg
+    MecanimBone: 2
+  - Name: RightLeg
+    MecanimBone: 4
+  - Name: RightFoot
+    MecanimBone: 6
+  - Name: RightToe
+    MecanimBone: 20
+  - Name: Spine
+    MecanimBone: 7
+  - Name: Spine1
+    MecanimBone: 8
+  - Name: Spine2
+    MecanimBone: 54
+  - Name: Neck
+    MecanimBone: 9
+  - Name: Head
+    MecanimBone: 10
+  - Name: LeftShoulder
+    MecanimBone: 11
+  - Name: LeftArm
+    MecanimBone: 13
+  - Name: LeftForeArm
+    MecanimBone: 15
+  - Name: LeftHand
+    MecanimBone: 17
+  - Name: RightShoulder
+    MecanimBone: 12
+  - Name: RightArm
+    MecanimBone: 14
+  - Name: RightForeArm
+    MecanimBone: 16
+  - Name: RightHand
+    MecanimBone: 18
+  TrajectoryFeatures:
+  - Name: FuturePosition
+    FeatureType: 0
+    FramesPrediction: 0a000000140000001e000000
+    Bone: 0
+    Project: 1
+  - Name: FutureDirection
+    FeatureType: 1
+    FramesPrediction: 0a000000140000001e000000
+    Bone: 0
+    Project: 1
+  PoseFeatures:
+  - Name: LeftFootPos
+    FeatureType: 0
+    Bone: 5
+  - Name: RightFootPos
+    FeatureType: 0
+    Bone: 6
+  - Name: LeftFootVelocity
+    FeatureType: 1
+    Bone: 5
+  - Name: RightFootVelocity
+    FeatureType: 1
+    Bone: 6
+  - Name: HipsVelocity
+    FeatureType: 1
+    Bone: 0
+  - Name: LeftHandPos
+    FeatureType: 0
+    Bone: 17
+  - Name: RightHandPos
+    FeatureType: 0
+    Bone: 18

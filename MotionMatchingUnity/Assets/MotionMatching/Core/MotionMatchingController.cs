@@ -293,8 +293,7 @@ namespace MotionMatching
                 }
             }
             // Hips Position
-            // TODO: Inertialize all Hips Position
-            SkeletonTransforms[1].localPosition = new float3(pose.JointLocalPositions[1].x, Inertialize ? Inertialization.InertializedHipsY : pose.JointLocalPositions[1].y, pose.JointLocalPositions[1].z);
+            SkeletonTransforms[1].localPosition = Inertialize ? Inertialization.InertializedHips : pose.JointLocalPositions[1];
             // Post processing the transforms
             if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke();
         }
