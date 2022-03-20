@@ -30,21 +30,21 @@ namespace MotionMatching
 
         private void Awake()
         {
-            InitPos = transform.position;
-            InitRot = transform.rotation;
-            CurrentFrame = StartFrame;
-            CurrentFeatureVector = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
-            DecompressorPose = new PoseVector();
-            DecompressorPose.JointLocalPositions = new float3[23];
-            DecompressorPose.JointLocalRotations = new quaternion[23];
-            DecompressorPose.JointVelocities = new float3[23];
-            DecompressorPose.JointAngularVelocities = new float3[23];
-
             // PoseSet
             PoseSet = MMData.GetOrImportPoseSet();
 
             // FeatureSet
             FeatureSet = MMData.GetOrImportFeatureSet();
+
+            InitPos = transform.position;
+            InitRot = transform.rotation;
+            CurrentFrame = StartFrame;
+            CurrentFeatureVector = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
+            DecompressorPose = new PoseVector();
+            DecompressorPose.JointLocalPositions = new float3[24];
+            DecompressorPose.JointLocalRotations = new quaternion[24];
+            DecompressorPose.JointVelocities = new float3[24];
+            DecompressorPose.JointAngularVelocities = new float3[24];
 
             // Skeleton
             SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
@@ -109,17 +109,6 @@ namespace MotionMatching
                 for (int i = 1; i < pose.JointLocalRotations.Length; i++)
                 {
                     skeleton[i].localRotation = pose.JointLocalRotations[i];
-                }
-                // Correct Root Orientation to match the Simulation Bone
-                if (!RootMotion)
-                {
-                    // TODO: revisar... después del refactor ya no creo que funcione
-                    // TODO: en principio ya no hace falta corregir esto
-                    // float3 characterForward = transform.forward;
-                    // characterForward = math.normalize(new float3(characterForward.x, 0, characterForward.z));
-                    // float3 hipsForward = math.mul(skeleton[0].rotation, new float3(0, 0, 1));
-                    // hipsForward = math.normalize(new float3(hipsForward.x, 0, hipsForward.z));
-                    // skeleton[0].rotation = math.mul(MathExtensions.FromToRotation(hipsForward, characterForward, new float3(0, 1, 0)), SkeletonTransforms[0].rotation);
                 }
                 // Root Y Position
                 // TODO: revisar... después del refactor ya no creo que funcione

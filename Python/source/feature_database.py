@@ -67,7 +67,7 @@ def test():
         "C:/Users/JLPM/Desktop/Trabajo/TFM/MotionMatching/MotionMatchingUnity/Assets/Animations/MMData/JLData/JLData.mmfeatures"
     )
     features = feature_database(feature_database_path)
-    features.denormalize()
+    # features.denormalize()
 
     # Visualize feature database
     trajectory_positions = features.get_one_feature(0)

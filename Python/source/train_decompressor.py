@@ -7,7 +7,7 @@ import time
 # Hyperparameters
 learning_rate = 1e-3
 batch_size = 64
-epochs = 1000
+epochs = 100
 hidden_size = 512
 filename = "data/decompressor_jltest.onnx"
 
@@ -72,7 +72,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         #     print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
-def test_loop(dataloader, model, loss_fn):
+def test_loop(dataloader, model, loss_fn, debug):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss = 0
@@ -83,7 +83,8 @@ def test_loop(dataloader, model, loss_fn):
             test_loss += loss_fn(pred, y).item()
 
     test_loss /= num_batches
-    print(f"Test Error: \n Avg loss: {test_loss:>8f} \n")
+    if debug:
+        print(f"Test Error: \n Avg loss: {test_loss:>8f} \n")
 
 
 loss_fn = nn.MSELoss()
@@ -93,9 +94,11 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 start_time = time.time()
 
 for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
+    debug = (t + 1) % 20 == 0
+    if debug:
+        print(f"Epoch {t+1}\n-------------------------------")
     train_loop(train_dataloader, model, loss_fn, optimizer)
-    test_loop(test_dataloader, model, loss_fn)
+    test_loop(test_dataloader, model, loss_fn, debug)
 
 end_time = time.time()
 

@@ -50,33 +50,6 @@ class pose_database:
                         angular_velocities[j][0] = sh.read_float(f)
                         angular_velocities[j][1] = sh.read_float(f)
                         angular_velocities[j][2] = sh.read_float(f)
-                    # Root Displacement
-                    root_displacement = np.zeros(3)
-                    root_displacement[0] = sh.read_float(f)
-                    root_displacement[1] = sh.read_float(f)
-                    root_displacement[2] = sh.read_float(f)
-                    # Root Rotation Displacement
-                    root_rot_displacement = np.zeros(4)
-                    root_rot_displacement[0] = sh.read_float(f)
-                    root_rot_displacement[1] = sh.read_float(f)
-                    root_rot_displacement[2] = sh.read_float(f)
-                    root_rot_displacement[3] = sh.read_float(f)
-                    # Root Rotation Angular Velocity
-                    root_rot_angular_velocity = np.zeros(3)
-                    root_rot_angular_velocity[0] = sh.read_float(f)
-                    root_rot_angular_velocity[1] = sh.read_float(f)
-                    root_rot_angular_velocity[2] = sh.read_float(f)
-                    # Root World
-                    root_world = np.zeros(3)
-                    root_world[0] = sh.read_float(f)
-                    root_world[1] = sh.read_float(f)
-                    root_world[2] = sh.read_float(f)
-                    # Root World Rotation
-                    root_world_rot = np.zeros(4)
-                    root_world_rot[0] = sh.read_float(f)
-                    root_world_rot[1] = sh.read_float(f)
-                    root_world_rot[2] = sh.read_float(f)
-                    root_world_rot[3] = sh.read_float(f)
                     # Save Pose
                     self.poses.append(
                         np.concatenate(
@@ -85,11 +58,6 @@ class pose_database:
                                 local_rotations.flatten(),
                                 velocities.flatten(),
                                 angular_velocities.flatten(),
-                                root_displacement.flatten(),
-                                root_rot_displacement.flatten(),
-                                root_rot_angular_velocity.flatten(),
-                                root_world.flatten(),
-                                root_world_rot.flatten(),
                             )
                         )
                     )

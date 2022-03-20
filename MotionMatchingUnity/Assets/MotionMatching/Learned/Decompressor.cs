@@ -33,30 +33,30 @@ namespace MotionMatching
             // Copy output
             Tensor output = Worker.PeekOutput();
             int count = 0;
-            for (int i = 0; i < 23; ++i)
+            for (int i = 0; i < 24; ++i)
             {
                 int index = i * 3 + count;
                 pose.JointLocalPositions[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
             }
-            count += 23 * 3;
-            for (int i = 0; i < 23; ++i)
+            count += 24 * 3;
+            for (int i = 0; i < 24; ++i)
             {
                 int index = i * 4 + count;
                 pose.JointLocalRotations[i] = new quaternion(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2], output[0, 0, 0, index + 3]);
             }
-            count += 23 * 4;
-            for (int i = 0; i < 23; ++i)
+            count += 24 * 4;
+            for (int i = 0; i < 24; ++i)
             {
                 int index = i * 3 + count;
                 pose.JointVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
             }
-            count += 23 * 3;
-            for (int i = 0; i < 23; ++i)
+            count += 24 * 3;
+            for (int i = 0; i < 24; ++i)
             {
                 int index = i * 3 + count;
                 pose.JointAngularVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
             }
-            count += 23 * 3;
+            count += 24 * 3;
             // Dispose
             input.Dispose();
             output.Dispose();
