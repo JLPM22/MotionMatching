@@ -166,6 +166,7 @@ namespace MotionMatching
             public string Name;
             public Type FeatureType;
             public int[] FramesPrediction = new int[0]; // Number of frames in the future for each point of the trajectory
+            public bool SimulationBone; // Use the simulation bone (articial root added during pose extraction) instead of a bone
             public HumanBodyBones Bone; // Bone used to compute the trajectory in the feature set
             public bool Project; // Project the trajectory onto the ground plane
         }
@@ -226,7 +227,7 @@ namespace MotionMatching
             // BVH
             EditorGUILayout.LabelField("BVHs", EditorStyles.boldLabel);
             EditorGUI.indentLevel++;
-            for (int i = 0; i < data.BVHs.Count; i++)
+            for (int i = 0; i < (data.BVHs == null ? 0 : data.BVHs.Count); i++)
             {
                 data.BVHs[i] = (TextAsset)EditorGUILayout.ObjectField(data.BVHs[i], typeof(TextAsset), false);
             }
@@ -270,7 +271,7 @@ namespace MotionMatching
             if (GUILayout.Button("Read Skeleton from BVH"))
             {
                 BVHImporter importer = new BVHImporter();
-                BVHAnimation animation = importer.Import(data.BVHs[0], data.UnitScale);
+                BVHAnimation animation = importer.Import(data.BVHTPose != null ? data.BVHTPose : data.BVHs[0], data.UnitScale);
                 // Check if SkeletonToMecanim should be reset
                 bool shouldResetSkeletonToMecanim = true || data.SkeletonToMecanim.Count != animation.Skeleton.Joints.Count;
                 if (!shouldResetSkeletonToMecanim)
@@ -367,9 +368,16 @@ namespace MotionMatching
                     }
                     EditorGUILayout.EndHorizontal();
                     // Bone
-                    trajectoryFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Bone", trajectoryFeature.Bone);
-                    // Project
-                    trajectoryFeature.Project = EditorGUILayout.Toggle("Project", trajectoryFeature.Project);
+                    trajectoryFeature.SimulationBone = EditorGUILayout.Toggle("Simulation Bone", trajectoryFeature.SimulationBone);
+                    if (!trajectoryFeature.SimulationBone)
+                    {
+                        trajectoryFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Bone", trajectoryFeature.Bone);
+                        trajectoryFeature.Project = EditorGUILayout.Toggle("Project", trajectoryFeature.Project);
+                    }
+                    else
+                    {
+                        trajectoryFeature.Project = true;
+                    }
                     EditorGUILayout.EndVertical();
                 }
                 if (GUILayout.Button("Add Trajectory Feature"))

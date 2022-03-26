@@ -89,6 +89,7 @@ namespace MotionMatching
             {
                 x = x * StandardDeviation[featureOffset] + Mean[featureOffset];
                 y = y * StandardDeviation[featureOffset + 1] + Mean[featureOffset + 1];
+                z = z * StandardDeviation[featureOffset + 2] + Mean[featureOffset + 2];
             }
             return new float3(x, y, z);
         }
@@ -306,13 +307,15 @@ namespace MotionMatching
             Valid = new NativeArray<bool>(nPoses, Allocator.Persistent);
             Features = new NativeArray<float>(nPoses * FeatureSize, Allocator.Persistent);
             // Check skeleton has all needed joints
-            Joint[] jointsTrajectory = new Joint[NumberTrajectoryFeatures];
+            bool[] simulationBone = new bool[NumberTrajectoryFeatures]; // FIXME: use Span<> ?
+            Joint[] jointsTrajectory = new Joint[NumberTrajectoryFeatures]; // FIXME: use Span<> ?
             int i = 0;
             foreach (var trajectoryFeature in mmData.TrajectoryFeatures)
             {
-                if (!poseSet.Skeleton.Find(trajectoryFeature.Bone, out jointsTrajectory[i++])) Debug.Assert(false, "The skeleton does not contain any joint of type " + trajectoryFeature.Bone);
+                if (trajectoryFeature.SimulationBone) simulationBone[i] = true;
+                else if (!poseSet.Skeleton.Find(trajectoryFeature.Bone, out jointsTrajectory[i++])) Debug.Assert(false, "The skeleton does not contain any joint of type " + trajectoryFeature.Bone);
             }
-            Joint[] jointsPose = new Joint[NumberPoseFeatures];
+            Joint[] jointsPose = new Joint[NumberPoseFeatures]; // FIXME: use Span<> ?
             i = 0;
             foreach (var poseFeature in mmData.PoseFeatures)
             {
@@ -324,7 +327,7 @@ namespace MotionMatching
                 if (poseSet.IsPoseValidForPrediction(poseIndex))
                 {
                     Valid[poseIndex] = true;
-                    ExtractFeature(poseSet, poseIndex, jointsTrajectory, jointsPose, mmData);
+                    ExtractFeature(poseSet, poseIndex, simulationBone, jointsTrajectory, jointsPose, mmData);
                 }
                 else Valid[poseIndex] = false;
             }
@@ -333,7 +336,7 @@ namespace MotionMatching
         /// <summary>
         /// Extract the feature vectors from poseSet
         /// </summary>
-        private void ExtractFeature(PoseSet poseSet, int poseIndex, Joint[] jointsTrajectory, Joint[] jointsPose, MotionMatchingData mmData)
+        private void ExtractFeature(PoseSet poseSet, int poseIndex, bool[] simulationBone, Joint[] jointsTrajectory, Joint[] jointsPose, MotionMatchingData mmData)
         {
             int featureIndex = poseIndex * FeatureSize;
             poseSet.GetPose(poseIndex, out PoseVector pose);
@@ -356,7 +359,7 @@ namespace MotionMatching
                     switch (trajectoryFeature.FeatureType)
                     {
                         case MotionMatchingData.TrajectoryFeature.Type.Position:
-                            GetTrajectoryPosition(futurePose, characterOrigin, characterForward,
+                            GetTrajectoryPosition(futurePose, poseSet.Skeleton, simulationBone[i], jointsTrajectory[i], characterOrigin, characterForward,
                                                   out value);
                             if (trajectoryFeature.Project)
                             {
@@ -364,7 +367,7 @@ namespace MotionMatching
                             }
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Direction:
-                            GetTrajectoryDirection(futurePose, characterForward,
+                            GetTrajectoryDirection(futurePose, poseSet.Skeleton, simulationBone[i], jointsTrajectory[i], characterForward,
                                                    out value);
                             if (trajectoryFeature.Project)
                             {
@@ -415,15 +418,34 @@ namespace MotionMatching
             }
         }
 
-        private static void GetTrajectoryPosition(PoseVector pose, float3 characterOrigin, float3 characterForward,
+        private static void GetTrajectoryPosition(PoseVector pose, Skeleton skeleton, bool simulationBone, Joint joint, float3 characterOrigin, float3 characterForward,
                                                   out float3 futureLocalPosition)
         {
-            futureLocalPosition = GetLocalPositionFromCharacter(pose.JointLocalPositions[0], characterOrigin, characterForward);
+            float3 worldPosition;
+            if (simulationBone)
+            {
+                worldPosition = pose.JointLocalPositions[0];
+            }
+            else
+            {
+                worldPosition = GetWorldPosition(skeleton, pose, joint);
+            }
+            futureLocalPosition = GetLocalPositionFromCharacter(worldPosition, characterOrigin, characterForward);
         }
-        private static void GetTrajectoryDirection(PoseVector pose, float3 characterForward,
+        private static void GetTrajectoryDirection(PoseVector pose, Skeleton skeleton, bool simulationBone, Joint joint, float3 characterForward,
                                                    out float3 futureLocalDirection)
         {
-            futureLocalDirection = GetLocalDirectionFromCharacter(math.mul(pose.JointLocalRotations[0], math.forward()), characterForward);
+            quaternion worldRotation;
+            if (simulationBone)
+            {
+                worldRotation = pose.JointLocalRotations[0];
+            }
+            else
+            {
+                worldRotation = GetWorldRotation(skeleton, pose, joint);
+            }
+            float3 worldDirection = math.mul(worldRotation, math.forward());
+            futureLocalDirection = GetLocalDirectionFromCharacter(worldDirection, characterForward);
         }
 
         private static void GetJointPosition(PoseVector pose, Skeleton skeleton, Joint joint, float3 characterOrigin, float3 characterForward,

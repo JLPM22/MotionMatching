@@ -115,11 +115,11 @@ namespace MotionMatching
             nextKeyPointTime = currentKeyPointT;
         }
 
-        public override float3 GetCurrentPosition()
+        public float3 GetCurrentPosition()
         {
             return transform.position + new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
         }
-        public override quaternion GetCurrentRotation()
+        public quaternion GetCurrentRotation()
         {
             Quaternion rot = Quaternion.LookRotation(new Vector3(CurrentDirection.x, 0, CurrentDirection.y));
             return rot * transform.rotation;
@@ -127,6 +127,7 @@ namespace MotionMatching
 
         public override float3 GetWorldSpacePrediction(TrajectoryFeature feature, int index)
         {
+            if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
             switch (feature.FeatureType)
             {
                 case TrajectoryFeature.Type.Position:

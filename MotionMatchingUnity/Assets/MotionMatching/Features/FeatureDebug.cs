@@ -150,8 +150,18 @@ public class FeatureDebug : MonoBehaviour
                             Gizmos.DrawSphere(value, spheresRadius);
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Direction:
+                            float3 jointPos;
+                            if (trajectoryFeature.SimulationBone)
+                            {
+                                jointPos = characterOrigin;
+                            }
+                            else
+                            {
+                                if (!skeleton.Find(trajectoryFeature.Bone, out Skeleton.Joint joint)) Debug.Assert(false, "Bone not found");
+                                jointPos = joints[joint.Index].position;
+                            }
                             value = math.mul(characterRot, value);
-                            GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + value * 0.5f, 0.1f, thickness: 3);
+                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.5f, 0.1f, thickness: 3);
                             break;
                     }
                 }

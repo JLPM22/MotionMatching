@@ -41,6 +41,23 @@ namespace MotionMatching
             velocity = eyedt * (j0 + j1 * deltaTime) + velocityGoal;
             acceleration = eyedt * (acceleration - j1 * y * deltaTime);
         }
+        /// <summary>
+        /// Given a position, velocity, desired velocity and acceleration, returns the new
+        /// position, velocity and acceleration after deltaTime seconds.
+        /// </summary>
+        public static void CharacterPositionUpdate(ref float3 pos, ref float3 velocity, ref float3 acceleration,
+                                                   float3 velocityGoal, float halfLife, float deltaTime)
+        {
+            float y = HalfLifeToDamping(halfLife) / 2.0f; // this could be precomputed
+            float3 j0 = velocity - velocityGoal;
+            float3 j1 = acceleration + j0 * y;
+            float eyedt = FastNEgeExp(y * deltaTime); // this could be precomputed if several agents use it the same frame
+
+            pos = eyedt * (((-j1) / (y * y)) + ((-j0 - j1 * deltaTime) / y)) +
+                  (j1 / (y * y)) + j0 / y + velocityGoal * deltaTime + pos;
+            velocity = eyedt * (j0 + j1 * deltaTime) + velocityGoal;
+            acceleration = eyedt * (acceleration - j1 * y * deltaTime);
+        }
 
         /// <summary>
         /// Given the current rotation, angular velocity and the desired rotation, returns the new
@@ -55,6 +72,20 @@ namespace MotionMatching
 
             rot = math.mul(MathExtensions.QuaternionFromScaledAngleAxis(eyedt * (j0 + j1 * deltaTime)), rotGoal);
             angularVel = eyedt * (angularVel - j1 * y * deltaTime);
+        }
+        /// <summary>
+        /// Given the current position, velocity and the desired position, returns the new
+        /// position and velocity after deltaTime seconds.
+        /// </summary>
+        public static void SimpleSpringDamperImplicit(ref float3 pos, ref float3 velocity, float3 posGoal, float halfLife, float deltaTime)
+        {
+            float y = HalfLifeToDamping(halfLife) / 2.0f; // this could be precomputed
+            float3 j0 = pos - posGoal;
+            float3 j1 = velocity + j0 * y;
+            float eyedt = FastNEgeExp(y * deltaTime); // this could be precomputed if several agents use it the same frame
+
+            pos = eyedt * (j0 + j1 * deltaTime) + posGoal;
+            velocity = eyedt * (velocity - j1 * y * deltaTime);
         }
 
         /// <summary>

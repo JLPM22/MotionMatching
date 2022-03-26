@@ -72,11 +72,13 @@ MonoBehaviour:
   - Name: FuturePosition
     FeatureType: 0
     FramesPrediction: 0a000000140000001e000000
+    SimulationBone: 1
     Bone: 0
     Project: 1
   - Name: FutureDirection
     FeatureType: 1
     FramesPrediction: 0a000000140000001e000000
+    SimulationBone: 1
     Bone: 0
     Project: 1
   PoseFeatures:

@@ -253,17 +253,18 @@ namespace MotionMatching
             SimulationBone.SetRotAdjustment(adjustmentRotation);
         }
 
-        public override float3 GetCurrentPosition()
+        public float3 GetCurrentPosition()
         {
             return transform.position;
         }
-        public override quaternion GetCurrentRotation()
+        public quaternion GetCurrentRotation()
         {
             return transform.rotation;
         }
 
         public override float3 GetWorldSpacePrediction(TrajectoryFeature feature, int index)
         {
+            if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
             switch (feature.FeatureType)
             {
                 case TrajectoryFeature.Type.Position:

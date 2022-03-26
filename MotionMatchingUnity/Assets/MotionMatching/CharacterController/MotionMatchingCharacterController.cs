@@ -46,8 +46,7 @@ namespace MotionMatching
 
         public abstract float3 GetWorldInitPosition();
         public abstract float3 GetWorldInitDirection();
-        public abstract float3 GetCurrentPosition();
-        public abstract quaternion GetCurrentRotation();
+
         /// <summary>
         /// Get the prediction in world space of the feature.
         /// e.g. the feature is the position of the character, and it has frames = { 20, 40, 60}
