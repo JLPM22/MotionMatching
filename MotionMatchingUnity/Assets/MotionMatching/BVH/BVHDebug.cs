@@ -8,7 +8,8 @@ using UnityEngine;
 /// </summary>
 public class BVHDebug : MonoBehaviour
 {
-    public MotionMatchingData MMData;
+    public TextAsset BVH;
+    public float UnitScale = 1;
     public int BVHIndex = 0;
     public bool Play;
     public float SpheresRadius = 0.1f;
@@ -21,7 +22,7 @@ public class BVHDebug : MonoBehaviour
     private void Awake()
     {
         BVHImporter importer = new BVHImporter();
-        Animation = importer.Import(MMData.BVHs[BVHIndex], MMData.UnitScale);
+        Animation = importer.Import(BVH, UnitScale);
 
         Skeleton = new Transform[Animation.Skeleton.Joints.Count];
         foreach (Skeleton.Joint joint in Animation.Skeleton.Joints)
@@ -79,11 +80,12 @@ public class BVHDebug : MonoBehaviour
             Transform t = Skeleton[i];
             GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
         }
-        foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
-        {
-            Transform t = Skeleton[endSite.ParentIndex];
-            GizmosExtensions.DrawLine(t.position, t.TransformPoint(endSite.Offset), 3);
-        }
+        // Uncomment to show end sites
+        // foreach (BVHAnimation.EndSite endSite in Animation.EndSites)
+        // {
+        //     Transform t = Skeleton[endSite.ParentIndex];
+        //     GizmosExtensions.DrawLine(t.position, t.TransformPoint(endSite.Offset), 3);
+        // }
 
         Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
         foreach (Transform t in Skeleton)

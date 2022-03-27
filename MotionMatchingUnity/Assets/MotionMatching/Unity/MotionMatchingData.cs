@@ -35,6 +35,10 @@ namespace MotionMatching
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
 
+        // Information extracted form T-Pose
+        [HideInInspector][SerializeField] private float3[] JointsLocalForward; // Local forward vector of each joint 
+        public bool JointsLocalForwardError { get { return JointsLocalForward == null; } }
+
         private void ImportAnimationsIfNeeded()
         {
             if (Animations == null)
@@ -106,6 +110,39 @@ namespace MotionMatching
             FeatureSet = new FeatureSet(this, PoseSet.NumberPoses);
             FeatureSet.Extract(PoseSet, this);
             FeatureSet.NormalizeFeatures();
+        }
+
+        private void ComputeJointsLocalForward()
+        {
+            // Import T-Pose
+            BVHImporter bvhImporter = new BVHImporter();
+            BVHAnimation tposeAnimation = bvhImporter.Import(BVHTPose, UnitScale, true);
+            JointsLocalForward = new float3[tposeAnimation.Skeleton.Joints.Count];
+            // Find forward character vector by projecting hips forward vector onto the ground
+            Quaternion[] localRotations = tposeAnimation.Frames[0].LocalRotations;
+            float3 hipsWorldForwardProjected = math.mul(localRotations[0], HipsForwardLocalVector);
+            hipsWorldForwardProjected.y = 0;
+            hipsWorldForwardProjected = math.normalize(hipsWorldForwardProjected);
+            // Compute JointsLocalForward based on the T-Pose
+            for (int i = 0; i < JointsLocalForward.Length; i++)
+            {
+                quaternion worldRot = quaternion.identity;
+                int joint = i;
+                while (joint != 0) // while not root
+                {
+                    worldRot = math.mul(localRotations[joint], worldRot);
+                    joint = tposeAnimation.Skeleton.Joints[joint].ParentIndex;
+                }
+                worldRot = math.mul(localRotations[0], worldRot); // root
+                // Change to Local
+                JointsLocalForward[i] = math.mul(math.inverse(worldRot), hipsWorldForwardProjected);
+            }
+        }
+
+        public float3 GetLocalForward(int jointIndex)
+        {
+            Debug.Assert(!JointsLocalForwardError, "JointsLocalForward is not initialized");
+            return JointsLocalForward[jointIndex];
         }
 
         public bool GetMecanimBone(string jointName, out HumanBodyBones bone)
@@ -194,6 +231,8 @@ namespace MotionMatching
             PoseSerializer poseSerializer = new PoseSerializer();
             poseSerializer.Serialize(PoseSet, GetAssetPath(), this.name);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize");
+
+            ComputeJointsLocalForward();
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Extract");
             ImportFeatureSet();
@@ -417,6 +456,12 @@ namespace MotionMatching
             if (GUILayout.Button("Generate Databases", GUILayout.Height(30)))
             {
                 data.GenerateDatabases();
+            }
+
+            // Error Check
+            if (data.JointsLocalForwardError)
+            {
+                EditorGUILayout.HelpBox("Internal error detected. Please regenerate databases.", MessageType.Error);
             }
 
             // Save

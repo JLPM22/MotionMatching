@@ -313,13 +313,15 @@ namespace MotionMatching
             foreach (var trajectoryFeature in mmData.TrajectoryFeatures)
             {
                 if (trajectoryFeature.SimulationBone) simulationBone[i] = true;
-                else if (!poseSet.Skeleton.Find(trajectoryFeature.Bone, out jointsTrajectory[i++])) Debug.Assert(false, "The skeleton does not contain any joint of type " + trajectoryFeature.Bone);
+                else if (!poseSet.Skeleton.Find(trajectoryFeature.Bone, out jointsTrajectory[i])) Debug.Assert(false, "The skeleton does not contain any joint of type " + trajectoryFeature.Bone);
+                i += 1;
             }
             Joint[] jointsPose = new Joint[NumberPoseFeatures]; // FIXME: use Span<> ?
             i = 0;
             foreach (var poseFeature in mmData.PoseFeatures)
             {
-                if (!poseSet.Skeleton.Find(poseFeature.Bone, out jointsPose[i++])) Debug.Assert(false, "The skeleton does not contain any joint of type " + poseFeature.Bone);
+                if (!poseSet.Skeleton.Find(poseFeature.Bone, out jointsPose[i])) Debug.Assert(false, "The skeleton does not contain any joint of type " + poseFeature.Bone);
+                i += 1;
             }
             // Extract Features
             for (int poseIndex = 0; poseIndex < nPoses; ++poseIndex)
@@ -367,7 +369,7 @@ namespace MotionMatching
                             }
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Direction:
-                            GetTrajectoryDirection(futurePose, poseSet.Skeleton, simulationBone[i], jointsTrajectory[i], characterForward,
+                            GetTrajectoryDirection(futurePose, poseSet.Skeleton, simulationBone[i], jointsTrajectory[i], characterForward, mmData,
                                                    out value);
                             if (trajectoryFeature.Project)
                             {
@@ -432,19 +434,22 @@ namespace MotionMatching
             }
             futureLocalPosition = GetLocalPositionFromCharacter(worldPosition, characterOrigin, characterForward);
         }
-        private static void GetTrajectoryDirection(PoseVector pose, Skeleton skeleton, bool simulationBone, Joint joint, float3 characterForward,
+        private static void GetTrajectoryDirection(PoseVector pose, Skeleton skeleton, bool simulationBone, Joint joint, float3 characterForward, MotionMatchingData mmData,
                                                    out float3 futureLocalDirection)
         {
             quaternion worldRotation;
+            float3 localForward;
             if (simulationBone)
             {
                 worldRotation = pose.JointLocalRotations[0];
+                localForward = math.forward();
             }
             else
             {
                 worldRotation = GetWorldRotation(skeleton, pose, joint);
+                localForward = mmData.GetLocalForward(joint.Index);
             }
-            float3 worldDirection = math.mul(worldRotation, math.forward());
+            float3 worldDirection = math.mul(worldRotation, localForward);
             futureLocalDirection = GetLocalDirectionFromCharacter(worldDirection, characterForward);
         }
 
