@@ -65,5 +65,20 @@ namespace MotionMatching
                     return HumanBodyBones.LastBone;
             }
         }
+
+        /// <summary>
+        /// Returns true if the bone belongs to the right arm (RightUpperArm or RightLowerArm or RightHand)
+        /// </summary>
+        public static bool IsRightArmBone(HumanBodyBones bone)
+        {
+            return bone == HumanBodyBones.RightUpperArm || bone == HumanBodyBones.RightLowerArm || bone == HumanBodyBones.RightHand;
+        }
+        /// <summary>
+        /// Returns true if the bone belongs to the left arm (LeftUpperArm or LeftLowerArm or LeftHand)
+        /// </summary>
+        public static bool IsLeftArmBone(HumanBodyBones bone)
+        {
+            return bone == HumanBodyBones.LeftUpperArm || bone == HumanBodyBones.LeftLowerArm || bone == HumanBodyBones.LeftHand;
+        }
     }
 }

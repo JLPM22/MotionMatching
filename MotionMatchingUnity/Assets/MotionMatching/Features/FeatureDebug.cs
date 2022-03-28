@@ -110,6 +110,21 @@ public class FeatureDebug : MonoBehaviour
         Gizmos.DrawSphere(characterOrigin, SpheresRadius);
         GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward, thickness: 3);
 
+        // Forward Trajectory Direction Features
+        Gizmos.color = Color.gray;
+        for (int t = 0; t < MMData.TrajectoryFeatures.Count; t++)
+        {
+            var trajectoryFeature = MMData.TrajectoryFeatures[t];
+            if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction &&
+                !trajectoryFeature.SimulationBone)
+            {
+                if (!PoseSet.Skeleton.Find(trajectoryFeature.Bone, out Skeleton.Joint joint)) Debug.Assert(false, "Bone not found");
+                float3 dir = SkeletonTransforms[joint.Index].TransformDirection(MMData.GetLocalForward(joint.Index));
+                float3 jointPos = SkeletonTransforms[joint.Index].position;
+                GizmosExtensions.DrawArrow(jointPos, jointPos + dir * 0.5f, 0.1f, thickness: 3);
+            }
+        }
+
         // Feature Set
         if (FeatureSet == null) return;
 

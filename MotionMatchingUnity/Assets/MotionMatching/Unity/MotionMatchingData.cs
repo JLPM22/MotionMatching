@@ -36,7 +36,7 @@ namespace MotionMatching
         private FeatureSet FeatureSet;
 
         // Information extracted form T-Pose
-        [HideInInspector][SerializeField] private float3[] JointsLocalForward; // Local forward vector of each joint 
+        [SerializeField] private float3[] JointsLocalForward; // Local forward vector of each joint 
         public bool JointsLocalForwardError { get { return JointsLocalForward == null; } }
 
         private void ImportAnimationsIfNeeded()
@@ -117,28 +117,49 @@ namespace MotionMatching
             // Import T-Pose
             BVHImporter bvhImporter = new BVHImporter();
             BVHAnimation tposeAnimation = bvhImporter.Import(BVHTPose, UnitScale, true);
-            JointsLocalForward = new float3[tposeAnimation.Skeleton.Joints.Count];
+            JointsLocalForward = new float3[tposeAnimation.Skeleton.Joints.Count + 1]; // +1 for the simulation bone
             // Find forward character vector by projecting hips forward vector onto the ground
             Quaternion[] localRotations = tposeAnimation.Frames[0].LocalRotations;
             float3 hipsWorldForwardProjected = math.mul(localRotations[0], HipsForwardLocalVector);
             hipsWorldForwardProjected.y = 0;
             hipsWorldForwardProjected = math.normalize(hipsWorldForwardProjected);
+            // Find right character vector by rotating Y-Axis 90 degrees (Unity is Left-Handed and Y-Axis is Up)
+            float3 hipsWorldRightProjected = math.mul(quaternion.AxisAngle(math.up(), math.radians(90.0f)), hipsWorldForwardProjected);
             // Compute JointsLocalForward based on the T-Pose
-            for (int i = 0; i < JointsLocalForward.Length; i++)
+            JointsLocalForward[0] = math.forward();
+            for (int i = 1; i < JointsLocalForward.Length; i++)
             {
                 quaternion worldRot = quaternion.identity;
-                int joint = i;
+                int joint = i - 1;
                 while (joint != 0) // while not root
                 {
                     worldRot = math.mul(localRotations[joint], worldRot);
                     joint = tposeAnimation.Skeleton.Joints[joint].ParentIndex;
                 }
                 worldRot = math.mul(localRotations[0], worldRot); // root
+                joint = i - 1;
                 // Change to Local
-                JointsLocalForward[i] = math.mul(math.inverse(worldRot), hipsWorldForwardProjected);
+                if (!GetMecanimBone(tposeAnimation.Skeleton.Joints[joint].Name, out HumanBodyBones bone))
+                {
+                    Debug.LogError("[FeatureDebug] Failed to find Mecanim bone for joint " + tposeAnimation.Skeleton.Joints[joint].Name);
+                }
+                float3 worldForward = hipsWorldForwardProjected;
+                if (HumanBodyBonesExtensions.IsLeftArmBone(bone))
+                {
+                    worldForward = -hipsWorldRightProjected;
+                }
+                else if (HumanBodyBonesExtensions.IsRightArmBone(bone))
+                {
+                    worldForward = hipsWorldRightProjected;
+                }
+                JointsLocalForward[i] = math.mul(math.inverse(worldRot), worldForward);
             }
         }
 
+        /// <summary>
+        /// Returns the local forward vector of the iven joint index (after adding simulation bone)
+        /// Vector computed from the T-Pose BVH and HipsForwardLocalVector
+        /// </summary>
         public float3 GetLocalForward(int jointIndex)
         {
             Debug.Assert(!JointsLocalForwardError, "JointsLocalForward is not initialized");

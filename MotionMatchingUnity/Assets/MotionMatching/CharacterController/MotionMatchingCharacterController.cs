@@ -9,6 +9,10 @@ namespace MotionMatching
 
     public abstract class MotionMatchingCharacterController : MonoBehaviour
     {
+		// TODO: Create a OnValidate() (other name because it will collide with Unity's
+		//       that validates if the current MMData has the necessary trajectories requeried
+		//       by the current controller (eg. simulation bone pos + dir, or HMD + L/R controllers pos + dir)
+		
         public event Action<float> OnUpdated;
         public event Action OnInputChangedQuickly;
 
