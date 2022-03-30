@@ -39,22 +39,19 @@ namespace MotionMatching
         [SerializeField] private float3[] JointsLocalForward; // Local forward vector of each joint 
         public bool JointsLocalForwardError { get { return JointsLocalForward == null; } }
 
-        private void ImportAnimationsIfNeeded()
+        private void ImportAnimations()
         {
-            if (Animations == null)
+            Animations = new List<BVHAnimation>();
+            PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
+            for (int i = 0; i < BVHs.Count; i++)
             {
-                Animations = new List<BVHAnimation>();
-                PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
-                for (int i = 0; i < BVHs.Count; i++)
-                {
-                    BVHImporter importer = new BVHImporter();
-                    BVHAnimation animation = importer.Import(BVHs[i], UnitScale);
-                    Animations.Add(animation);
-                    // Add Mecanim mapping information
-                    animation.UpdateMecanimInformation(this);
-                }
-                PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
+                BVHImporter importer = new BVHImporter();
+                BVHAnimation animation = importer.Import(BVHs[i], UnitScale);
+                Animations.Add(animation);
+                // Add Mecanim mapping information
+                animation.UpdateMecanimInformation(this);
             }
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
         }
 
         public PoseSet GetOrImportPoseSet()
@@ -75,7 +72,7 @@ namespace MotionMatching
 
         private void ImportPoseSet()
         {
-            ImportAnimationsIfNeeded();
+            ImportAnimations();
             PoseSet = new PoseSet(this);
             PoseSet.SetSkeletonFromBVH(Animations[0].Skeleton);
             for (int i = 0; i < Animations.Count; i++)
