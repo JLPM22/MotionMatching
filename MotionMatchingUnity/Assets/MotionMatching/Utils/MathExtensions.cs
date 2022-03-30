@@ -77,7 +77,8 @@ namespace MotionMatching
         // Source: https://theorangeduck.com/page/exponential-map-angle-axis-angular-velocity
         public static float3 AngularVelocity(quaternion current, quaternion next, float dt)
         {
-            return QuaternionToScaledAngleAxis(math.normalizesafe(Abs(math.mul(math.inverse(current), next)))) / dt;
+            // return QuaternionToScaledAngleAxis(math.normalizesafe(Abs(math.mul(math.inverse(current), next)))) / dt;
+            return QuaternionToScaledAngleAxis(Abs(math.mul(next, math.inverse(current)))) / dt;
         }
 
         public static float3 Log(quaternion q, float eps = 1e-8f)
