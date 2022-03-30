@@ -77,7 +77,7 @@ namespace MotionMatching
 
             Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
             Vector3 from = Vector3.forward * radius;
-            var step = Mathf.RoundToInt(angle / segments);
+            var step = Mathf.Max(Mathf.RoundToInt(angle / segments), 1);
             for (int i = 0; i <= angle; i += step)
             {
                 var to = new Vector3(radius * Mathf.Sin(i * Mathf.Deg2Rad), 0, radius * Mathf.Cos(i * Mathf.Deg2Rad));
@@ -107,7 +107,7 @@ namespace MotionMatching
             Gizmos.matrix = Matrix4x4.TRS(centerOfRotation, rotation, Vector3.one);
             var deltaTranslation = centerOfRotation - center;
             Vector3 from = deltaTranslation + Vector3.forward * radius;
-            var step = Mathf.RoundToInt(angle / segments);
+            var step = Mathf.Max(Mathf.RoundToInt(angle / segments), 1);
             for (int i = 0; i <= angle; i += step)
             {
                 var to = new Vector3(radius * Mathf.Sin(i * Mathf.Deg2Rad), 0, radius * Mathf.Cos(i * Mathf.Deg2Rad)) + deltaTranslation;
@@ -130,7 +130,7 @@ namespace MotionMatching
             var old = Gizmos.matrix;
             Gizmos.matrix = matrix;
             Vector3 from = Vector3.forward * radius;
-            var step = Mathf.RoundToInt(angle / segments);
+            var step = Mathf.Max(Mathf.RoundToInt(angle / segments), 1);
             for (int i = 0; i <= angle; i += step)
             {
                 var to = new Vector3(radius * Mathf.Sin(i * Mathf.Deg2Rad), 0, radius * Mathf.Cos(i * Mathf.Deg2Rad));
