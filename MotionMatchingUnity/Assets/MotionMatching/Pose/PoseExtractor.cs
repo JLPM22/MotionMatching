@@ -157,8 +157,8 @@ namespace MotionMatching
             // Native Arrays used by Burst for Output
             NativeArray<float3> jointLocalPositions = new NativeArray<float3>(outNJoint, Allocator.TempJob);
             NativeArray<quaternion> jointLocalRotations = new NativeArray<quaternion>(outNJoint, Allocator.TempJob);
-            NativeArray<float3> jointVelocities = new NativeArray<float3>(outNJoint, Allocator.TempJob);
-            NativeArray<float3> jointAngularVelocities = new NativeArray<float3>(outNJoint, Allocator.TempJob);
+            NativeArray<float3> jointLocalVelocities = new NativeArray<float3>(outNJoint, Allocator.TempJob);
+            NativeArray<float3> jointLocalAngularVelocities = new NativeArray<float3>(outNJoint, Allocator.TempJob);
 
             // Native Arrays used by Burst for Input
             NativeArray<float3> jointOffsets = new NativeArray<float3>(nJoints, Allocator.TempJob);
@@ -187,8 +187,8 @@ namespace MotionMatching
 
             if (frameIndex == 0)
             {
-                for (int i = 0; i < jointVelocities.Length; i++) jointVelocities[i] = float3.zero;
-                for (int i = 0; i < jointAngularVelocities.Length; i++) jointAngularVelocities[i] = float3.zero;
+                for (int i = 0; i < jointLocalVelocities.Length; i++) jointLocalVelocities[i] = float3.zero;
+                for (int i = 0; i < jointLocalAngularVelocities.Length; i++) jointLocalAngularVelocities[i] = float3.zero;
             }
             else
             {
@@ -213,8 +213,8 @@ namespace MotionMatching
                     LocalRotations = jointLocalRotations,
                     PrevLocalRotations = prevLocalRotations,
                     // Output
-                    OutJointVelocities = jointVelocities,
-                    OutJointAngularVelocities = jointAngularVelocities,
+                    OutJointLocalVelocities = jointLocalVelocities,
+                    OutJointLocalAngularVelocities = jointLocalAngularVelocities,
                 };
                 jobVelocities.Schedule().Complete();
 
@@ -230,15 +230,15 @@ namespace MotionMatching
             quaternion[] _jointLocalRotations = new quaternion[outNJoint];
             for (int i = 0; i < outNJoint; i++) _jointLocalRotations[i] = jointLocalRotations[i];
             float3[] _jointVelocities = new float3[outNJoint];
-            for (int i = 0; i < outNJoint; i++) _jointVelocities[i] = jointVelocities[i];
+            for (int i = 0; i < outNJoint; i++) _jointVelocities[i] = jointLocalVelocities[i];
             float3[] _jointAngularVelocities = new float3[outNJoint];
-            for (int i = 0; i < outNJoint; i++) _jointAngularVelocities[i] = jointAngularVelocities[i];
+            for (int i = 0; i < outNJoint; i++) _jointAngularVelocities[i] = jointLocalAngularVelocities[i];
 
             // Dispose Output Native Arrays
             jointLocalPositions.Dispose();
             jointLocalRotations.Dispose();
-            jointVelocities.Dispose();
-            jointAngularVelocities.Dispose();
+            jointLocalVelocities.Dispose();
+            jointLocalAngularVelocities.Dispose();
 
             // Result
             return new PoseVector(_jointLocalPositions, _jointLocalRotations,
@@ -295,8 +295,8 @@ namespace MotionMatching
             [ReadOnly] public NativeArray<quaternion> PrevLocalRotations;
 
             // Output arrays include SimulationBone
-            [WriteOnly] public NativeArray<float3> OutJointVelocities;
-            [WriteOnly] public NativeArray<float3> OutJointAngularVelocities;
+            [WriteOnly] public NativeArray<float3> OutJointLocalVelocities;
+            [WriteOnly] public NativeArray<float3> OutJointLocalAngularVelocities;
 
             public void Execute()
             {
@@ -304,49 +304,16 @@ namespace MotionMatching
                 for (int joint = 0; joint < Njoints; joint++)
                 {
                     // Velocity
-                    float3 pos = GetWorldPosition(joint, LocalPositions, LocalRotations);
-                    float3 prevPos = GetWorldPosition(joint, PrevLocalPositions, PrevLocalRotations);
+                    float3 pos = LocalPositions[joint];
+                    float3 prevPos = PrevLocalPositions[joint];
                     float3 vel = (pos - prevPos) / FrameTime;
-                    OutJointVelocities[joint] = vel;
+                    OutJointLocalVelocities[joint] = vel;
                     // Angular velocity
-                    quaternion rot = GetWorldRotation(joint, LocalRotations);
-                    quaternion prevRot = GetWorldRotation(joint, PrevLocalRotations);
+                    quaternion rot = LocalRotations[joint];
+                    quaternion prevRot = PrevLocalRotations[joint];
                     float3 angularVel = MathExtensions.AngularVelocity(prevRot, rot, FrameTime);
-                    OutJointAngularVelocities[joint] = angularVel;
+                    OutJointLocalAngularVelocities[joint] = angularVel;
                 }
-            }
-
-            /// <summary>
-            /// Apply forward kinematics to obtain the quaternion rotating from the local
-            /// coordinate system of the joint to the world coordinate system.
-            /// </summary>
-            private quaternion GetWorldRotation(int joint, NativeArray<quaternion> localRotations)
-            {
-                quaternion worldRot = quaternion.identity;
-
-                while (joint != 0) // while not root
-                {
-                    worldRot = math.mul(localRotations[joint], worldRot);
-                    joint = JointParents[joint];
-                }
-                worldRot = math.mul(localRotations[0], worldRot); // root
-
-                return worldRot;
-            }
-
-            /// <summary>
-            /// Apply forward kinematics to obtain the position of the joint in the world coordinate system.
-            /// </summary>
-            private float3 GetWorldPosition(int joint, NativeArray<float3> localPositions, NativeArray<quaternion> localRotations)
-            {
-                float4x4 localToWorld = float4x4.identity;
-                while (joint != 0) // while not root
-                {
-                    localToWorld = float4x4.TRS(localPositions[joint], localRotations[joint], new float3(1, 1, 1)) * localToWorld;
-                    joint = JointParents[joint];
-                }
-                localToWorld = float4x4.TRS(localPositions[0], localRotations[0], new float3(1, 1, 1)) * localToWorld;
-                return math.mul(localToWorld, new float4(0, 0, 0, 1)).xyz;
             }
         }
     }

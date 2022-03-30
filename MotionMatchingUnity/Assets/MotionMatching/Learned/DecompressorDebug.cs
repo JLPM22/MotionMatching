@@ -43,8 +43,8 @@ namespace MotionMatching
             DecompressorPose = new PoseVector();
             DecompressorPose.JointLocalPositions = new float3[24];
             DecompressorPose.JointLocalRotations = new quaternion[24];
-            DecompressorPose.JointVelocities = new float3[24];
-            DecompressorPose.JointAngularVelocities = new float3[24];
+            DecompressorPose.JointLocalVelocities = new float3[24];
+            DecompressorPose.JointLocalAngularVelocities = new float3[24];
 
             // Skeleton
             SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];

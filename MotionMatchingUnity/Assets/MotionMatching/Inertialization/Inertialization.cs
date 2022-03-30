@@ -48,17 +48,17 @@ namespace MotionMatching
             {
                 quaternion sourceJointRotation = sourcePose.JointLocalRotations[i];
                 quaternion targetJointRotation = targetPose.JointLocalRotations[i];
-                float3 sourceJointAngularVelocity = sourcePose.JointAngularVelocities[i];
-                float3 targetJointAngularVelocity = targetPose.JointAngularVelocities[i];
+                float3 sourceJointAngularVelocity = sourcePose.JointLocalAngularVelocities[i];
+                float3 targetJointAngularVelocity = targetPose.JointLocalAngularVelocities[i];
                 InertializeJointTransition(sourceJointRotation, sourceJointAngularVelocity,
                                            targetJointRotation, targetJointAngularVelocity,
                                            ref OffsetRotations[i], ref OffsetAngularVelocities[i]);
             }
-            // Set up the inertialization for root Y
+            // Set up the inertialization for hips
             float3 sourceHips = sourcePose.JointLocalPositions[1];
             float3 targetHips = targetPose.JointLocalPositions[1];
-            float3 sourceHipsVelocity = sourcePose.JointVelocities[1];
-            float3 targetHipsVelocity = targetPose.JointVelocities[1];
+            float3 sourceHipsVelocity = sourcePose.JointLocalVelocities[1];
+            float3 targetHipsVelocity = targetPose.JointLocalVelocities[1];
             InertializeJointTransition(sourceHips, sourceHipsVelocity,
                                        targetHips, targetHipsVelocity,
                                        ref OffsetHips, ref OffsetHipsVelocity);
@@ -74,15 +74,15 @@ namespace MotionMatching
             for (int i = 1; i < targetPose.JointLocalRotations.Length; i++)
             {
                 quaternion targetJointRotation = targetPose.JointLocalRotations[i];
-                float3 targetAngularVelocity = targetPose.JointAngularVelocities[i];
+                float3 targetAngularVelocity = targetPose.JointLocalAngularVelocities[i];
                 InertializeJointUpdate(targetJointRotation, targetAngularVelocity,
                                        halfLife, deltaTime,
                                        ref OffsetRotations[i], ref OffsetAngularVelocities[i],
                                        out InertializedRotations[i], out InertializedAngularVelocities[i]);
             }
-            // Update the inertialization for root Y
+            // Update the inertialization for hips
             float3 targetHips = targetPose.JointLocalPositions[1];
-            float3 targetRootVelocity = targetPose.JointVelocities[1];
+            float3 targetRootVelocity = targetPose.JointLocalVelocities[1];
             InertializeJointUpdate(targetHips, targetRootVelocity,
                                    halfLife, deltaTime,
                                    ref OffsetHips, ref OffsetHipsVelocity,

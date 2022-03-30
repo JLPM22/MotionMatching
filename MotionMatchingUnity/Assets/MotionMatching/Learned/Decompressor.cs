@@ -48,13 +48,13 @@ namespace MotionMatching
             for (int i = 0; i < 24; ++i)
             {
                 int index = i * 3 + count;
-                pose.JointVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
+                pose.JointLocalVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
             }
             count += 24 * 3;
             for (int i = 0; i < 24; ++i)
             {
                 int index = i * 3 + count;
-                pose.JointAngularVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
+                pose.JointLocalAngularVelocities[i] = new float3(output[0, 0, 0, index], output[0, 0, 0, index + 1], output[0, 0, 0, index + 2]);
             }
             count += 24 * 3;
             // Dispose

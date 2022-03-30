@@ -81,23 +81,6 @@ namespace MotionMatching
             return worldRot;
         }
 
-        /// <summary>
-        /// Apply forward kinematics to obtain the position of the joint in the world coordinate system.
-        /// </summary>
-        public float3 GetWorldPosition(Joint joint, int frameIndex)
-        {
-            Frame frame = Frames[frameIndex];
-            float4x4 localToWorld = float4x4.identity;
-            while (joint.ParentIndex != 0) // while not root
-            {
-                Joint parent = Skeleton.GetParent(joint);
-                localToWorld = float4x4.TRS(parent.LocalOffset, frame.LocalRotations[joint.ParentIndex], new float3(1, 1, 1)) * localToWorld;
-                joint = parent;
-            }
-            localToWorld = float4x4.TRS(frame.RootMotion, frame.LocalRotations[0], new float3(1, 1, 1)) * localToWorld;
-            return math.mul(localToWorld, new float4(joint.LocalOffset, 1)).xyz;
-        }
-
         public struct EndSite
         {
             public int ParentIndex;

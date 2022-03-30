@@ -14,16 +14,16 @@ namespace MotionMatching
         // The first element is the SimulationBone (added artificially), and the rest are the bones of the original skeleton
         public float3[] JointLocalPositions;
         public quaternion[] JointLocalRotations;
-        public float3[] JointVelocities; // Computed from World Positions
-        public float3[] JointAngularVelocities; // Computed from World Rotations
+        public float3[] JointLocalVelocities; // Computed from World Positions
+        public float3[] JointLocalAngularVelocities; // Computed from World Rotations
 
         public PoseVector(float3[] jointLocalPositions, quaternion[] jointLocalRotations,
-                          float3[] jointVelocities, float3[] jointAngularVelocities)
+                          float3[] jointLocalVelocities, float3[] jointLocalAngularVelocities)
         {
             JointLocalPositions = jointLocalPositions;
             JointLocalRotations = jointLocalRotations;
-            JointVelocities = jointVelocities;
-            JointAngularVelocities = jointAngularVelocities;
+            JointLocalVelocities = jointLocalVelocities;
+            JointLocalAngularVelocities = jointLocalAngularVelocities;
         }
     }
 }

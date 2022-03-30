@@ -64,8 +64,8 @@ namespace MotionMatching
                         poseSet.GetPose(i, out PoseVector pose);
                         WriteFloat3Array(writer, pose.JointLocalPositions);
                         WriteQuaternionArray(writer, pose.JointLocalRotations);
-                        WriteFloat3Array(writer, pose.JointVelocities);
-                        WriteFloat3Array(writer, pose.JointAngularVelocities);
+                        WriteFloat3Array(writer, pose.JointLocalVelocities);
+                        WriteFloat3Array(writer, pose.JointLocalAngularVelocities);
                     }
                 }
             }
@@ -137,8 +137,8 @@ namespace MotionMatching
                             PoseVector pose = new PoseVector();
                             pose.JointLocalPositions = ReadFloat3Array(reader, nJoints);
                             pose.JointLocalRotations = ReadQuaternionArray(reader, nJoints);
-                            pose.JointVelocities = ReadFloat3Array(reader, nJoints);
-                            pose.JointAngularVelocities = ReadFloat3Array(reader, nJoints);
+                            pose.JointLocalVelocities = ReadFloat3Array(reader, nJoints);
+                            pose.JointLocalAngularVelocities = ReadFloat3Array(reader, nJoints);
                             poses[i] = pose;
                         }
                         // Set Poses in poseSet
