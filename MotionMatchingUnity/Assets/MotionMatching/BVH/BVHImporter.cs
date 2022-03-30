@@ -21,7 +21,9 @@ namespace MotionMatching
             BVHAnimation animation = new BVHAnimation();
 
             Stack<int> parentIndexStack = new Stack<int>();
-            string[] words = Regex.Split(bvh.text, "[\\s+|\\r*\\n+]+");
+            char[] whitespace = new char[] { ' ', '\t', '\r', '\n' };
+            string[] words = bvh.text.Split(whitespace, System.StringSplitOptions.RemoveEmptyEntries);
+            // string[] words = Regex.Split(bvh.text, "[\\s+|\\r*\\n+]+");
             int w = 0;
             // ROOT
             if (words[w++] != "HIERARCHY") Debug.LogError("[BVHImporter] HIERARCHY not found");
