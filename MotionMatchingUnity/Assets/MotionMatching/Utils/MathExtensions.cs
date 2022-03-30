@@ -77,7 +77,12 @@ namespace MotionMatching
         // Source: https://theorangeduck.com/page/exponential-map-angle-axis-angular-velocity
         public static float3 AngularVelocity(quaternion current, quaternion next, float dt)
         {
-            // return QuaternionToScaledAngleAxis(math.normalizesafe(Abs(math.mul(math.inverse(current), next)))) / dt;
+            // Rln = Rotation from local to world next
+            // Rlc = Rotation from local to world current
+            // Rcn = Rotation from world current to world next (angular velocity if divided by dt)
+            // Rln = Rcn * Rlc * vl <- where vl is a vector in local space
+            // Rcn = Rln * Rlc^-1
+            // IF quaternions are not normalized try: return QuaternionToScaledAngleAxis(math.normalizesafe(Abs(math.mul(next, math.inverse(current))))) / dt;
             return QuaternionToScaledAngleAxis(Abs(math.mul(next, math.inverse(current)))) / dt;
         }
 
