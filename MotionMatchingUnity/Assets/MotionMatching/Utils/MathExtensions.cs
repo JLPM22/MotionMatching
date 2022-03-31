@@ -137,5 +137,27 @@ namespace MotionMatching
         {
             return new quaternion(-q.value.x, -q.value.y, q.value.z, q.value.w);
         }
+
+        /* Source: 'On the Continuity of Rotation Representations in Neural Networks' by Yi Zhou et al., 2019 */
+        /// <summary>
+        /// Transform a quaternion 4D to a continuous 6D representation
+        /// </summary>
+        public static float3x2 QuaternionToContinuous(quaternion q)
+        {
+            float3x3 rotation = new float3x3(q);
+            return new float3x2(rotation.c0, rotation.c1);
+        }
+        /// <summary>
+        /// Transform a continuous 6D to a quaternion 4D representation
+        /// </summary>
+        public static quaternion QuaternionFromContinuous(float3x2 m)
+        {
+            // Gram-Schmidt-like orthogonalization
+            float3 b1 = math.normalize(m.c0);
+            float3 b2 = math.normalize(m.c1 - (math.dot(b1, m.c1) * b1));
+            float3 b3 = math.cross(b1, b2);
+            float3x3 rotation = new float3x3(b1, b2, b3);
+            return new quaternion(rotation);
+        }
     }
 }
