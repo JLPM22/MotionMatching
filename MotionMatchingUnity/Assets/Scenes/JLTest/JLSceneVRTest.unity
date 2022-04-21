@@ -411,7 +411,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterController: {fileID: 922198739}
-  MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
+  MMData: {fileID: 11400000, guid: 681b848354f55fb47912198fdde9cd7c, type: 2}
   LockFPS: 1
   SearchFrames: 10
   Inertialize: 1
@@ -431,6 +431,7 @@ MonoBehaviour:
   DebugCurrent: 1
   DebugPose: 1
   DebugTrajectory: 0
+  DebugContacts: 1
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -480,7 +481,7 @@ MonoBehaviour:
   SimulationBone: {fileID: 845368627}
   TrajectoryPositionFeatureName: FuturePosition
   TrajectoryDirectionFeatureName: FutureDirection
-  MaxSpeed: 2.5
+  MaxSpeed: 1
   ResponsivenessPositions: 0.5
   ResponsivenessDirections: 0.8
   MinimumVelocityClamp: 0.01
@@ -843,7 +844,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b202464d618fda64a9e4a8cb8516acc6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
+  MMData: {fileID: 11400000, guid: 681b848354f55fb47912198fdde9cd7c, type: 2}
   Play: 1
   SpheresRadius: 0.05
   LockFPS: 1

@@ -66,6 +66,8 @@ namespace MotionMatching
                         WriteQuaternionArray(writer, pose.JointLocalRotations);
                         WriteFloat3Array(writer, pose.JointLocalVelocities);
                         WriteFloat3Array(writer, pose.JointLocalAngularVelocities);
+                        writer.Write(pose.LeftFootContact ? 1u : 0u);
+                        writer.Write(pose.RightFootContact ? 1u : 0u);
                     }
                 }
             }
@@ -139,6 +141,8 @@ namespace MotionMatching
                             pose.JointLocalRotations = ReadQuaternionArray(reader, nJoints);
                             pose.JointLocalVelocities = ReadFloat3Array(reader, nJoints);
                             pose.JointLocalAngularVelocities = ReadFloat3Array(reader, nJoints);
+                            pose.LeftFootContact = reader.ReadUInt32() == 1u;
+                            pose.RightFootContact = reader.ReadUInt32() == 1u;
                             poses[i] = pose;
                         }
                         // Set Poses in poseSet

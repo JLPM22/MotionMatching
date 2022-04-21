@@ -27,6 +27,7 @@ namespace MotionMatching
         public float UnitScale = 1.0f;
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
         public bool SmoothSimulationBone; // Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter
+        public float ContactVelocityThreshold = 0.15f; // Minimum velocity of the foot to be considered in movement and not in contact with the ground
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
         public List<TrajectoryFeature> TrajectoryFeatures = new List<TrajectoryFeature>();
         public List<PoseFeature> PoseFeatures = new List<PoseFeature>();
@@ -323,6 +324,10 @@ namespace MotionMatching
             // SmoothSimulationBone
             data.SmoothSimulationBone = EditorGUILayout.Toggle(new GUIContent("Smooth Simulation Bone", "Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter"),
                                                                data.SmoothSimulationBone);
+
+            // ContactVelocityThreshold
+            data.ContactVelocityThreshold = EditorGUILayout.FloatField(new GUIContent("Contact Velocity Threshold", "Minimum velocity of the foot to be considered in movement and not in contact with the ground"),
+                                                                        data.ContactVelocityThreshold);
 
             // SkeletonToMecanim
             if (GUILayout.Button("Read Skeleton from BVH"))

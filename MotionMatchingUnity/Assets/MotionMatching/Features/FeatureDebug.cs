@@ -125,6 +125,21 @@ public class FeatureDebug : MonoBehaviour
             }
         }
 
+        // Contacts
+        if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.Assert(false, "Bone not found");
+        if (!PoseSet.Skeleton.Find(HumanBodyBones.RightToes, out Skeleton.Joint rightToesJoint)) Debug.Assert(false, "Bone not found");
+        int leftToesIndex = leftToesJoint.Index;
+        int rightToesIndex = rightToesJoint.Index;
+        Gizmos.color = Color.green;
+        if (pose.LeftFootContact)
+        {
+            Gizmos.DrawSphere(SkeletonTransforms[leftToesIndex].position, SpheresRadius);
+        }
+        if (pose.RightFootContact)
+        {
+            Gizmos.DrawSphere(SkeletonTransforms[rightToesIndex].position, SpheresRadius);
+        }
+
         // Feature Set
         if (FeatureSet == null) return;
 

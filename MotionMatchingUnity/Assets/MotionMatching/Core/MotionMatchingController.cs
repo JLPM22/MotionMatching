@@ -31,6 +31,7 @@ namespace MotionMatching
         public bool DebugCurrent = true;
         public bool DebugPose = true;
         public bool DebugTrajectory = true;
+        public bool DebugContacts = true;
 
         public float3 Velocity { get; private set; }
         public float3 AngularVelocity { get; private set; }
@@ -430,6 +431,22 @@ namespace MotionMatching
                 Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
                 Gizmos.DrawSphere(characterOrigin, SpheresRadius);
                 GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward, thickness: 3);
+            }
+            if (DebugContacts)
+            {
+                if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.Assert(false, "Bone not found");
+                if (!PoseSet.Skeleton.Find(HumanBodyBones.RightToes, out Skeleton.Joint rightToesJoint)) Debug.Assert(false, "Bone not found");
+                int leftToesIndex = leftToesJoint.Index;
+                int rightToesIndex = rightToesJoint.Index;
+                Gizmos.color = Color.green;
+                if (pose.LeftFootContact)
+                {
+                    Gizmos.DrawSphere(SkeletonTransforms[leftToesIndex].position, SpheresRadius);
+                }
+                if (pose.RightFootContact)
+                {
+                    Gizmos.DrawSphere(SkeletonTransforms[rightToesIndex].position, SpheresRadius);
+                }
             }
 
             // Feature Set
