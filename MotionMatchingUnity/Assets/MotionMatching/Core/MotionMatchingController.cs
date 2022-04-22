@@ -21,6 +21,7 @@ namespace MotionMatching
         public bool LockFPS = true;
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
+        public bool FootLock = true; // Should lock the feet to the ground when contact information is true
         [Range(0.0f, 1.0f)] public float InertializeHalfLife = 0.1f; // Time needed to move half of the distance between the source to the target pose
         [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Tooltip("How important is the current pose")][Range(0.0f, 1.0f)] public float Quality = 1.0f;
@@ -51,6 +52,19 @@ namespace MotionMatching
         private NativeArray<int> SearchResult;
         private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
+        // Foot Lock
+        private bool LastLeftFootContact;
+        private bool LastRightFootContact;
+        private float3 LeftFootContact; // World position of the last contact
+        private float3 RightFootContact;
+        private float3 LeftLowerLegLocalForward;
+        private float3 RightLowerLegLocalForward;
+        private int LeftFootIndex;
+        private int LeftLowerLegIndex;
+        private int LeftUpperLegIndex;
+        private int RightFootIndex;
+        private int RightLowerLegIndex;
+        private int RightUpperLegIndex;
 
         private void Awake()
         {
@@ -111,6 +125,21 @@ namespace MotionMatching
                     break;
                 }
             }
+            // Foot Lock
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftFoot, out Skeleton.Joint leftFootJoint)) Debug.LogError("[Motion Matching] LeftFoot not found");
+            LeftFootIndex = leftFootJoint.Index;
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftLowerLeg, out Skeleton.Joint leftLowerLegJoint)) Debug.LogError("[Motion Matching] LeftLowerLeg not found");
+            LeftLowerLegIndex = leftLowerLegJoint.Index;
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftUpperLeg, out Skeleton.Joint leftUpperLegJoint)) Debug.LogError("[Motion Matching] LeftUpperLeg not found");
+            LeftUpperLegIndex = leftUpperLegJoint.Index;
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.RightFoot, out Skeleton.Joint rightFootJoint)) Debug.LogError("[Motion Matching] RightFoot not found");
+            RightFootIndex = rightFootJoint.Index;
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.RightLowerLeg, out Skeleton.Joint rightLowerLegJoint)) Debug.LogError("[Motion Matching] RightLowerLeg not found");
+            RightLowerLegIndex = rightLowerLegJoint.Index;
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.RightUpperLeg, out Skeleton.Joint rightUpperLegJoint)) Debug.LogError("[Motion Matching] RightUpperLeg not found");
+            RightUpperLegIndex = rightUpperLegJoint.Index;
+            LeftLowerLegLocalForward = MMData.GetLocalForward(LeftLowerLegIndex);
+            RightLowerLegLocalForward = MMData.GetLocalForward(RightLowerLegIndex);
             // Init Pose
             SkeletonTransforms[0].position = CharacterController.GetWorldInitPosition();
             SkeletonTransforms[0].rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
@@ -295,6 +324,42 @@ namespace MotionMatching
             }
             // Hips Position
             SkeletonTransforms[1].localPosition = Inertialize ? Inertialization.InertializedHips : pose.JointLocalPositions[1];
+            // Foot Lock
+            if (!LastLeftFootContact && pose.LeftFootContact)
+            {
+                // New contact Left Foot
+                LeftFootContact = SkeletonTransforms[LeftFootIndex].position;
+            }
+            if (!LastRightFootContact && pose.RightFootContact)
+            {
+                // New contact Right Foot
+                RightFootContact = SkeletonTransforms[RightFootIndex].position;
+            }
+            if (FootLock)
+            {
+                if (pose.LeftFootContact)
+                {
+                    // Left Foot is still in contact
+                    Transform leftLowerLeg = SkeletonTransforms[LeftLowerLegIndex];
+                    TwoJointIK.Solve(LeftFootContact,
+                                     SkeletonTransforms[LeftUpperLegIndex],
+                                     leftLowerLeg,
+                                     SkeletonTransforms[LeftFootIndex],
+                                     (float3)leftLowerLeg.position + math.mul(leftLowerLeg.rotation, LeftLowerLegLocalForward));
+                }
+                if (pose.RightFootContact)
+                {
+                    // Right Foot is still in contact
+                    Transform rightLowerLeg = SkeletonTransforms[RightLowerLegIndex];
+                    TwoJointIK.Solve(RightFootContact,
+                                     SkeletonTransforms[RightUpperLegIndex],
+                                     rightLowerLeg,
+                                     SkeletonTransforms[RightFootIndex],
+                                     (float3)rightLowerLeg.position + math.mul(rightLowerLeg.rotation, RightLowerLegLocalForward));
+                }
+            }
+            LastLeftFootContact = pose.LeftFootContact;
+            LastRightFootContact = pose.RightFootContact;
             // Post processing the transforms
             if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke();
         }
