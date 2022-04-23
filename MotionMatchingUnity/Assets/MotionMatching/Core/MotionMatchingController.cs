@@ -22,6 +22,7 @@ namespace MotionMatching
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         public bool FootLock = true; // Should lock the feet to the ground when contact information is true
+        public float FootUnlockDistance = 0.2f; // Distance from actual pose to IK target to unlock the feet
         [Range(0.0f, 1.0f)] public float InertializeHalfLife = 0.1f; // Time needed to move half of the distance between the source to the target pose
         [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Tooltip("How important is the current pose")][Range(0.0f, 1.0f)] public float Quality = 1.0f;
@@ -53,18 +54,13 @@ namespace MotionMatching
         private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
         // Foot Lock
-        private bool LastLeftFootContact;
-        private bool LastRightFootContact;
-        private float3 LeftFootContact; // World position of the last contact
-        private float3 RightFootContact;
-        private float3 LeftLowerLegLocalForward;
-        private float3 RightLowerLegLocalForward;
-        private int LeftFootIndex;
-        private int LeftLowerLegIndex;
-        private int LeftUpperLegIndex;
-        private int RightFootIndex;
-        private int RightLowerLegIndex;
-        private int RightUpperLegIndex;
+        private bool IsLeftFootContact, IsRightFootContact;
+        private bool LastLeftFootContact, LastRightFootContact;
+        private float3 LeftToesContactTarget, RightToesContactTarget; // Target position of the toes
+        private float3 LeftFootContact, RightFootContact; // Position of the foot
+        private float3 LeftLowerLegLocalForward, RightLowerLegLocalForward;
+        private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
+        private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
 
         private void Awake()
         {
@@ -126,12 +122,16 @@ namespace MotionMatching
                 }
             }
             // Foot Lock
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.LogError("[Motion Matching] LeftToes not found");
+            LeftToesIndex = leftToesJoint.Index;
             if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftFoot, out Skeleton.Joint leftFootJoint)) Debug.LogError("[Motion Matching] LeftFoot not found");
             LeftFootIndex = leftFootJoint.Index;
             if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftLowerLeg, out Skeleton.Joint leftLowerLegJoint)) Debug.LogError("[Motion Matching] LeftLowerLeg not found");
             LeftLowerLegIndex = leftLowerLegJoint.Index;
             if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftUpperLeg, out Skeleton.Joint leftUpperLegJoint)) Debug.LogError("[Motion Matching] LeftUpperLeg not found");
             LeftUpperLegIndex = leftUpperLegJoint.Index;
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.RightToes, out Skeleton.Joint rightToesJoint)) Debug.LogError("[Motion Matching] RightToes not found");
+            RightToesIndex = rightToesJoint.Index;
             if (!PoseSet.Skeleton.Find(HumanBodyBones.RightFoot, out Skeleton.Joint rightFootJoint)) Debug.LogError("[Motion Matching] RightFoot not found");
             RightFootIndex = rightFootJoint.Index;
             if (!PoseSet.Skeleton.Find(HumanBodyBones.RightLowerLeg, out Skeleton.Joint rightLowerLegJoint)) Debug.LogError("[Motion Matching] RightLowerLeg not found");
@@ -325,43 +325,124 @@ namespace MotionMatching
             // Hips Position
             SkeletonTransforms[1].localPosition = Inertialize ? Inertialization.InertializedHips : pose.JointLocalPositions[1];
             // Foot Lock
-            if (!LastLeftFootContact && pose.LeftFootContact)
-            {
-                // New contact Left Foot
-                LeftFootContact = SkeletonTransforms[LeftFootIndex].position;
-            }
-            if (!LastRightFootContact && pose.RightFootContact)
-            {
-                // New contact Right Foot
-                RightFootContact = SkeletonTransforms[RightFootIndex].position;
-            }
-            if (FootLock)
-            {
-                if (pose.LeftFootContact)
-                {
-                    // Left Foot is still in contact
-                    Transform leftLowerLeg = SkeletonTransforms[LeftLowerLegIndex];
-                    TwoJointIK.Solve(LeftFootContact,
-                                     SkeletonTransforms[LeftUpperLegIndex],
-                                     leftLowerLeg,
-                                     SkeletonTransforms[LeftFootIndex],
-                                     (float3)leftLowerLeg.position + math.mul(leftLowerLeg.rotation, LeftLowerLegLocalForward));
-                }
-                if (pose.RightFootContact)
-                {
-                    // Right Foot is still in contact
-                    Transform rightLowerLeg = SkeletonTransforms[RightLowerLegIndex];
-                    TwoJointIK.Solve(RightFootContact,
-                                     SkeletonTransforms[RightUpperLegIndex],
-                                     rightLowerLeg,
-                                     SkeletonTransforms[RightFootIndex],
-                                     (float3)rightLowerLeg.position + math.mul(rightLowerLeg.rotation, RightLowerLegLocalForward));
-                }
-            }
-            LastLeftFootContact = pose.LeftFootContact;
-            LastRightFootContact = pose.RightFootContact;
+            UpdateFootLock(pose);
             // Post processing the transforms
             if (OnSkeletonTransformUpdated != null) OnSkeletonTransformUpdated.Invoke();
+        }
+
+        private void UpdateFootLock(PoseVector pose)
+        {
+            float3 currentLeftToesPosition = SkeletonTransforms[LeftToesIndex].position;
+            float3 currentRightToesPosition = SkeletonTransforms[RightToesIndex].position;
+            // Compute input contact position velocity
+            float3 currentLeftToesVelocity = (currentLeftToesPosition - (float3)LeftToesContactTarget) / Time.deltaTime;
+            float3 currentRightToesVelocity = (currentRightToesPosition - (float3)RightToesContactTarget) / Time.deltaTime;
+            LeftToesContactTarget = currentLeftToesPosition;
+            RightToesContactTarget = currentRightToesPosition;
+
+            // Update Inertializer
+            Inertialization.UpdateContact(IsLeftFootContact ? LeftFootContact : currentLeftToesPosition,
+                                              IsLeftFootContact ? float3.zero : currentLeftToesVelocity,
+                                              IsRightFootContact ? RightFootContact : currentRightToesPosition,
+                                              IsRightFootContact ? float3.zero : currentRightToesVelocity,
+                                              InertializeHalfLife, Time.deltaTime);
+            float3 leftContactPosition = Inertialization.InertializedLeftContact;
+            float3 leftContactVelocity = Inertialization.InertializedLeftContactVelocity;
+            float3 rightContactPosition = Inertialization.InertializedRightContact;
+            float3 rightContactVelocity = Inertialization.InertializedRightContactVelocity;
+
+            // If the contact point is too far from the current input position
+            // unlock the contact
+            bool unlockLeftContact = IsLeftFootContact && (math.length(LeftFootContact - currentLeftToesPosition) > FootUnlockDistance);
+            bool unlockRightContact = IsRightFootContact && (math.length(RightFootContact - currentRightToesPosition) > FootUnlockDistance);
+
+            // If the contact was previously inactive and now it is active,
+            // transition to the locked contact state
+            // Also, make sure the inertialization returns an almost 0 velocity before locking
+            if (!LastLeftFootContact && pose.LeftFootContact && math.length(leftContactVelocity) < MMData.ContactVelocityThreshold)
+            {
+                // Contact point is the current position of the foot
+                // projected onto the ground + foot height
+                IsLeftFootContact = true;
+                LeftFootContact = leftContactPosition;
+                // LeftFootContact.y =  // TODO: Add foot height
+
+                if (Inertialize)
+                {
+                    Inertialization.LeftContactTransition(currentLeftToesPosition, currentLeftToesVelocity, LeftFootContact, float3.zero);
+                }
+                else
+                {
+                    Inertialization.LeftContactTransition(currentLeftToesPosition, currentLeftToesVelocity, currentLeftToesPosition, currentLeftToesVelocity);
+                }
+            }
+            // If we need to unlock or previously in contact but now not
+            // we transition to the input position
+            else if (unlockLeftContact || (IsLeftFootContact && LastLeftFootContact && !pose.LeftFootContact))
+            {
+                IsLeftFootContact = false;
+
+                if (Inertialize)
+                {
+                    Inertialization.LeftContactTransition(LeftFootContact, float3.zero, currentLeftToesPosition, currentLeftToesVelocity);
+                }
+                else
+                {
+                    Inertialization.LeftContactTransition(currentLeftToesPosition, currentLeftToesVelocity, currentLeftToesPosition, currentLeftToesVelocity);
+                }
+            }
+
+            // Same for Right Foot
+            if (!LastRightFootContact && pose.RightFootContact && math.length(rightContactVelocity) < MMData.ContactVelocityThreshold)
+            {
+                IsRightFootContact = true;
+                RightFootContact = rightContactPosition;
+
+                if (Inertialize)
+                {
+                    Inertialization.RightContactTransition(currentRightToesPosition, currentRightToesVelocity, RightFootContact, float3.zero);
+                }
+                else
+                {
+                    Inertialization.RightContactTransition(currentRightToesPosition, currentRightToesVelocity, currentRightToesPosition, currentRightToesVelocity);
+                }
+            }
+            else if (unlockRightContact || (IsRightFootContact && LastRightFootContact && !pose.RightFootContact))
+            {
+                IsRightFootContact = false;
+
+                if (Inertialize)
+                {
+                    Inertialization.RightContactTransition(RightFootContact, float3.zero, currentRightToesPosition, currentRightToesVelocity);
+                }
+                else
+                {
+                    Inertialization.RightContactTransition(currentRightToesPosition, currentRightToesVelocity, currentRightToesPosition, currentRightToesVelocity);
+                }
+            }
+
+            // Update contact state
+            LastLeftFootContact = IsLeftFootContact;
+            LastRightFootContact = IsRightFootContact;
+
+            // IK to place the foot
+            if (FootLock)
+            {
+                // Left Foot IK
+                Transform leftLowerLeg = SkeletonTransforms[LeftLowerLegIndex];
+                TwoJointIK.Solve(leftContactPosition + (float3)(SkeletonTransforms[LeftFootIndex].position - SkeletonTransforms[LeftToesIndex].position),
+                                 SkeletonTransforms[LeftUpperLegIndex],
+                                 leftLowerLeg,
+                                 SkeletonTransforms[LeftFootIndex],
+                                 (float3)leftLowerLeg.position + math.mul(leftLowerLeg.rotation, LeftLowerLegLocalForward));
+                // Right Foot IK
+                Transform rightLowerLeg = SkeletonTransforms[RightLowerLegIndex];
+                TwoJointIK.Solve(rightContactPosition + (float3)(SkeletonTransforms[RightFootIndex].position - SkeletonTransforms[RightToesIndex].position),
+                                 SkeletonTransforms[RightUpperLegIndex],
+                                 rightLowerLeg,
+                                 SkeletonTransforms[RightFootIndex],
+                                 (float3)rightLowerLeg.position + math.mul(rightLowerLeg.rotation, RightLowerLegLocalForward));
+            }
         }
 
         private float3 GetPositionLocalCharacter(float3 worldPosition)
@@ -499,18 +580,14 @@ namespace MotionMatching
             }
             if (DebugContacts)
             {
-                if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.Assert(false, "Bone not found");
-                if (!PoseSet.Skeleton.Find(HumanBodyBones.RightToes, out Skeleton.Joint rightToesJoint)) Debug.Assert(false, "Bone not found");
-                int leftToesIndex = leftToesJoint.Index;
-                int rightToesIndex = rightToesJoint.Index;
                 Gizmos.color = Color.green;
-                if (pose.LeftFootContact)
+                if (IsLeftFootContact)
                 {
-                    Gizmos.DrawSphere(SkeletonTransforms[leftToesIndex].position, SpheresRadius);
+                    Gizmos.DrawSphere(SkeletonTransforms[LeftToesIndex].position, SpheresRadius);
                 }
-                if (pose.RightFootContact)
+                if (IsRightFootContact)
                 {
-                    Gizmos.DrawSphere(SkeletonTransforms[rightToesIndex].position, SpheresRadius);
+                    Gizmos.DrawSphere(SkeletonTransforms[RightToesIndex].position, SpheresRadius);
                 }
             }
 

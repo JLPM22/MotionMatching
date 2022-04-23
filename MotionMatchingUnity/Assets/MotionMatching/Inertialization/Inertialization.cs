@@ -19,11 +19,21 @@ namespace MotionMatching
         public float3[] InertializedAngularVelocities;
         public float3 InertializedHips;
         public float3 InertializedHipsVelocity;
+        // Contacts
+        public float3 InertializedLeftContact;
+        public float3 InertializedLeftContactVelocity;
+        public float3 InertializedRightContact;
+        public float3 InertializedRightContactVelocity;
 
         private quaternion[] OffsetRotations;
         private float3[] OffsetAngularVelocities;
         private float3 OffsetHips;
         private float3 OffsetHipsVelocity;
+        // Contacts
+        private float3 OffsetLeftContact;
+        private float3 OffsetLeftContactVelocity;
+        private float3 OffsetRightContact;
+        private float3 OffsetRightContactVelocity;
 
         public Inertialization(Skeleton skeleton)
         {
@@ -37,7 +47,7 @@ namespace MotionMatching
 
         /// <summary>
         /// It takes as input the current state of the source pose and the target pose.
-        /// It sets up the inertialization, which can then by updated by calling InertializeUpdate(...).
+        /// It sets up the inertialization, which can then by updated by calling Update(...).
         /// </summary>
         public void PoseTransition(PoseSet poseSet, int sourcePoseIndex, int targetPoseIndex)
         {
@@ -65,7 +75,29 @@ namespace MotionMatching
         }
 
         /// <summary>
-        /// Updates the inertialization decaying the offset from the source pose (specified in InertializePoseTransition(...))
+        /// It takes as input the current state of the source contact and the target contact.
+        /// It sets up the inertialization, which can then by updated by calling UpdateContact(...).
+        /// </summary>
+        public void LeftContactTransition(float3 sourceLeftContact, float3 sourceLeftContactVelocity, float3 targetLeftContact, float3 targetLeftContactVelocity)
+        {
+            InertializeJointTransition(sourceLeftContact, sourceLeftContactVelocity,
+                                       targetLeftContact, targetLeftContactVelocity,
+                                       ref OffsetLeftContact, ref OffsetLeftContactVelocity);
+        }
+
+        /// <summary>
+        /// It takes as input the current state of the source contact and the target contact.
+        /// It sets up the inertialization, which can then by updated by calling UpdateContact(...).
+        /// </summary>
+        public void RightContactTransition(float3 sourceRightContact, float3 sourceRightContactVelocity, float3 targetRightContact, float3 targetRightContactVelocity)
+        {
+            InertializeJointTransition(sourceRightContact, sourceRightContactVelocity,
+                                       targetRightContact, targetRightContactVelocity,
+                                       ref OffsetRightContact, ref OffsetRightContactVelocity);
+        }
+
+        /// <summary>
+        /// Updates the inertialization decaying the offset from the source pose (specified in PoseTransition(...))
         /// to the target pose.
         /// </summary>
         public void Update(PoseVector targetPose, float halfLife, float deltaTime)
@@ -87,6 +119,23 @@ namespace MotionMatching
                                    halfLife, deltaTime,
                                    ref OffsetHips, ref OffsetHipsVelocity,
                                    out InertializedHips, out InertializedHipsVelocity);
+        }
+
+        /// <summary>
+        /// Updates the inertialization decaying the offset from the source contact (specified in ContactTransition(...))
+        /// to the target contact.
+        /// </summary>
+        public void UpdateContact(float3 leftTargetPos, float3 leftTargetVelocity, float3 rightTargetPos, float3 rightTargetVelocity, float halfLife, float deltaTime)
+        {
+            // Update the inertialization for contacts
+            InertializeJointUpdate(leftTargetPos, leftTargetVelocity,
+                                   halfLife, deltaTime,
+                                   ref OffsetLeftContact, ref OffsetLeftContactVelocity,
+                                   out InertializedLeftContact, out InertializedLeftContactVelocity);
+            InertializeJointUpdate(rightTargetPos, rightTargetVelocity,
+                                   halfLife, deltaTime,
+                                   ref OffsetRightContact, ref OffsetRightContactVelocity,
+                                   out InertializedRightContact, out InertializedRightContactVelocity);
         }
 
         /// <summary>

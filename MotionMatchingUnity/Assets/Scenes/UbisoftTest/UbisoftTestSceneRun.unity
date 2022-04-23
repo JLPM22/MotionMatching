@@ -465,6 +465,7 @@ MonoBehaviour:
   LockFPS: 1
   SearchFrames: 5
   Inertialize: 1
+  FootLock: 0
   InertializeHalfLife: 0.1
   Responsiveness: 1
   Quality: 1
@@ -481,6 +482,7 @@ MonoBehaviour:
   DebugCurrent: 1
   DebugPose: 0
   DebugTrajectory: 0
+  DebugContacts: 1
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -530,6 +532,7 @@ MonoBehaviour:
   LockFPS: 1
   SearchFrames: 5
   Inertialize: 1
+  FootLock: 1
   InertializeHalfLife: 0.1
   Responsiveness: 1
   Quality: 1
@@ -546,6 +549,7 @@ MonoBehaviour:
   DebugCurrent: 0
   DebugPose: 0
   DebugTrajectory: 0
+  DebugContacts: 1
 --- !u!4 &921033867
 Transform:
   m_ObjectHideFlags: 0

@@ -154,7 +154,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ad29054695640e4f8c6ab662737ae84, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
+  BVH: {fileID: 0}
+  UnitScale: 1
   BVHIndex: 0
   Play: 1
   SpheresRadius: 0.05
@@ -459,6 +460,7 @@ MonoBehaviour:
   LockFPS: 1
   SearchFrames: 10
   Inertialize: 1
+  FootLock: 0
   InertializeHalfLife: 0.1
   Responsiveness: 1
   Quality: 1
@@ -473,8 +475,9 @@ MonoBehaviour:
   SpheresRadius: 0.05
   DebugSkeleton: 1
   DebugCurrent: 1
-  DebugJoints: 1
+  DebugPose: 1
   DebugTrajectory: 0
+  DebugContacts: 1
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -522,7 +525,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SimulationBone: {fileID: 845368627}
-  NumberPrediction: 3
+  TrajectoryPositionFeatureName: FuturePosition
+  TrajectoryDirectionFeatureName: FutureDirection
   MaxSpeed: 2.5
   ResponsivenessPositions: 0.5
   ResponsivenessDirections: 0.8
@@ -530,7 +534,9 @@ MonoBehaviour:
   InputBigChangeThreshold: 0.5
   DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
-  MaximumAdjustmentRatio: 0.25
+  RotationAdjustmentHalflife: 0.1
+  PosMaximumAdjustmentRatio: 0.1
+  RotMaximumAdjustmentRatio: 0.1
   DoClamping: 0
   MaxDistanceSimulationBoneAndObject: 1
   DebugCurrent: 1
@@ -885,8 +891,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
-  BVHIndex: 0
   Play: 1
   SpheresRadius: 0.05
-  VectorLength: 1
   LockFPS: 1
+  CurrentFrame: 0
