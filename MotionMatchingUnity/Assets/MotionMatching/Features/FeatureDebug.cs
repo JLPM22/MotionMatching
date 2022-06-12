@@ -191,7 +191,7 @@ public class FeatureDebug : MonoBehaviour
                                 jointPos = joints[joint.Index].position;
                             }
                             value = math.mul(characterRot, value);
-                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.5f, 0.1f, thickness: 3);
+                            GizmosExtensions.DrawArrow(jointPos, jointPos + value, 0.1f, thickness: 3);
                             break;
                     }
                 }

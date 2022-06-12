@@ -232,7 +232,7 @@ namespace MotionMatching
                 Vector3 predictedPos = new Vector3(predictedPosf2.x, heightOffset * 2, predictedPosf2.y);
                 Gizmos.DrawSphere(predictedPos, 0.1f);
                 float2 dirf2 = GetWorldPredictedDir(i);
-                GizmosExtensions.DrawLine(predictedPos, predictedPos + new Vector3(dirf2.x, 0.0f, dirf2.y), 12);
+                GizmosExtensions.DrawLine(predictedPos, predictedPos + new Vector3(dirf2.x, 0.0f, dirf2.y) * 0.5f, 12);
             }
         }
 #endif

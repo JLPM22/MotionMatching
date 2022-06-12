@@ -55,9 +55,9 @@ namespace MotionMatching
         private Inertialization Inertialization;
         // Foot Lock
         private bool IsLeftFootContact, IsRightFootContact;
-        private bool LastLeftFootContact, LastRightFootContact;
         private float3 LeftToesContactTarget, RightToesContactTarget; // Target position of the toes
         private float3 LeftFootContact, RightFootContact; // Position of the foot
+        private float3 LeftFootPoleContact, RightFootPoleContact; // Forward vector of the knee
         private float3 LeftLowerLegLocalForward, RightLowerLegLocalForward;
         private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
@@ -359,13 +359,15 @@ namespace MotionMatching
             // If the contact was previously inactive and now it is active,
             // transition to the locked contact state
             // Also, make sure the inertialization returns an almost 0 velocity before locking
-            if (!LastLeftFootContact && pose.LeftFootContact && math.length(leftContactVelocity) < MMData.ContactVelocityThreshold)
+            if (!IsLeftFootContact && pose.LeftFootContact && math.length(leftContactVelocity) < MMData.ContactVelocityThreshold)
             {
                 // Contact point is the current position of the foot
                 // projected onto the ground + foot height
                 IsLeftFootContact = true;
                 LeftFootContact = leftContactPosition;
                 // LeftFootContact.y =  // TODO: Add foot height
+                Transform leftLowerLeg = SkeletonTransforms[LeftLowerLegIndex];
+                LeftFootPoleContact = math.mul(leftLowerLeg.rotation, LeftLowerLegLocalForward);
 
                 if (Inertialize)
                 {
@@ -378,7 +380,7 @@ namespace MotionMatching
             }
             // If we need to unlock or previously in contact but now not
             // we transition to the input position
-            else if (unlockLeftContact || (IsLeftFootContact && LastLeftFootContact && !pose.LeftFootContact))
+            else if (unlockLeftContact || (IsLeftFootContact && !pose.LeftFootContact))
             {
                 IsLeftFootContact = false;
 
@@ -393,10 +395,13 @@ namespace MotionMatching
             }
 
             // Same for Right Foot
-            if (!LastRightFootContact && pose.RightFootContact && math.length(rightContactVelocity) < MMData.ContactVelocityThreshold)
+            if (!IsRightFootContact && pose.RightFootContact && math.length(rightContactVelocity) < MMData.ContactVelocityThreshold)
             {
                 IsRightFootContact = true;
                 RightFootContact = rightContactPosition;
+                // RightFootContact.y = 0.0f;
+                Transform rightLowerLeg = SkeletonTransforms[RightLowerLegIndex];
+                RightFootPoleContact = math.mul(rightLowerLeg.rotation, RightLowerLegLocalForward);
 
                 if (Inertialize)
                 {
@@ -407,7 +412,7 @@ namespace MotionMatching
                     Inertialization.RightContactTransition(currentRightToesPosition, currentRightToesVelocity, currentRightToesPosition, currentRightToesVelocity);
                 }
             }
-            else if (unlockRightContact || (IsRightFootContact && LastRightFootContact && !pose.RightFootContact))
+            else if (unlockRightContact || (IsRightFootContact && !pose.RightFootContact))
             {
                 IsRightFootContact = false;
 
@@ -421,27 +426,21 @@ namespace MotionMatching
                 }
             }
 
-            // Update contact state
-            LastLeftFootContact = IsLeftFootContact;
-            LastRightFootContact = IsRightFootContact;
-
             // IK to place the foot
             if (FootLock)
             {
                 // Left Foot IK
-                Transform leftLowerLeg = SkeletonTransforms[LeftLowerLegIndex];
-                TwoJointIK.Solve(leftContactPosition + (float3)(SkeletonTransforms[LeftFootIndex].position - SkeletonTransforms[LeftToesIndex].position),
+                TwoJointIK.Solve((Vector3)leftContactPosition + (SkeletonTransforms[LeftFootIndex].position - SkeletonTransforms[LeftToesIndex].position),
                                  SkeletonTransforms[LeftUpperLegIndex],
-                                 leftLowerLeg,
+                                 SkeletonTransforms[LeftLowerLegIndex],
                                  SkeletonTransforms[LeftFootIndex],
-                                 (float3)leftLowerLeg.position + math.mul(leftLowerLeg.rotation, LeftLowerLegLocalForward));
+                                 LeftFootPoleContact);
                 // Right Foot IK
-                Transform rightLowerLeg = SkeletonTransforms[RightLowerLegIndex];
-                TwoJointIK.Solve(rightContactPosition + (float3)(SkeletonTransforms[RightFootIndex].position - SkeletonTransforms[RightToesIndex].position),
+                TwoJointIK.Solve((Vector3)rightContactPosition + (SkeletonTransforms[RightFootIndex].position - SkeletonTransforms[RightToesIndex].position),
                                  SkeletonTransforms[RightUpperLegIndex],
-                                 rightLowerLeg,
+                                 SkeletonTransforms[RightLowerLegIndex],
                                  SkeletonTransforms[RightFootIndex],
-                                 (float3)rightLowerLeg.position + math.mul(rightLowerLeg.rotation, RightLowerLegLocalForward));
+                                 RightFootPoleContact);
             }
         }
 
@@ -576,7 +575,7 @@ namespace MotionMatching
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
                 Gizmos.DrawSphere(characterOrigin, SpheresRadius);
-                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward, thickness: 3);
+                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 3);
             }
             if (DebugContacts)
             {

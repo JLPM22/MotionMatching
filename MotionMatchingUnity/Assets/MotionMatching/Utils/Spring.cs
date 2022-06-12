@@ -87,6 +87,20 @@ namespace MotionMatching
             pos = eyedt * (j0 + j1 * deltaTime) + posGoal;
             velocity = eyedt * (velocity - j1 * y * deltaTime);
         }
+        /// <summary>
+        /// Given the current position, velocity and the desired position, returns the new
+        /// position and velocity after deltaTime seconds.
+        /// </summary>
+        public static void SimpleSpringDamperImplicit(ref float2 pos, ref float2 velocity, float2 posGoal, float halfLife, float deltaTime)
+        {
+            float y = HalfLifeToDamping(halfLife) / 2.0f; // this could be precomputed
+            float2 j0 = pos - posGoal;
+            float2 j1 = velocity + j0 * y;
+            float eyedt = FastNEgeExp(y * deltaTime); // this could be precomputed if several agents use it the same frame
+
+            pos = eyedt * (j0 + j1 * deltaTime) + posGoal;
+            velocity = eyedt * (velocity - j1 * y * deltaTime);
+        }
 
         /// <summary>
         /// Special type of SpringDamperImplicit when the desired rotation is the identity

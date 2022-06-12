@@ -125,7 +125,7 @@ namespace MotionMatching
                 /*
                     R_t = Rotation transforming from target local space to world space
                     R_s = Rotation transforming from source local space to world space
-                    R_t = R_s * R_st (R_st is a matrix transforming from target to source space)
+                    R_t = R_s * R_st (R_st is a matrix transforming from target local to source local space)
                     // It makes sense because R_st will be mapping from target to source, and R_s from source to world.
                     // The result is transforming from T to world, which is what R_t does.
                     RTPose_t = RTPose_s * R_st

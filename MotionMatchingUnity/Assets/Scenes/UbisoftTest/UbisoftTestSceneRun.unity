@@ -466,6 +466,7 @@ MonoBehaviour:
   SearchFrames: 5
   Inertialize: 1
   FootLock: 0
+  FootUnlockDistance: 0.2
   InertializeHalfLife: 0.1
   Responsiveness: 1
   Quality: 1
@@ -533,6 +534,7 @@ MonoBehaviour:
   SearchFrames: 5
   Inertialize: 1
   FootLock: 1
+  FootUnlockDistance: 0.2
   InertializeHalfLife: 0.1
   Responsiveness: 1
   Quality: 1
@@ -604,7 +606,7 @@ MonoBehaviour:
   ResponsivenessDirections: 0.8
   MinimumVelocityClamp: 0.01
   InputBigChangeThreshold: 0.5
-  DoAdjustment: 0
+  DoAdjustment: 1
   PositionAdjustmentHalflife: 0.1
   RotationAdjustmentHalflife: 0.1
   PosMaximumAdjustmentRatio: 0.1

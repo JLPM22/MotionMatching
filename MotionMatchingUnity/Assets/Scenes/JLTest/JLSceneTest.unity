@@ -461,6 +461,7 @@ MonoBehaviour:
   SearchFrames: 10
   Inertialize: 1
   FootLock: 0
+  FootUnlockDistance: 0.2
   InertializeHalfLife: 0.1
   Responsiveness: 1
   Quality: 1

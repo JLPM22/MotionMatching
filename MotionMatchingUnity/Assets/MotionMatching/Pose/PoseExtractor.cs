@@ -52,11 +52,11 @@ namespace MotionMatching
                 rightFootContact[i] = poses[i].RightFootContact;
             }
             // Median Filter
+            Span<bool> leftFootContactWindow = stackalloc bool[windowsRadius * 2 + 1];
+            Span<bool> rightFootContactWindow = stackalloc bool[windowsRadius * 2 + 1];
             for (int i = 0; i < poses.Length; i++)
             {
                 PoseVector pose = poses[i];
-                Span<bool> leftFootContactWindow = stackalloc bool[windowsRadius * 2 + 1];
-                Span<bool> rightFootContactWindow = stackalloc bool[windowsRadius * 2 + 1];
                 int windowIndex = 0;
                 for (int j = -windowsRadius; j <= windowsRadius; j++)
                 {
