@@ -5,11 +5,13 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
+using System.Diagnostics;
 
 namespace MotionMatching
 {
     using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
     using PoseFeature = MotionMatchingData.PoseFeature;
+    using Debug = UnityEngine.Debug;
 
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
@@ -20,6 +22,7 @@ namespace MotionMatching
         public MotionMatchingData MMData;
         public bool LockFPS = true;
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
+        public bool UseBVHSearch = true;
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         public bool FootLock = true; // Should lock the feet to the ground when contact information is true
         public float FootUnlockDistance = 0.2f; // Distance from actual pose to IK target to unlock the feet
@@ -53,6 +56,11 @@ namespace MotionMatching
         private NativeArray<int> SearchResult;
         private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
+        // BVH Acceleration Structure
+        public NativeArray<float> LargeBoundingBoxMin;
+        public NativeArray<float> LargeBoundingBoxMax;
+        public NativeArray<float> SmallBoundingBoxMin;
+        public NativeArray<float> SmallBoundingBoxMax;
         // Foot Lock
         private bool IsLeftFootContact, IsRightFootContact;
         private float3 LeftToesContactTarget, RightToesContactTarget; // Target position of the toes
@@ -111,6 +119,26 @@ namespace MotionMatching
             }
             FeaturesWeightsNativeArray = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
             QueryFeature = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
+            // Build BVH Acceleration Structure
+            int nFrames = (FeatureSet.GetFeatures().Length / FeatureSet.FeatureSize);
+            int numberBoundingBoxLarge = (nFrames + BVHConsts.LargeBVHSize - 1) / BVHConsts.LargeBVHSize;
+            int numberBoundingBoxSmall = (nFrames + BVHConsts.SmallBVHSize - 1) / BVHConsts.SmallBVHSize;
+            LargeBoundingBoxMin = new NativeArray<float>(numberBoundingBoxLarge * FeatureSet.FeatureSize, Allocator.Persistent);
+            LargeBoundingBoxMax = new NativeArray<float>(numberBoundingBoxLarge * FeatureSet.FeatureSize, Allocator.Persistent);
+            SmallBoundingBoxMin = new NativeArray<float>(numberBoundingBoxSmall * FeatureSet.FeatureSize, Allocator.Persistent);
+            SmallBoundingBoxMax = new NativeArray<float>(numberBoundingBoxSmall * FeatureSet.FeatureSize, Allocator.Persistent);
+            var job = new BVHMotionMatchingComputeBounds
+            {
+                Features = FeatureSet.GetFeatures(),
+                FeatureSize = FeatureSet.FeatureSize,
+                NumberBoundingBoxLarge = numberBoundingBoxLarge,
+                NumberBoundingBoxSmall = numberBoundingBoxSmall,
+                LargeBoundingBoxMin = LargeBoundingBoxMin,
+                LargeBoundingBoxMax = LargeBoundingBoxMax,
+                SmallBoundingBoxMin = SmallBoundingBoxMin,
+                SmallBoundingBoxMax = SmallBoundingBoxMax,
+            };
+            job.Schedule().Complete();
             // Search first Frame valid (to start with a valid pose)
             for (int i = 0; i < FeatureSet.NumberFeatureVectors; i++)
             {
@@ -167,7 +195,8 @@ namespace MotionMatching
                 PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Search");
                 int bestFrame = SearchMotionMatching();
                 PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
-                if (bestFrame != CurrentFrame)
+                const int ignoreSurrounding = 20; // ignore near frames
+                if (bestFrame != CurrentFrame && math.abs(bestFrame - CurrentFrame) > ignoreSurrounding)
                 {
                     // Inertialize
                     if (Inertialize)
@@ -227,18 +256,43 @@ namespace MotionMatching
             }
 
             // Search
-            var job = new LinearMotionMatchingSearchBurst
+            //Stopwatch sw = Stopwatch.StartNew();
+            if (UseBVHSearch)
             {
-                Valid = FeatureSet.GetValid(),
-                Features = FeatureSet.GetFeatures(),
-                QueryFeature = QueryFeature,
-                FeatureWeights = FeaturesWeightsNativeArray,
-                FeatureSize = FeatureSet.FeatureSize,
-                PoseOffset = FeatureSet.PoseOffset,
-                CurrentDistance = currentDistance,
-                BestIndex = SearchResult
-            };
-            job.Schedule().Complete();
+                var job = new BVHMotionMatchingSearchBurst
+                {
+                    Valid = FeatureSet.GetValid(),
+                    Features = FeatureSet.GetFeatures(),
+                    QueryFeature = QueryFeature,
+                    FeatureWeights = FeaturesWeightsNativeArray,
+                    FeatureSize = FeatureSet.FeatureSize,
+                    PoseOffset = FeatureSet.PoseOffset,
+                    CurrentDistance = currentDistance,
+                    LargeBoundingBoxMin = LargeBoundingBoxMin,
+                    LargeBoundingBoxMax = LargeBoundingBoxMax,
+                    SmallBoundingBoxMin = SmallBoundingBoxMin,
+                    SmallBoundingBoxMax = SmallBoundingBoxMax,
+                    BestIndex = SearchResult
+                };
+                job.Schedule().Complete();
+            }
+            else
+            {
+                var job = new LinearMotionMatchingSearchBurst
+                {
+                    Valid = FeatureSet.GetValid(),
+                    Features = FeatureSet.GetFeatures(),
+                    QueryFeature = QueryFeature,
+                    FeatureWeights = FeaturesWeightsNativeArray,
+                    FeatureSize = FeatureSet.FeatureSize,
+                    PoseOffset = FeatureSet.PoseOffset,
+                    CurrentDistance = currentDistance,
+                    BestIndex = SearchResult
+                };
+                job.Schedule().Complete();
+            }
+            //sw.Stop();
+            //Debug.Log("Time: " + sw.ElapsedMilliseconds + " - " + sw.ElapsedTicks);
 
             // Check if use current or best
             int best = SearchResult[0];
@@ -541,6 +595,10 @@ namespace MotionMatching
             if (QueryFeature != null && QueryFeature.IsCreated) QueryFeature.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
+            if (LargeBoundingBoxMin != null && LargeBoundingBoxMin.IsCreated) LargeBoundingBoxMin.Dispose();
+            if (LargeBoundingBoxMax != null && LargeBoundingBoxMax.IsCreated) LargeBoundingBoxMax.Dispose();
+            if (SmallBoundingBoxMin != null && SmallBoundingBoxMin.IsCreated) SmallBoundingBoxMin.Dispose();
+            if (SmallBoundingBoxMax != null && SmallBoundingBoxMax.IsCreated) SmallBoundingBoxMax.Dispose();
         }
 
         private void OnApplicationQuit()
