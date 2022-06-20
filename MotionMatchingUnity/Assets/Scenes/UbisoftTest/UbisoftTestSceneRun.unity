@@ -595,9 +595,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterController: {fileID: 922198739}
-  MMData: {fileID: 11400000, guid: 257cfa350dcfcad4ab89015b65f7cf91, type: 2}
+  MMData: {fileID: 11400000, guid: 886160a8258752744ad2af2ed11a9dcf, type: 2}
   LockFPS: 1
   SearchFrames: 5
+  UseBVHSearch: 1
   Inertialize: 1
   FootLock: 0
   FootUnlockDistance: 0.2
@@ -666,6 +667,7 @@ MonoBehaviour:
   MMData: {fileID: 11400000, guid: 886160a8258752744ad2af2ed11a9dcf, type: 2}
   LockFPS: 1
   SearchFrames: 5
+  UseBVHSearch: 1
   Inertialize: 1
   FootLock: 1
   FootUnlockDistance: 0.2

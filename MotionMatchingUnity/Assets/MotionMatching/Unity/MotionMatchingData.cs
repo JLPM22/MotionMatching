@@ -26,7 +26,8 @@ namespace MotionMatching
         public TextAsset BVHTPose; // BVH with a TPose in the first frame, used for retargeting
         public float UnitScale = 1.0f;
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
-        public bool SmoothSimulationBone; // Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter
+        // TODO: Implement Savitzky-Golay filter or similar low-pass filter in Unity (before I was using Python implementation)
+        //public bool SmoothSimulationBone; // Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter
         public float ContactVelocityThreshold = 0.15f; // Minimum velocity of the foot to be considered in movement and not in contact with the ground
         public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
         public List<TrajectoryFeature> TrajectoryFeatures = new List<TrajectoryFeature>();
@@ -322,8 +323,8 @@ namespace MotionMatching
             }
 
             // SmoothSimulationBone
-            data.SmoothSimulationBone = EditorGUILayout.Toggle(new GUIContent("Smooth Simulation Bone", "Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter"),
-                                                               data.SmoothSimulationBone);
+            //data.SmoothSimulationBone = EditorGUILayout.Toggle(new GUIContent("Smooth Simulation Bone", "Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter"),
+            //                                                   data.SmoothSimulationBone);
 
             // ContactVelocityThreshold
             data.ContactVelocityThreshold = EditorGUILayout.FloatField(new GUIContent("Contact Velocity Threshold", "Minimum velocity of the foot to be considered in movement and not in contact with the ground"),

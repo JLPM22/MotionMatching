@@ -22,7 +22,6 @@ MonoBehaviour:
     x: 0
     y: 1
     z: 0
-  SmoothSimulationBone: 1
   ContactVelocityThreshold: 0.15
   SkeletonToMecanim:
   - Name: Hips

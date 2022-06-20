@@ -5,7 +5,6 @@ using Unity.Mathematics;
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
-using Python.Runtime;
 using System.IO;
 using System;
 
@@ -33,10 +32,10 @@ namespace MotionMatching
                 poses[i] = ExtractPose(bvhAnimation, i, mmData, poseSet, poses);
             }
             SmoothContacts(poses);
-            if (mmData.SmoothSimulationBone)
-            {
-                SmoothSimulationBone(poses, poseSet);
-            }
+            //if (mmData.SmoothSimulationBone)
+            //{
+                //SmoothSimulationBone(poses, poseSet);
+            //}
             return poseSet.AddClip(poses, bvhAnimation.FrameTime);
         }
 
@@ -109,6 +108,7 @@ namespace MotionMatching
             }
         }
 
+        // TODO: implement low-pass filter
         private void SmoothSimulationBone(PoseVector[] poses, PoseSet poseSet)
         {
             // Save Hips world position and rotation before smoothing Simulation Bone (Root)
@@ -141,63 +141,12 @@ namespace MotionMatching
                 sbDirY[i] = dir.y;
                 sbDirZ[i] = dir.z;
             }
-            // Call Python
-            if (PythonEngine.IsInitialized) PythonEngine.Shutdown();
-            Runtime.PythonDLL = Application.dataPath + "/StreamingAssets/Python/python-3.9.11-embed-amd64/python39.dll";
-            PythonEngine.Initialize();
-            var script = File.ReadAllText(Application.dataPath + "/StreamingAssets/Python/scripts/savgol_filter.py");
-            using (Py.GIL())
-            {
-                using (PyModule scope = Py.CreateScope())
-                {
-                    PyList pyPosX = new PyList();
-                    PyList pyPosY = new PyList();
-                    PyList pyPosZ = new PyList();
-                    PyList pyDirX = new PyList();
-                    PyList pyDirY = new PyList();
-                    PyList pyDirZ = new PyList();
-                    for (int i = 0; i < poses.Length; i++)
-                    {
-                        pyPosX.Append(new PyFloat(sbPosX[i]));
-                        pyPosY.Append(new PyFloat(sbPosY[i]));
-                        pyPosZ.Append(new PyFloat(sbPosZ[i]));
-                        pyDirX.Append(new PyFloat(sbDirX[i]));
-                        pyDirY.Append(new PyFloat(sbDirY[i]));
-                        pyDirZ.Append(new PyFloat(sbDirZ[i]));
-                    }
-                    scope.Set("pos_x", pyPosX);
-                    scope.Set("pos_y", pyPosY);
-                    scope.Set("pos_z", pyPosZ);
-                    scope.Set("dir_x", pyDirX);
-                    scope.Set("dir_y", pyDirY);
-                    scope.Set("dir_z", pyDirZ);
+            
+            // TODO: Implement Low-Pass filter here...
+            //       the previous arrays (sbPos/Dir*) where used for a previous implementation
+            //       with python... consider change them
+            throw new System.NotImplementedException();
 
-                    scope.Exec(script);
-
-                    PyList pyPosX_out = scope.Get<PyList>("pos_f_x");
-                    float[] posX_out = pyPosX_out.As<float[]>();
-                    PyList pyPosY_out = scope.Get<PyList>("pos_f_y");
-                    float[] posY_out = pyPosY_out.As<float[]>();
-                    PyList pyPosZ_out = scope.Get<PyList>("pos_f_z");
-                    float[] posZ_out = pyPosZ_out.As<float[]>();
-                    PyList pyDirX_out = scope.Get<PyList>("dir_f_x");
-                    float[] dirX_out = pyDirX_out.As<float[]>();
-                    PyList pyDirY_out = scope.Get<PyList>("dir_f_y");
-                    float[] dirY_out = pyDirY_out.As<float[]>();
-                    PyList pyDirZ_out = scope.Get<PyList>("dir_f_z");
-                    float[] dirZ_out = pyDirZ_out.As<float[]>();
-                    for (int i = 0; i < poses.Length; i++)
-                    {
-                        sbPosX[i] = posX_out[i];
-                        sbPosY[i] = posY_out[i];
-                        sbPosZ[i] = posZ_out[i];
-                        sbDirX[i] = dirX_out[i];
-                        sbDirY[i] = dirY_out[i];
-                        sbDirZ[i] = dirZ_out[i];
-                    }
-                }
-            }
-            if (PythonEngine.IsInitialized) PythonEngine.Shutdown();
             // Set new Simulation Bone positions and rotations
             for (int i = 0; i < poses.Length; i++)
             {

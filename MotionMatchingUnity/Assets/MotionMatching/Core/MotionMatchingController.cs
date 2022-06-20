@@ -5,7 +5,6 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
-using System.Diagnostics;
 
 namespace MotionMatching
 {
@@ -231,6 +230,10 @@ namespace MotionMatching
             SearchFrameCount = 0; // Force search
         }
 
+        // DEBUG
+        private Queue<double>[] DebugTimes = { new Queue<double>(), new Queue<double>(), new Queue<double>(), new Queue<double>(), new Queue<double>() };
+        private Queue<long>[] DebugTicks = { new Queue<long>(), new Queue<long>(), new Queue<long>(), new Queue<long>(), new Queue<long>() };
+        private int DebugSamples = 100;
         private int SearchMotionMatching()
         {
             // Weights
@@ -256,7 +259,6 @@ namespace MotionMatching
             }
 
             // Search
-            //Stopwatch sw = Stopwatch.StartNew();
             if (UseBVHSearch)
             {
                 var job = new BVHMotionMatchingSearchBurst
@@ -291,8 +293,6 @@ namespace MotionMatching
                 };
                 job.Schedule().Complete();
             }
-            //sw.Stop();
-            //Debug.Log("Time: " + sw.ElapsedMilliseconds + " - " + sw.ElapsedTicks);
 
             // Check if use current or best
             int best = SearchResult[0];
