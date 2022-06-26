@@ -108,7 +108,8 @@ namespace MotionMatching
         /// </summary>
         public void AddAnimationClipUnsafe(AnimationClip clip)
         {
-            if (FrameTime == -1.0f) FrameTime = clip.FrameTime;
+            Debug.Assert(math.abs(FrameTime + 1.0f) < 0.001f || math.abs(clip.FrameTime - FrameTime) < 0.001f, "Mixed frame rates");
+            FrameTime = clip.FrameTime;
             Clips.Add(clip);
         }
 

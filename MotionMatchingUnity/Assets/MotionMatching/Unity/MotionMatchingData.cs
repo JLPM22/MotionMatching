@@ -195,8 +195,14 @@ namespace MotionMatching
 
         public string GetAssetPath()
         {
-            string assetPath = AssetDatabase.GetAssetPath(this);
-            return Path.Combine(Application.dataPath, assetPath.Remove(assetPath.Length - ".asset".Length, 6).Remove(0, "Assets".Length + 1));
+            string path = Path.Combine(Application.streamingAssetsPath, "MMDatabases", name);
+#if UNITY_EDITOR
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+#endif
+            return path;
         }
 
         [System.Serializable]
@@ -241,6 +247,7 @@ namespace MotionMatching
             public HumanBodyBones Bone;
         }
 
+#if UNITY_EDITOR
         public void GenerateDatabases()
         {
             PROFILE.BEGIN_SAMPLE_PROFILING("Pose Extract");
@@ -270,6 +277,7 @@ namespace MotionMatching
 
             AssetDatabase.Refresh();
         }
+#endif
     }
 
 #if UNITY_EDITOR

@@ -230,10 +230,6 @@ namespace MotionMatching
             SearchFrameCount = 0; // Force search
         }
 
-        // DEBUG
-        private Queue<double>[] DebugTimes = { new Queue<double>(), new Queue<double>(), new Queue<double>(), new Queue<double>(), new Queue<double>() };
-        private Queue<long>[] DebugTicks = { new Queue<long>(), new Queue<long>(), new Queue<long>(), new Queue<long>(), new Queue<long>() };
-        private int DebugSamples = 100;
         private int SearchMotionMatching()
         {
             // Weights

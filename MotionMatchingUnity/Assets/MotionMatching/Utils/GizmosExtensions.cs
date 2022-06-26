@@ -2,6 +2,7 @@ using System;
 using UnityEditor;
 using UnityEngine;
 
+#if UNITY_EDITOR
 namespace MotionMatching
 {
     public static class GizmosExtensions
@@ -205,3 +206,4 @@ namespace MotionMatching
 
     }
 }
+#endif
