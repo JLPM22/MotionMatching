@@ -48,6 +48,8 @@ MotionMatchingController executes all Motion Matching-related code. It exposes s
 
 Animation databases contain all motion that Motion Matching will use to animate the character. They are defined through the MotionMatchingData (*MMData*) scriptable object. You can find an example of an *MMData* at ``Animations/MMData/JLData.asset``.
 
+![](.github/media/MMData.png)
+
 1. Add one or several *.bvh* files to the project. Change their extension to *.txt* so Unity recognizes them as *Text Assets*.
 
 2. Right-click onto the Project window and select ``Create/MotionMatching/MotionMatchingData``. 
