@@ -78,15 +78,15 @@ Animation databases contain all motion that Motion Matching will use to animate 
 
 Motion Matching is defined by the character controller and the motion matching controller. The former gets input from the user and creates trajectories and features. The latter handles all databases, the motion matching search and some pose postprocessing. Finally, since this project does not use Unity's animation system for Motion Matching, there is a last step that retargets the resulting skeleton to Unity's system for rendering.
 
-1. Create an animation database (*MMData*) following the [previous steps](#how-to-create-an-animation-database-(MMData)).
+1. Create an animation database (*MMData*) following the previous steps.
 
 > Use the demo scene ``Scenes/JLTest/JLSceneTest.unity`` as template.
 
-2. Add a Character Controller component (currently, SpringCharacterController or PathCharacterController) to an empty GameObject. Reference (Simulation Bone) the component created in Step 3. Do not change the names of the features unless you modify them when creating a new *MMData*.
+2. Add a Character Controller component (currently, SpringCharacterController or PathCharacterController) to an empty GameObject. Reference (Simulation Bone) the component created in Step 3. Please do not change the names of the features unless you modify them when creating a new *MMData*.
 
 3. Add a Motion Matching Controller component to an empty GameObject. Reference the Character Controller and an *MMData* file.
 
-4. Add an avatar to the scene (use ``Graphics/Models/Joe/Joe.prefab``as reference). It should be imported as humanoid. Add a Motion Matching Skinned Mesh Renderer component, reference the motion matching controller and specify the forward local vector of the character's root joint (as Step 4 of the [how to create](#how-to-create-an-animation-database-(MMData)) *MMData* instructions). 
+4. Add an avatar to the scene (use ``Graphics/Models/Joe/Joe.prefab``as reference). It should be imported as humanoid. Add a Motion Matching Skinned Mesh Renderer component, reference the motion matching controller and specify the forward local vector of the character's root joint (as Step 4 of the previous instructions on creating *MMData*). 
 
 5. Press Play!
 
