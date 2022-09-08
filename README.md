@@ -30,11 +30,11 @@ Finally, ``StreamingAssets/MMDatabases`` contains the processed pose and feature
 
 ## Quick Start
 
-1. Clone this repository
+1. Clone this repository.
 
-2. Install **Unity 2021.2.13f1** (other versions may work but are not tested)
+2. Install **Unity 2021.2.13f1** (other versions may work but are not tested).
 
-3. Open the project and navigate to the `Assets/Scenes` folder and choose either `JLSceneTest` (FinalIK required) or ``JLScenePathTest``.
+3. Open the project and navigate to the `Assets/Scenes` folder and choose either `JLSceneTest` or ``JLScenePathTest``.
 
 Demo scenes consist of two major GameObjects: a Character Controller and the MotionMatchingController:
 
@@ -44,7 +44,7 @@ MotionMatchingController executes all Motion Matching-related code. It exposes s
 
 ## How to Use
 
-##### How to create an animation database (*MMData*)
+#### How to create an animation database (*MMData*)
 
 Animation databases contain all motion that Motion Matching will use to animate the character. They are defined through the MotionMatchingData (*MMData*) scriptable object. You can find an example of an *MMData* at ``Animations/MMData/JLData.asset``.
 
@@ -74,7 +74,7 @@ Animation databases contain all motion that Motion Matching will use to animate 
 
 8. Press *Generate Databases* and done! This will create the processed pose and features databases in the ``StreamingAssets/MMDatabases`` directory.
 
-##### How to animate a character with Motion Matching
+#### How to animate a character with Motion Matching
 
 Motion Matching is defined by the character controller and the motion matching controller. The former gets input from the user and creates trajectories and features. The latter handles all databases, the motion matching search and some pose postprocessing. Finally, since this project does not use Unity's animation system for Motion Matching, there is a last step that retargets the resulting skeleton to Unity's system for rendering.
 
