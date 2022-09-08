@@ -131,4 +131,4 @@ I want to thank [Daniel Holden](https://theorangeduck.com/) for his comprehensiv
 
 ## License
 
-This work by Jose Luis Ponton is licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/?ref=chooser-v1)
+This work is licensed under the MIT License; see [LICENSE](LICENSE) for more details.
