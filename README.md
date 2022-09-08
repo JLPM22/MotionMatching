@@ -22,7 +22,7 @@ The Unity project can be found in the ``MotionMatchingUnity`` directory, and the
 
 The ``Animations`` folder contains the motion capture (MoCap) files (*.bvh* files with the extension changed to *.txt* ) and the *MMData* files, which define an animation database to be used by the Motion Matching System.
 
-Most of the code is located in the ``MotionMatching`` folder grouped into the *MotionMatching* namespace. Please, refer to my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for a comprehensive explanation of some Motion Matching concepts. In this directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture (dashed nodes are not implemented, and for the Virtual Reality controllers of Motion Matching, please visit [this paper](https://upc-virvig.github.io/MMVR/)):
+Most of the code is located in the ``MotionMatching`` folder grouped into the *MotionMatching* namespace. Please, refer to my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for a comprehensive explanation of some Motion Matching concepts. In this directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture (dashed nodes are not implemented; and for the Virtual Reality controllers of Motion Matching visit [this paper](https://upc-virvig.github.io/MMVR/)):
 
 ![](.github/media/architecture_diagram.PNG)
 
@@ -48,7 +48,7 @@ MotionMatchingController executes all Motion Matching-related code. It exposes s
 
 Animation databases contain all motion that Motion Matching will use to animate the character. They are defined through the MotionMatchingData (*MMData*) scriptable object. You can find an example of an *MMData* at ``Animations/MMData/JLData.asset``.
 
-1., Add one or several *.bvh* files to the project. Change their extension to *.txt* so Unity recognizes them as *Text Assets*.
+1. Add one or several *.bvh* files to the project. Change their extension to *.txt* so Unity recognizes them as *Text Assets*.
 
 2. Right-click onto the Project window and select ``Create/MotionMatching/MotionMatchingData``. 
    
