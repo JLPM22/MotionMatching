@@ -2,7 +2,7 @@
 
 ![](.github/media/path_mm.jpg)
 
-**Motion Matching** implementation for the **Unity** game engine. This project is part of my master thesis, which you can download [here](.github/pdfs/Master_Thesis_JoseLuis.pdf) to obtain a detailed description of both Motion Matching and this project. I intend to update this project in my spare time, adding more features until it is a complete Motion Matching solution for Unity. For now, it may be useful for those wanting to learn/implement their own Motion Matching solution or extend this project. For a Virtual Reality version of Motion Matching, please visit [this paper](https://upc-virvig.github.io/MMVR/).
+**Motion Matching** implementation for the **Unity** game engine. This project is part of my master thesis, which you can download [here](.github/pdfs/Master_Thesis_JoseLuis.pdf) to obtain a detailed description of both Motion Matching and this project. I intend to update this project in my spare time, adding more features until it is a complete Motion Matching solution for Unity. For now, it may be useful for those wanting to learn/implement their own Motion Matching solution or extend this project. 
 
 ## Contents
 
@@ -22,7 +22,7 @@ The Unity project can be found in the ``MotionMatchingUnity`` directory, and the
 
 The ``Animations`` folder contains the motion capture (MoCap) files (*.bvh* files with the extension changed to *.txt* ) and the *MMData* files, which define an animation database to be used by the Motion Matching System.
 
-Most of the code is located in the ``MotionMatching`` folder grouped into the *MotionMatching* namespace. Please, refer to my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for a comprehensive explanation of some Motion Matching concepts. In this directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture:
+Most of the code is located in the ``MotionMatching`` folder grouped into the *MotionMatching* namespace. Please, refer to my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for a comprehensive explanation of some Motion Matching concepts. In this directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture (dashed nodes are not implemented, and for the Virtual Reality controllers of Motion Matching, please visit [this paper](https://upc-virvig.github.io/MMVR/)):
 
 ![](.github/media/architecture_diagram.PNG)
 
