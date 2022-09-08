@@ -301,6 +301,7 @@ namespace MotionMatching
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Add BVH"))
             {
+                if (data.BVHs == null) data.BVHs = new List<TextAsset>();
                 data.BVHs.Add(null);
             }
             if (GUILayout.Button("Remove BVH"))

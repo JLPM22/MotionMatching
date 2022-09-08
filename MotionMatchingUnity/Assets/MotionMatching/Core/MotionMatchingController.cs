@@ -21,7 +21,7 @@ namespace MotionMatching
         public MotionMatchingData MMData;
         public bool LockFPS = true;
         public int SearchFrames = 10; // Motion Matching every SearchFrames frames
-        public bool UseBVHSearch = true;
+        public bool UseBVHSearch = true; // Use Bounding Volume Hierarchy acceleration structure for the search.
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         public bool FootLock = true; // Should lock the feet to the ground when contact information is true
         public float FootUnlockDistance = 0.2f; // Distance from actual pose to IK target to unlock the feet
