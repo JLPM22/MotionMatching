@@ -114,7 +114,7 @@ Here, I write some of the features I want to add/improve in the future. This is 
 
 ## Citation
 
-If you find this project useful, please include attributions to this repository or cite my master thesis:
+If you find this project useful, please include an attribution to this repository or cite my master thesis:
 
 ```
 @mastersthesis{ponton2022mm,
