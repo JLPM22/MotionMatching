@@ -11,6 +11,7 @@ namespace MotionMatching
     {
         public MotionMatchingController MotionMatching;
         [Tooltip("Local vector (axis) pointing in the forward direction of the character")] public Vector3 ForwardLocalVector = new Vector3(0, 0, 1);
+        [Tooltip("Local vector (axis) pointing in the up direction of the character")] public Vector3 UpLocalVector = new Vector3(0, 1, 0);
 
         private Animator Animator;
 
@@ -21,6 +22,9 @@ namespace MotionMatching
         // Mapping from BodyJoints to the actual transforms
         private Transform[] SourceBones;
         private Transform[] TargetBones;
+        // Mapping Hips Orientation
+        private Quaternion HipsCorrection;
+        
         public bool ShouldRetarget { get { return MotionMatching.MMData.BVHTPose != null; } }
 
         private void Awake()
@@ -67,19 +71,6 @@ namespace MotionMatching
                     SourceTPose[i] = tposeAnimation.GetWorldRotation(joint, 0);
                 }
             }
-            // Correct rotations so they are facing the same direction as the target
-            // Correct Source
-            float3 currentDirection = math.mul(SourceTPose[0], mmData.HipsForwardLocalVector);
-            currentDirection.y = 0;
-            currentDirection = math.normalize(currentDirection);
-            float3 targetDirection = transform.TransformDirection(ForwardLocalVector);
-            targetDirection.y = 0;
-            targetDirection = math.normalize(targetDirection);
-            quaternion correctionRot = MathExtensions.FromToRotation(currentDirection, targetDirection, new float3(0, 1, 0));
-            for (int i = 0; i < BodyJoints.Length; i++)
-            {
-                SourceTPose[i] = math.mul(correctionRot, SourceTPose[i]);
-            }
             // Target
             Quaternion rot = Animator.transform.rotation;
             Animator.transform.rotation = Quaternion.identity;
@@ -88,6 +79,14 @@ namespace MotionMatching
                 TargetTPose[i] = Animator.GetBoneTransform(BodyJoints[i]).rotation;
             }
             Animator.transform.rotation = rot;
+            // Correct body orientation so they are both facing the same direction
+            float3 targetWorldForward = math.mul(TargetTPose[0], ForwardLocalVector);
+            float3 targetWorldUp = math.mul(TargetTPose[0], UpLocalVector);
+            float3 sourceWorldForward = math.mul(SourceTPose[0], mmData.HipsForwardLocalVector);
+            float3 sourceWorldUp = math.mul(SourceTPose[0], mmData.HipsUpLocalVector);
+            quaternion targetLookAt = quaternion.LookRotation(targetWorldForward, targetWorldUp);
+            quaternion sourceLookAt = quaternion.LookRotation(sourceWorldForward, sourceWorldUp);
+            HipsCorrection = math.mul(sourceLookAt, math.inverse(targetLookAt));
             // Store Transforms
             Transform[] mmBones = MotionMatching.GetSkeletonTransforms();
             Dictionary<string, Transform> boneDict = new Dictionary<string, Transform>();
@@ -132,7 +131,11 @@ namespace MotionMatching
                     R_st = (RTPose_s)^-1 * RTPose_t
                     R_t = R_s * (R_st)^-1 * RTPose_t
                 */
-                TargetBones[i].rotation = sourceRotation * Quaternion.Inverse(sourceTPoseRotation) * targetTPoseRotation;
+                // targetTPoseRotation -> Local Target -> World (Target TPose)
+                // HipsCorrection -> World (Target TPose) -> World (Source TPose)
+                // sourceTPoseRotation^-1 -> World (SourceTPose) -> Local Source
+                // sourceRotation -> Local Source -> World (Source)
+                TargetBones[i].rotation = sourceRotation * Quaternion.Inverse(sourceTPoseRotation) * HipsCorrection * targetTPoseRotation;
             }
             // Hips Height
             TargetBones[0].position = MotionMatching.GetSkeletonTransforms()[1].position;

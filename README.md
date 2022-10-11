@@ -58,7 +58,7 @@ Animation databases contain all motion that Motion Matching will use to animate 
 
 3. Press *Add BVH* and reference the *.bvh* (I will refer to them as *.bvh* files although we changed their extension to *.txt*) file. In the following field *BVH with TPose* reference a *.bvh* file in which the first frame the character is in T-Pose. The skeleton should be the same in all *.bvh*, and you can use the same *.bvh* as before if it contains in the first frame a T-Pose.
 
-4. Select the scale of the *.bvh* file and the local vector pointing forward of the hips/root joint. For example, in the following image, this is the Z-axis (0, 0, 1):
+4. Select the scale of the *.bvh* file and the local vector pointing forward and up of the hips/root joint. For example, in the following image, the forward local vector is the Z-axis (0, 0, 1) and the up local vector is Y-axis (0, 1, 0):
    
    > Make sure you have the *Gizmo handle position toggle* in local space. [More Info](https://docs.unity3d.com/Manual/PositioningGameObjects.html).
    > 
@@ -88,7 +88,7 @@ Motion Matching is defined by the character controller and the motion matching c
 
 3. Add a Motion Matching Controller component to an empty GameObject. Reference the Character Controller and an *MMData* file.
 
-4. Add an avatar to the scene (use ``Graphics/Models/Joe/Joe.prefab``as reference). It should be imported as humanoid. Add a Motion Matching Skinned Mesh Renderer component, reference the motion matching controller and specify the forward local vector of the character's root joint (as Step 4 of the previous instructions on creating *MMData*). 
+4. Add an avatar to the scene (use ``Graphics/Models/Joe/Joe.prefab``as reference). It should be imported as humanoid. Add a Motion Matching Skinned Mesh Renderer component, reference the motion matching controller and specify the forward and up local vector of the character's root joint (as Step 4 of the previous instructions on creating *MMData*). 
 
 5. Press Play!
 
@@ -116,14 +116,15 @@ Here, I write some of the features I want to add/improve in the future. This is 
 
 ## Citation
 
-If you find this project useful, please include an attribution to this repository or cite my master thesis:
+If you find this project useful, please include attribution to this repository or cite my master thesis:
 
 ```
 @mastersthesis{ponton2022mm,
-  author  = "Ponton, Jose Luis",
-  title   = "Motion Matching for Character Animation and Virtual Reality Avatars in Unity",
-  school  = "Universitat Politecnica de Catalunya",
-  year    = "2022"
+  author  = {Ponton, Jose Luis},
+  title   = {Motion Matching for Character Animation and Virtual Reality Avatars in Unity},
+  school  = {Universitat Politecnica de Catalunya},
+  year    = {2022},
+  doi     = {10.13140/RG.2.2.31741.23528}
 }
 ```
 

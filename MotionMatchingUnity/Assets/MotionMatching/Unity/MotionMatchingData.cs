@@ -26,6 +26,7 @@ namespace MotionMatching
         public TextAsset BVHTPose; // BVH with a TPose in the first frame, used for retargeting
         public float UnitScale = 1.0f;
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
+        public float3 HipsUpLocalVector = new float3(0, 1, 0); // Local vector (axis) pointing in the up direction of the hips
         // TODO: Implement Savitzky-Golay filter or similar low-pass filter in Unity (before I was using Python implementation)
         //public bool SmoothSimulationBone; // Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter
         public float ContactVelocityThreshold = 0.15f; // Minimum velocity of the foot to be considered in movement and not in contact with the ground
@@ -328,6 +329,16 @@ namespace MotionMatching
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.HelpBox("Hips Forward Local Vector should be normalized", MessageType.Warning);
                 if (GUILayout.Button("Fix")) data.HipsForwardLocalVector = math.normalize(data.HipsForwardLocalVector);
+                EditorGUILayout.EndHorizontal();
+            }
+            // HipsUpLocalVector
+            data.HipsUpLocalVector = EditorGUILayout.Vector3Field(new GUIContent("Hips Up Local Vector", "Local vector (axis) pointing in the up direction of the hips"),
+                                                           data.HipsUpLocalVector);
+            if (math.abs(math.length(data.HipsUpLocalVector) - 1.0f) > 1E-6f)
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.HelpBox("Hips Up Local Vector should be normalized", MessageType.Warning);
+                if (GUILayout.Button("Fix")) data.HipsUpLocalVector = math.normalize(data.HipsUpLocalVector);
                 EditorGUILayout.EndHorizontal();
             }
 
