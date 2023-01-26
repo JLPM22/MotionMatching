@@ -31,6 +31,8 @@ namespace MotionMatching
         private IntegerField CurrentFrameField;
         private IntegerField TargetFramerateField;
 
+        private VisualElement Timeline;
+
         [MenuItem("MotionMatching/Animation Viewer")]
         public static void ShowWindow()
         {
@@ -55,6 +57,7 @@ namespace MotionMatching
             CreateBVHAssetField(root);
             CreateScaleField(root);
             CreateFrameField(root);
+            CreateTimeline(root);
         }
 
         private void CreateBVHAssetField(VisualElement root)
@@ -120,6 +123,68 @@ namespace MotionMatching
             root.Add(TargetFramerateField);
         }
 
+        private void CreateTimeline(VisualElement root)
+        {
+            if (root.Contains(Timeline))
+            {
+                root.Remove(Timeline);
+            }
+            // Create frames rule with numbers
+            int maxFrames = Animation == null ? 2 : Animation.Frames.Length;
+            Timeline = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    flexGrow = 1,
+                    flexShrink = 1,
+                    flexBasis = new StyleLength(StyleKeyword.Auto),
+                    alignItems = Align.FlexStart,
+                    justifyContent = Justify.Center,
+                    backgroundColor = new Color(0.6f, 0.6f, 0.6f, 1.0f)
+                }
+            };
+            root.Add(Timeline);
+            VisualElement frameRule = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    flexGrow = 1,
+                    flexShrink = 1,
+                    flexBasis = new StyleLength(StyleKeyword.Auto),
+                    alignItems = Align.Center,
+                    justifyContent = Justify.Center,
+                    backgroundColor = new Color(0.4f, 0.4f, 0.4f, 1.0f),
+                    color = Color.black,
+                    height=20
+                }
+            };
+            Timeline.Add(frameRule);
+            
+            const int maxFramesPerRule = 20;
+            int framesStep = Mathf.Max(1, maxFrames / maxFramesPerRule);
+            for (int i = 0; i < maxFrames; i += framesStep)
+            {
+                VisualElement frameLabelBox = new VisualElement
+                {
+                    style =
+                    {
+                        flexDirection = FlexDirection.Row,
+                        flexGrow = 1,
+                        flexShrink = 1,
+                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                        alignItems = Align.FlexStart,
+                        justifyContent = Justify.FlexStart,
+                        color = Color.black
+                    }
+                };
+                Label frameLabel = new Label(i.ToString());
+                frameLabelBox.Add(frameLabel);
+                frameRule.Add(frameLabelBox);
+            }
+        }
+
         private void ImportBVH()
         {
             RemoveSkeleton();
@@ -127,6 +192,7 @@ namespace MotionMatching
             Animation = bvhImporter.Import(BVHAsset, BVHScale);
             UpdateTargetFramerate(Mathf.CeilToInt(1.0f / Animation.FrameTime));
             UpdateCurrentFrame(0);
+            CreateTimeline(rootVisualElement);
             // Create skeleton
             Skeleton = new Transform[Animation.Skeleton.Joints.Count];
             for (int j = 0; j < Skeleton.Length; j++)
