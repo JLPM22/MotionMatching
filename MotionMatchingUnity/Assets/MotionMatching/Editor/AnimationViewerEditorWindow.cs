@@ -13,11 +13,11 @@ using System;
 
 namespace MotionMatching
 {
-    /* New Scene thanks to: https://gist.github.com/ulrikdamm/338392c3b0900de225ec6dd10864cab4 */
+    /* More info on how to create a new scene: https://gist.github.com/ulrikdamm/338392c3b0900de225ec6dd10864cab4 */
     public class AnimationViewerEditorWindow : EditorWindow
     {
         public static AnimationViewerEditorWindow Window;
-        private static SceneGUI ReturnButton;
+        private SceneGUI ReturnButton;
 
         private BVHAnimation Animation;
         private Transform[] Skeleton;
@@ -33,6 +33,10 @@ namespace MotionMatching
         private VisualElement Timeline;
         private VisualElement CurrentFrameIndicator;
 
+        private List<Tag> Tags;
+
+        private int NumberFrames { get { return Animation.Frames.Length; } }
+
         [MenuItem("MotionMatching/Animation Viewer")]
         public static void ShowWindow()
         {
@@ -43,11 +47,9 @@ namespace MotionMatching
             string currentScene = EditorSceneManager.GetActiveScene().path;
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             GameObject.CreatePrimitive(PrimitiveType.Plane);
-
-            ReturnButton = new SceneGUI
-            {
-                PreviousScene = currentScene
-            };
+            
+            Window.ReturnButton = new SceneGUI(currentScene);
+            SceneView.duringSceneGui += Window.UpdateGUI;
         }
 
         public void CreateGUI()
@@ -73,6 +75,10 @@ namespace MotionMatching
                     BVHAsset = (TextAsset)x.newValue;
                     CreateBVHFields();
                     ImportBVH();
+                    ImportTags();
+                    CreateTimeline(rootVisualElement);
+                    UpdateCurrentFrame(0);
+                    UpdateAnimation(forward: false);
                 }
             });
             root.Add(bvhAssetField);
@@ -131,17 +137,16 @@ namespace MotionMatching
                 root.Remove(Timeline);
             }
             // Create frames rule with numbers
-            int maxFrames = Animation.Frames.Length;
             Timeline = new VisualElement
             {
                 style =
                 {
-                    flexDirection = FlexDirection.Row,
+                    flexDirection = FlexDirection.Column,
                     flexGrow = 1,
                     flexShrink = 1,
                     flexBasis = new StyleLength(StyleKeyword.Auto),
-                    alignItems = Align.FlexStart,
-                    justifyContent = Justify.Center,
+                    alignItems = Align.Center,
+                    justifyContent = Justify.FlexStart,
                     backgroundColor = new Color(0.6f, 0.6f, 0.6f, 1.0f)
                 }
             };
@@ -151,10 +156,8 @@ namespace MotionMatching
                 style =
                 {
                     flexDirection = FlexDirection.Row,
-                    flexGrow = 1,
-                    flexShrink = 1,
-                    flexBasis = new StyleLength(StyleKeyword.Auto),
                     alignItems = Align.FlexStart,
+                    alignSelf = Align.Stretch,
                     justifyContent = Justify.FlexStart,
                     height=FrameRuleHeight,
                 }
@@ -165,6 +168,7 @@ namespace MotionMatching
                 text = "Play",
                 style =
                 {
+                    height = FrameRuleHeight,
                     width = PlayButtonWidth,
                 }
             };
@@ -201,8 +205,8 @@ namespace MotionMatching
             frameRule.Add(frameRuleLabels);
             // Add reference labels
             const int maxFramesPerRule = 20;
-            int framesStep = Mathf.Max(1, maxFrames / maxFramesPerRule);
-            for (int i = 0; i < maxFrames; i += framesStep)
+            int framesStep = Mathf.Max(1, NumberFrames / maxFramesPerRule);
+            for (int i = 0; i < NumberFrames; i += framesStep)
             {
                 VisualElement frameLabelBox = new VisualElement
                 {
@@ -237,6 +241,99 @@ namespace MotionMatching
             };
             frameRuleLabels.Add(CurrentFrameIndicator);
             UpdateCurrentFrameIndicator();
+            // Tags
+            CreateTagsTimeline(Timeline);
+        }
+
+        private void CreateTagsTimeline(VisualElement root)
+        {
+            // Main Container
+            VisualElement tagsContainer = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Column,
+                    alignItems = Align.FlexStart,
+                    justifyContent = Justify.FlexStart,
+                    alignSelf = Align.Stretch,
+                    backgroundColor = new Color(0.6f, 0.6f, 0.6f, 1.0f),
+                }
+            };
+            root.Add(tagsContainer);
+            // Tags
+            for (int i = 0; i < Tags.Count; ++i)
+            {
+                int tagIndex = i;
+                Tag tag = Tags[i];
+                VisualElement tagContainer = new VisualElement
+                {
+                    style =
+                    {
+                        flexDirection = FlexDirection.Row,
+                        alignSelf = Align.Stretch,
+                        alignItems = Align.Center,
+                        justifyContent = Justify.FlexStart,
+                        backgroundColor = new Color(0.4f, 0.4f, 0.4f, 1.0f),
+                    }
+                };
+                tagsContainer.Add(tagContainer);
+                // Tag name
+                TextField textField = new TextField
+                {
+                    value = tag.Name,
+                    style =
+                    {
+                        alignItems = Align.FlexStart,
+                        justifyContent = Justify.FlexStart,
+                        width = PlayButtonWidth,
+                    }
+                };
+                textField.RegisterValueChangedCallback(x =>
+                {
+                    tag.Name = x.newValue;
+                    Tags[tagIndex] = tag;
+                });
+                tagContainer.Add(textField);
+                // Tag range
+                MinMaxSlider range = new MinMaxSlider
+                {
+                    value = new Vector2(tag.Start, tag.End),
+                    lowLimit = 0,
+                    highLimit = NumberFrames - 1,
+                    style =
+                    {
+                        flexGrow = 1,
+                        flexShrink = 1,
+                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                    }
+                };
+                range.RegisterValueChangedCallback(x =>
+                {
+                    tag.Start = (int)x.newValue.x;
+                    tag.End = (int)x.newValue.y;
+                    Tags[tagIndex] = tag;
+                });
+                tagContainer.Add(range);
+            }
+            // New Tag Button
+            Button newTagButton = new Button
+            {
+                text = "New Tag",
+                style =
+                {
+                    height = FrameRuleHeight,
+                    width = 200,
+                }
+            };
+            newTagButton.clicked += () =>
+            {
+                Tag newTag = new Tag();
+                Tags.Add(newTag);
+                root.Remove(tagsContainer);
+                root.Remove(newTagButton);
+                CreateTagsTimeline(root);
+            };
+            root.Add(newTagButton);
         }
 
         private bool PointerDownOnFrameRuler = false;
@@ -264,19 +361,17 @@ namespace MotionMatching
         }
         private void UpdateFrameFromPointer(Vector2 pointer)
         {
-            int maxFrames = Animation.Frames.Length;
             float containerWidth = CurrentFrameIndicator.parent.resolvedStyle.width;
             float x = CurrentFrameIndicator.parent.WorldToLocal(pointer).x;
-            int frame = Mathf.CeilToInt((x / containerWidth) * maxFrames);
+            int frame = Mathf.CeilToInt((x / containerWidth) * NumberFrames);
             UpdateCurrentFrame(frame);
             UpdateAnimation(forward: false);
         }
 
         private void UpdateCurrentFrameIndicator()
         {
-            int maxFrames = Animation.Frames.Length;
             float containerWidth = CurrentFrameIndicator.parent.resolvedStyle.width;
-            CurrentFrameIndicator.style.left = CurrentFrame * (containerWidth / maxFrames);
+            CurrentFrameIndicator.style.left = CurrentFrame * (containerWidth / NumberFrames);
         }
 
         private void CreateBVHFields()
@@ -290,9 +385,7 @@ namespace MotionMatching
             RemoveSkeleton();
             BVHImporter bvhImporter = new BVHImporter();
             Animation = bvhImporter.Import(BVHAsset, BVHScale);
-            CreateTimeline(rootVisualElement);
             UpdateTargetFramerate(Mathf.CeilToInt(1.0f / Animation.FrameTime));
-            UpdateCurrentFrame(0);
             // Create skeleton
             Skeleton = new Transform[Animation.Skeleton.Joints.Count];
             for (int j = 0; j < Skeleton.Length; j++)
@@ -334,7 +427,11 @@ namespace MotionMatching
                     capsule.localRotation = Quaternion.Inverse(t.parent.rotation) * Quaternion.LookRotation(new Vector3(-up.y, up.x, 0.0f), up);
                 }
             }
-            UpdateAnimation(forward: false);
+        }
+
+        private void ImportTags()
+        {
+            Tags = new List<Tag>();
         }
 
         private void UpdateTargetFramerate(int newValue)
@@ -385,23 +482,30 @@ namespace MotionMatching
             }
         }
 
+        private void UpdateGUI(SceneView sceneView)
+        {
+            ReturnButton.RenderSceneGUI(sceneView);
+        }
+
         private void OnDestroy()
         {
             ReturnButton.ReturnScene();
             EditorApplication.update -= UpdateAnimationForward;
+            SceneView.duringSceneGui -= UpdateGUI;
         }
     }
 
-    public sealed class SceneGUI
+    [System.Serializable]
+    public struct SceneGUI
     {
         public string PreviousScene;
 
-        public SceneGUI()
+        public SceneGUI(string previousScene)
         {
-            SceneView.duringSceneGui += RenderSceneGUI;
+            PreviousScene = previousScene;
         }
 
-        public void RenderSceneGUI(SceneView sceneview)
+        public void RenderSceneGUI(SceneView sceneView)
         {
             var style = new GUIStyle();
             style.margin = new RectOffset(10, 10, 10, 10);
@@ -424,7 +528,6 @@ namespace MotionMatching
 
         public void ReturnScene()
         {
-            SceneView.duringSceneGui -= RenderSceneGUI;
             EditorSceneManager.OpenScene(PreviousScene);
         }
     }
