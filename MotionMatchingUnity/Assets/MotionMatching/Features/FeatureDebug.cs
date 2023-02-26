@@ -164,15 +164,46 @@ public class FeatureDebug : MonoBehaviour
                 {
                     Gizmos.color = Color.blue * (1.25f - (float)p / trajectoryFeature.FramesPrediction.Length);
                     float3 value;
-                    if (trajectoryFeature.Project)
+                    if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
                     {
-                        float2 value2D = set.GetProjectedTrajectoryFeature(currentFrame, t, p, true);
+                        value = set.Get3DTrajectoryFeature(currentFrame, t, p, true);
+                    }
+                    else if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY)
+                    {
+                        float2 value2D = set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+                        value = new float3(value2D.x, value2D.y, 0);
+                    }
+                    else if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroZ)
+                    {
+                        float2 value2D = set.Get2DTrajectoryFeature(currentFrame, t, p, true);
                         value = new float3(value2D.x, 0.0f, value2D.y);
+                    }
+                    else if (!trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
+                    {
+                        float2 value2D = set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+                        value = new float3(0.0f, value2D.x, value2D.y);
+                    }
+                    else if (!trajectoryFeature.ZeroX)
+                    {
+                        float value1D = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+                        value = new float3(value1D, 0.0f, 0.0f);
+                    }
+                    else if (!trajectoryFeature.ZeroY)
+                    {
+                        float value1D = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+                        value = new float3(0.0f, value1D, 0.0f);
+                    }
+                    else if (!trajectoryFeature.ZeroZ)
+                    {
+                        float value1D = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+                        value = new float3(0.0f, 0.0f, value1D);
                     }
                     else
                     {
-                        value = set.GetTrajectoryFeature(currentFrame, t, p, true);
+                        Debug.Assert(false, "Invalid trajectory feature");
+                        value = float3.zero;
                     }
+                    
                     switch (trajectoryFeature.FeatureType)
                     {
                         case MotionMatchingData.TrajectoryFeature.Type.Position:

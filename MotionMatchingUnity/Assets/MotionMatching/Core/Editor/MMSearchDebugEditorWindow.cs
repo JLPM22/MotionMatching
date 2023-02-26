@@ -90,16 +90,17 @@ namespace MotionMatching
             for (int t = 0; t < mmData.TrajectoryFeatures.Count; t++)
             {
                 var feature = mmData.TrajectoryFeatures[t];
+                int featureSize = 3 - (feature.ZeroX ? 1 : 0) - (feature.ZeroY ? 1 : 0) - (feature.ZeroZ ? 1 : 0);
                 EditorGUILayout.LabelField(feature.Name);
                 for (int p = 0; p < feature.FramesPrediction.Length; p++)
                 {
                     EditorGUILayout.BeginHorizontal();
-                    for (int i = 0; i < (feature.Project ? 2 : 3); i++)
+                    for (int i = 0; i < featureSize; i++)
                     {
                         EditorGUILayout.LabelField(vector[offset + i].ToString("F3"), style, GUILayout.ExpandWidth(false), GUILayout.MaxWidth(60));
                     }
                     EditorGUILayout.EndHorizontal();
-                    offset += feature.Project ? 2 : 3;
+                    offset += featureSize;
                 }
             }
             for (int p = 0; p < mmData.PoseFeatures.Count; p++)

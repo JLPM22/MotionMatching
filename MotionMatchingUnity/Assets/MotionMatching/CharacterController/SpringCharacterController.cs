@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Collections;
 
 namespace MotionMatching
 {
@@ -262,22 +263,25 @@ namespace MotionMatching
             return transform.rotation;
         }
 
-        public override float3 GetWorldSpacePrediction(TrajectoryFeature feature, int index)
+        public override void GetWorldSpacePrediction(TrajectoryFeature feature, int index, NativeArray<float> output)
         {
             if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
             switch (feature.FeatureType)
             {
                 case TrajectoryFeature.Type.Position:
                     float2 value = PredictedPosition[index];
-                    return new float3(value.x, 0.0f, value.y);
+                    output[0] = value.x;
+                    output[1] = value.y;
+                    break;
                 case TrajectoryFeature.Type.Direction:
                     float2 dirProjected = GetWorldSpaceDirectionPrediction(index);
-                    return new float3(dirProjected.x, 0.0f, dirProjected.y);
+                    output[0] = dirProjected.x;
+                    output[1] = dirProjected.y;
+                    break;
                 default:
                     Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
                     break;
             }
-            return float3.zero;
         }
 
         private float2 GetWorldSpaceDirectionPrediction(int index)

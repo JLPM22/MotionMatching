@@ -232,7 +232,7 @@ namespace MotionMatching
             public int[] FramesPrediction = new int[0]; // Number of frames in the future for each point of the trajectory
             public bool SimulationBone; // Use the simulation bone (articial root added during pose extraction) instead of a bone
             public HumanBodyBones Bone; // Bone used to compute the trajectory in the feature set
-            public bool Project; // Project the trajectory onto the ground plane
+            public bool ZeroX, ZeroY, ZeroZ; // Zero the X, Y and/or Z component of the trajectory feature
         }
 
         [System.Serializable]
@@ -455,11 +455,19 @@ namespace MotionMatching
                     if (!trajectoryFeature.SimulationBone)
                     {
                         trajectoryFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Bone", trajectoryFeature.Bone);
-                        trajectoryFeature.Project = EditorGUILayout.Toggle("Project", trajectoryFeature.Project);
+                        GUI.enabled = !trajectoryFeature.ZeroY || !trajectoryFeature.ZeroZ;
+                        trajectoryFeature.ZeroX = EditorGUILayout.Toggle("Zero X", trajectoryFeature.ZeroX);
+                        GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroZ;
+                        trajectoryFeature.ZeroY = EditorGUILayout.Toggle("Zero Y", trajectoryFeature.ZeroY);
+                        GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroY;
+                        trajectoryFeature.ZeroZ = EditorGUILayout.Toggle("Zero Z", trajectoryFeature.ZeroZ);
+                        GUI.enabled = true;
                     }
                     else
                     {
-                        trajectoryFeature.Project = true;
+                        trajectoryFeature.ZeroX = false;
+                        trajectoryFeature.ZeroY = true; // project simulation bone to the ground
+                        trajectoryFeature.ZeroZ = false;
                     }
                     EditorGUILayout.EndVertical();
                 }

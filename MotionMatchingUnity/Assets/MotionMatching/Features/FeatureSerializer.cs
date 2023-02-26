@@ -43,7 +43,7 @@ namespace MotionMatching
                     {
                         var trajectoryFeature = mmData.TrajectoryFeatures[t];
                         writer.Write(trajectoryFeature.Name);
-                        writer.Write(trajectoryFeature.Project ? 2u : 3u);
+                        writer.Write(3u - (trajectoryFeature.ZeroX ? 1u : 0u) - (trajectoryFeature.ZeroY ? 1u : 0u) - (trajectoryFeature.ZeroZ ? 1u : 0u));
                         writer.Write((uint)trajectoryFeature.FramesPrediction.Length);
                     }
                     for (int p = 0; p < mmData.PoseFeatures.Count; ++p)
@@ -62,17 +62,27 @@ namespace MotionMatching
                         for (int t = 0; t < mmData.TrajectoryFeatures.Count; ++t)
                         {
                             var trajectoryFeature = mmData.TrajectoryFeatures[t];
+                            int featureSize = 3 - (trajectoryFeature.ZeroX ? 1 : 0) - (trajectoryFeature.ZeroY ? 1 : 0) - (trajectoryFeature.ZeroZ ? 1 : 0);
                             for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; ++p)
                             {
-                                if (trajectoryFeature.Project)
+                                if (featureSize == 3)
                                 {
-                                    float2 value2D = featureSet.GetProjectedTrajectoryFeature(i, t, p);
+                                    float3 value3D = featureSet.Get3DTrajectoryFeature(i, t, p);
+                                    WriteFloat3(writer, value3D);
+                                }
+                                else if (featureSize == 2)
+                                {
+                                    float2 value2D = featureSet.Get2DTrajectoryFeature(i, t, p);
                                     WriteFloat2(writer, value2D);
+                                }
+                                else if (featureSize == 1)
+                                {
+                                    float value1D = featureSet.Get1DTrajectoryFeature(i, t, p);
+                                    writer.Write(value1D);
                                 }
                                 else
                                 {
-                                    float3 value3D = featureSet.GetTrajectoryFeature(i, t, p);
-                                    WriteFloat3(writer, value3D);
+                                    Debug.Assert(false, "Invalid trajectory feature");
                                 }
                             }
                         }
@@ -128,7 +138,7 @@ namespace MotionMatching
                             uint nFloatsType = reader.ReadUInt32();
                             uint nElements = reader.ReadUInt32();
                             Debug.Assert(name == trajectoryFeature.Name, "Name of trajectory feature does not match");
-                            Debug.Assert(nFloatsType == (trajectoryFeature.Project ? 2u : 3u), "Projection type of trajectory feature does not match");
+                            Debug.Assert(nFloatsType == (3u - (trajectoryFeature.ZeroX ? 1u : 0u) - (trajectoryFeature.ZeroY ? 1u : 0u) - (trajectoryFeature.ZeroZ ? 1u : 0u)), "Projection type of trajectory feature does not match");
                             Debug.Assert(nElements == (uint)trajectoryFeature.FramesPrediction.Length, "Number of frames prediction of trajectory feature does not match");
                         }
                         for (int p = 0; p < mmData.PoseFeatures.Count; ++p)

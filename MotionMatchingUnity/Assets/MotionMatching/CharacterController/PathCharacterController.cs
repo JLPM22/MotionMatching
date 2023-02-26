@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -43,7 +44,7 @@ namespace MotionMatching
 
             TrajectoryPosPredictionFrames = SimulationBone.MMData.TrajectoryFeatures[TrajectoryPosFeatureIndex].FramesPrediction;
             TrajectoryRotPredictionFrames = SimulationBone.MMData.TrajectoryFeatures[TrajectoryRotFeatureIndex].FramesPrediction;
-            // TODO: generilize this, allow for different number of prediction frames
+            // TODO: generalize this, allow for different number of prediction frames
             Debug.Assert(TrajectoryPosPredictionFrames.Length == TrajectoryRotPredictionFrames.Length, "Trajectory Position and Trajectory Direction Prediction Frames must be the same for PathCharacterController");
             for (int i = 0; i < TrajectoryPosPredictionFrames.Length; ++i)
             {
@@ -124,23 +125,26 @@ namespace MotionMatching
             Quaternion rot = Quaternion.LookRotation(new Vector3(CurrentDirection.x, 0, CurrentDirection.y));
             return rot * transform.rotation;
         }
-
-        public override float3 GetWorldSpacePrediction(TrajectoryFeature feature, int index)
+        
+        public override void GetWorldSpacePrediction(TrajectoryFeature feature, int index, NativeArray<float> output)
         {
             if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
             switch (feature.FeatureType)
             {
                 case TrajectoryFeature.Type.Position:
                     float2 value = GetWorldPredictedPos(index);
-                    return new float3(value.x, 0.0f, value.y);
+                    output[0] = value.x;
+                    output[1] = value.y;
+                    break;
                 case TrajectoryFeature.Type.Direction:
                     float2 dir = GetWorldPredictedDir(index);
-                    return new float3(dir.x, 0.0f, dir.y);
+                    output[0] = dir.x;
+                    output[1] = dir.y;
+                    break;
                 default:
                     Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
                     break;
             }
-            return float3.zero;
         }
 
         private float2 GetWorldPredictedPos(int index)

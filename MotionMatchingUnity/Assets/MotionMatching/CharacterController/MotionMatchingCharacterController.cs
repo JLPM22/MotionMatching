@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -18,11 +19,12 @@ namespace MotionMatching
 
         public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
 
-        // Accumulated Delta Time
         public bool LockFPS { get { return SimulationBone.LockFPS; } }
+        // Accumulated Delta Time
         public float AveragedDeltaTime { get; private set; }
         private Queue<float> LastDeltaTime = new Queue<float>();
         private float SumDeltaTime;
+        // ---
 
         private void Update()
         {
@@ -41,22 +43,36 @@ namespace MotionMatching
             if (OnUpdated != null) OnUpdated.Invoke(Time.deltaTime);
         }
 
+        /// <summary>
+        /// Call this method to notify Motion Matching that a large change in the input has been made.
+        /// Therefore, an immediate Motion Matching search should be performed.
+        /// </summary>
         protected void NotifyInputChangedQuickly()
         {
             if (OnInputChangedQuickly != null) OnInputChangedQuickly.Invoke();
         }
 
+        /// <summary>
+        /// Use this intead of Unity's Update() method.
+        /// </summary>
         protected abstract void OnUpdate();
 
+        /// <summary>
+        /// Return the initial world position of the character.
+        /// </summary>
         public abstract float3 GetWorldInitPosition();
+        /// <summary>
+        /// Return the initial world direction of the character.
+        /// </summary>
         public abstract float3 GetWorldInitDirection();
 
         /// <summary>
-        /// Get the prediction in world space of the feature.
-        /// e.g. the feature is the position of the character, and it has frames = { 20, 40, 60}
-        /// if index=1 it will return the position of the character at frame 40
+        /// Get the prediction in world space of a trajectory feature.
+        /// e.g. suppose that the feature is the projected position of the character at frames 20, 40 and 60 in the future.
+        /// Then, since the projected position is 2D (2 floats), thus, output[0] and output[1] should be filled with the X and Z coordinates.
+        /// If index==1, it should return the position of the character at frame 40.
         /// </summary>
-        public abstract float3 GetWorldSpacePrediction(TrajectoryFeature feature, int index);
+        public abstract void GetWorldSpacePrediction(TrajectoryFeature feature, int index, NativeArray<float> output);
 
         private float GetAveragedDeltaTime()
         {

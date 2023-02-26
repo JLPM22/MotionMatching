@@ -305,32 +305,63 @@ namespace MotionMatching
                 TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
-                    float3 value = CharacterController.GetWorldSpacePrediction(feature, p);
+                    int featureSize = 3 - (feature.ZeroX ? 1 : 0) - (feature.ZeroY ? 1 : 0) - (feature.ZeroZ ? 1 : 0);
+                    Debug.Assert(featureSize > 0, "Trajectory feature size must be greater than 0");
+                    NativeArray<float> featureVector = new NativeArray<float>(featureSize, Allocator.Temp);
+                    CharacterController.GetWorldSpacePrediction(feature, p, featureVector);
                     switch (feature.FeatureType)
                     {
                         case TrajectoryFeature.Type.Position:
-                            value = GetPositionLocalCharacter(value);
+                            {
+                                float3 pos = new float3();
+                                int featureIndex = 0;
+                                if (feature.ZeroX) pos.x = 0.0f;
+                                else pos.x = featureVector[featureIndex++];
+                                if (feature.ZeroY) pos.y = 0.0f;
+                                else pos.y = featureVector[featureIndex++];
+                                if (feature.ZeroZ) pos.z = 0.0f;
+                                else pos.z = featureVector[featureIndex++];
+                                pos = GetPositionLocalCharacter(pos);
+                                int offsetIndex = 0;
+                                int posIndex = 0;
+                                for (featureIndex = 0; featureIndex < featureSize; ++featureIndex)
+                                {
+                                    if (posIndex == 0 && feature.ZeroX) posIndex += 1;
+                                    if (posIndex == 1 && feature.ZeroY) posIndex += 1;
+                                    vector[offset + offsetIndex] = pos[posIndex];
+                                    posIndex += 1;
+                                    offsetIndex += 1;
+                                }
+                            }
                             break;
                         case TrajectoryFeature.Type.Direction:
-                            value = GetDirectionLocalCharacter(value);
+                            {
+                                float3 dir = new float3();
+                                int featureIndex = 0;
+                                if (feature.ZeroX) dir.x = 0.0f;
+                                else dir.x = featureVector[featureIndex++];
+                                if (feature.ZeroY) dir.y = 0.0f;
+                                else dir.y = featureVector[featureIndex++];
+                                if (feature.ZeroZ) dir.z = 0.0f;
+                                else dir.z = featureVector[featureIndex++];
+                                dir = GetDirectionLocalCharacter(dir);
+                                int offsetIndex = 0;
+                                int posIndex = 0;
+                                for (featureIndex = 0; featureIndex < featureSize; ++featureIndex)
+                                {
+                                    if (posIndex == 0 && feature.ZeroX) posIndex += 1;
+                                    if (posIndex == 1 && feature.ZeroY) posIndex += 1;
+                                    vector[offset + offsetIndex] = dir[posIndex];
+                                    posIndex += 1;
+                                    offsetIndex += 1;
+                                }
+                            }
                             break;
                         default:
                             Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
                             break;
                     }
-                    if (feature.Project)
-                    {
-                        vector[offset + 0] = value.x;
-                        vector[offset + 1] = value.z;
-                        offset += 2;
-                    }
-                    else
-                    {
-                        vector[offset + 0] = value.x;
-                        vector[offset + 1] = value.y;
-                        vector[offset + 2] = value.z;
-                        offset += 3;
-                    }
+                    offset += featureSize;
                 }
             }
             // Normalize (only trajectory... because current FeatureVector is already normalized)
@@ -547,14 +578,15 @@ namespace MotionMatching
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
                 TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
+                int featureSize = 3 - (feature.ZeroX ? 1 : 0) - (feature.ZeroY ? 1 : 0) - (feature.ZeroZ ? 1 : 0);
                 float weight = FeatureWeights[i] * Responsiveness;
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
-                    for (int f = 0; f < (feature.Project ? 2 : 3); f++)
+                    for (int f = 0; f < featureSize; f++)
                     {
                         FeaturesWeightsNativeArray[offset + f] = weight;
                     }
-                    offset += (feature.Project ? 2 : 3);
+                    offset += featureSize;
                 }
             }
             for (int i = 0; i < MMData.PoseFeatures.Count; i++)

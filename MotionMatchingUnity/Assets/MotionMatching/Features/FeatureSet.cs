@@ -42,7 +42,7 @@ namespace MotionMatching
             {
                 TrajectoryOffset[i] = offset;
                 NumberPredictionsTrajectory[i] = mmData.TrajectoryFeatures[i].FramesPrediction.Length;
-                NumberFloatsTrajectory[i] = mmData.TrajectoryFeatures[i].Project ? 2 : 3;
+                NumberFloatsTrajectory[i] = 3 - (mmData.TrajectoryFeatures[i].ZeroX ? 1 : 0) - (mmData.TrajectoryFeatures[i].ZeroY ? 1 : 0) - (mmData.TrajectoryFeatures[i].ZeroZ ? 1 : 0);
                 offset += NumberPredictionsTrajectory[i] * NumberFloatsTrajectory[i];
             }
             PoseOffset = offset;
@@ -64,8 +64,19 @@ namespace MotionMatching
                 feature[i] = Features[featureIndex * FeatureSize + i];
             }
         }
-
-        public float2 GetProjectedTrajectoryFeature(int featureIndex, int trajectoryFeatureIndex, int predictionIndex, bool denormalize = false)
+        
+        public float Get1DTrajectoryFeature(int featureIndex, int trajectoryFeatureIndex, int predictionIndex, bool denormalize = false)
+        {
+            int featureOffset = TrajectoryOffset[trajectoryFeatureIndex] + predictionIndex * NumberFloatsTrajectory[trajectoryFeatureIndex];
+            int startIndex = featureIndex * FeatureSize + featureOffset;
+            float x = Features[startIndex];
+            if (denormalize)
+            {
+                x = x * StandardDeviation[featureOffset] + Mean[featureOffset];
+            }
+            return x;
+        }
+        public float2 Get2DTrajectoryFeature(int featureIndex, int trajectoryFeatureIndex, int predictionIndex, bool denormalize = false)
         {
             int featureOffset = TrajectoryOffset[trajectoryFeatureIndex] + predictionIndex * NumberFloatsTrajectory[trajectoryFeatureIndex];
             int startIndex = featureIndex * FeatureSize + featureOffset;
@@ -78,7 +89,7 @@ namespace MotionMatching
             }
             return new float2(x, y);
         }
-        public float3 GetTrajectoryFeature(int featureIndex, int trajectoryFeatureIndex, int predictionIndex, bool denormalize = false)
+        public float3 Get3DTrajectoryFeature(int featureIndex, int trajectoryFeatureIndex, int predictionIndex, bool denormalize = false)
         {
             int featureOffset = TrajectoryOffset[trajectoryFeatureIndex] + predictionIndex * NumberFloatsTrajectory[trajectoryFeatureIndex];
             int startIndex = featureIndex * FeatureSize + featureOffset;
@@ -357,39 +368,34 @@ namespace MotionMatching
                     int predictionOffset = featureOffset + p * NumberFloatsTrajectory[i];
                     poseSet.GetPose(poseIndex + trajectoryFeature.FramesPrediction[p], out PoseVector futurePose);
                     float3 value = new float3();
-                    float2 projectedValue = new float2();
                     switch (trajectoryFeature.FeatureType)
                     {
                         case MotionMatchingData.TrajectoryFeature.Type.Position:
                             GetTrajectoryPosition(futurePose, poseSet.Skeleton, simulationBone[i], jointsTrajectory[i], characterOrigin, characterForward,
                                                   out value);
-                            if (trajectoryFeature.Project)
-                            {
-                                projectedValue = new float2(value.x, value.z);
-                            }
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Direction:
                             GetTrajectoryDirection(futurePose, poseSet.Skeleton, simulationBone[i], jointsTrajectory[i], characterForward, mmData,
                                                    out value);
-                            if (trajectoryFeature.Project)
-                            {
-                                projectedValue = math.normalize(new float2(value.x, value.z));
-                            }
+                            if (trajectoryFeature.ZeroX) value.x = 0;
+                            if (trajectoryFeature.ZeroY) value.y = 0;
+                            if (trajectoryFeature.ZeroZ) value.z = 0;
+                            value = math.normalize(value);
                             break;
                         default:
                             Debug.Assert(false, "Unsupported TrajectoryFeature.Type: " + trajectoryFeature.FeatureType);
                             break;
                     }
-                    if (trajectoryFeature.Project)
+                    int offsetIndex = 0;
+                    int valueIndex = 0;
+                    int size = 3 - (trajectoryFeature.ZeroX ? 1 : 0) - (trajectoryFeature.ZeroY ? 1 : 0) - (trajectoryFeature.ZeroZ ? 1 : 0);
+                    for (int f = 0; f < size; ++f)
                     {
-                        Features[predictionOffset] = projectedValue.x;
-                        Features[predictionOffset + 1] = projectedValue.y;
-                    }
-                    else
-                    {
-                        Features[predictionOffset] = value.x;
-                        Features[predictionOffset + 1] = value.y;
-                        Features[predictionOffset + 2] = value.z;
+                        if (valueIndex == 0 && trajectoryFeature.ZeroX) valueIndex += 1;
+                        if (valueIndex == 1 && trajectoryFeature.ZeroY) valueIndex += 1;
+                        Features[predictionOffset + offsetIndex] = value[valueIndex];
+                        valueIndex += 1;
+                        offsetIndex += 1;
                     }
                 }
             }

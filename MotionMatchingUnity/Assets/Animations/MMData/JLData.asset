@@ -78,13 +78,17 @@ MonoBehaviour:
     FramesPrediction: 14000000280000003c000000
     SimulationBone: 1
     Bone: 0
-    Project: 1
+    ZeroX: 0
+    ZeroY: 1
+    ZeroZ: 0
   - Name: FutureDirection
     FeatureType: 1
     FramesPrediction: 14000000280000003c000000
     SimulationBone: 1
     Bone: 0
-    Project: 1
+    ZeroX: 0
+    ZeroY: 1
+    ZeroZ: 0
   PoseFeatures:
   - Name: LeftFootPosition
     FeatureType: 0
