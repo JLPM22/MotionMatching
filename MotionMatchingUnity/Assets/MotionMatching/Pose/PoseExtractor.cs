@@ -145,7 +145,6 @@ namespace MotionMatching
             // TODO: Implement Low-Pass filter here...
             //       the previous arrays (sbPos/Dir*) where used for a previous implementation
             //       with python... consider change them
-            throw new System.NotImplementedException();
 
             // Set new Simulation Bone positions and rotations
             for (int i = 0; i < poses.Length; i++)
@@ -165,6 +164,9 @@ namespace MotionMatching
                 poses[i].JointLocalPositions[1] = newHipsPos;
                 poses[i].JointLocalRotations[1] = newHipsRot;
             }
+
+            // Look up to the TODO 
+            throw new System.NotImplementedException();
         }
 
         private PoseVector ExtractPose(BVHAnimation bvhAnimation, int frameIndex, MotionMatchingData mmData, PoseSet poseSet, PoseVector[] poses)

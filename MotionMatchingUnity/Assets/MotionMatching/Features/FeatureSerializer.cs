@@ -62,7 +62,7 @@ namespace MotionMatching
                         for (int t = 0; t < mmData.TrajectoryFeatures.Count; ++t)
                         {
                             var trajectoryFeature = mmData.TrajectoryFeatures[t];
-                            int featureSize = 3 - (trajectoryFeature.ZeroX ? 1 : 0) - (trajectoryFeature.ZeroY ? 1 : 0) - (trajectoryFeature.ZeroZ ? 1 : 0);
+                            int featureSize = trajectoryFeature.GetSize();
                             for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; ++p)
                             {
                                 if (featureSize == 3)

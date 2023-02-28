@@ -305,61 +305,13 @@ namespace MotionMatching
                 TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
-                    int featureSize = 3 - (feature.ZeroX ? 1 : 0) - (feature.ZeroY ? 1 : 0) - (feature.ZeroZ ? 1 : 0);
+                    int featureSize = feature.GetSize();
                     Debug.Assert(featureSize > 0, "Trajectory feature size must be greater than 0");
                     NativeArray<float> featureVector = new NativeArray<float>(featureSize, Allocator.Temp);
-                    CharacterController.GetWorldSpacePrediction(feature, p, featureVector);
-                    switch (feature.FeatureType)
+                    CharacterController.GetTrajectoryFeature(feature, p, SkeletonTransforms[0], featureVector);
+                    for (int j = 0; j < featureSize; j++)
                     {
-                        case TrajectoryFeature.Type.Position:
-                            {
-                                float3 pos = new float3();
-                                int featureIndex = 0;
-                                if (feature.ZeroX) pos.x = 0.0f;
-                                else pos.x = featureVector[featureIndex++];
-                                if (feature.ZeroY) pos.y = 0.0f;
-                                else pos.y = featureVector[featureIndex++];
-                                if (feature.ZeroZ) pos.z = 0.0f;
-                                else pos.z = featureVector[featureIndex++];
-                                pos = GetPositionLocalCharacter(pos);
-                                int offsetIndex = 0;
-                                int posIndex = 0;
-                                for (featureIndex = 0; featureIndex < featureSize; ++featureIndex)
-                                {
-                                    if (posIndex == 0 && feature.ZeroX) posIndex += 1;
-                                    if (posIndex == 1 && feature.ZeroY) posIndex += 1;
-                                    vector[offset + offsetIndex] = pos[posIndex];
-                                    posIndex += 1;
-                                    offsetIndex += 1;
-                                }
-                            }
-                            break;
-                        case TrajectoryFeature.Type.Direction:
-                            {
-                                float3 dir = new float3();
-                                int featureIndex = 0;
-                                if (feature.ZeroX) dir.x = 0.0f;
-                                else dir.x = featureVector[featureIndex++];
-                                if (feature.ZeroY) dir.y = 0.0f;
-                                else dir.y = featureVector[featureIndex++];
-                                if (feature.ZeroZ) dir.z = 0.0f;
-                                else dir.z = featureVector[featureIndex++];
-                                dir = GetDirectionLocalCharacter(dir);
-                                int offsetIndex = 0;
-                                int posIndex = 0;
-                                for (featureIndex = 0; featureIndex < featureSize; ++featureIndex)
-                                {
-                                    if (posIndex == 0 && feature.ZeroX) posIndex += 1;
-                                    if (posIndex == 1 && feature.ZeroY) posIndex += 1;
-                                    vector[offset + offsetIndex] = dir[posIndex];
-                                    posIndex += 1;
-                                    offsetIndex += 1;
-                                }
-                            }
-                            break;
-                        default:
-                            Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
-                            break;
+                        vector[offset + j] = featureVector[j];
                     }
                     offset += featureSize;
                 }
@@ -525,16 +477,6 @@ namespace MotionMatching
             }
         }
 
-        private float3 GetPositionLocalCharacter(float3 worldPosition)
-        {
-            return SkeletonTransforms[0].InverseTransformPoint(worldPosition);
-        }
-
-        private float3 GetDirectionLocalCharacter(float3 worldDir)
-        {
-            return SkeletonTransforms[0].InverseTransformDirection(worldDir);
-        }
-
         /// <summary>
         /// Adds an offset to the current transform space (useful to move the character to a different position)
         /// Simply changing the transform won't work because motion matching applies root motion based on the current motion matching search space
@@ -578,7 +520,7 @@ namespace MotionMatching
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
                 TrajectoryFeature feature = MMData.TrajectoryFeatures[i];
-                int featureSize = 3 - (feature.ZeroX ? 1 : 0) - (feature.ZeroY ? 1 : 0) - (feature.ZeroZ ? 1 : 0);
+                int featureSize = feature.GetSize();
                 float weight = FeatureWeights[i] * Responsiveness;
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {

@@ -225,7 +225,11 @@ namespace MotionMatching
             public enum Type
             {
                 Position,
-                Direction
+                Direction,
+                Custom1D,
+                Custom2D,
+                Custom3D,
+                Custom4D
             }
             public string Name;
             public Type FeatureType;
@@ -233,6 +237,33 @@ namespace MotionMatching
             public bool SimulationBone; // Use the simulation bone (articial root added during pose extraction) instead of a bone
             public HumanBodyBones Bone; // Bone used to compute the trajectory in the feature set
             public bool ZeroX, ZeroY, ZeroZ; // Zero the X, Y and/or Z component of the trajectory feature
+            public string FeatureExtractor; // Custom feature extractor for user-defined types
+
+            public int GetSize()
+            {
+                if (FeatureType == Type.Position || FeatureType == Type.Direction)
+                {
+                    return 3 - (ZeroX ? 1 : 0) - (ZeroY ? 1 : 0) - (ZeroZ ? 1 : 0);
+                }
+                else if (FeatureType == Type.Custom1D)
+                {
+                    return 1;
+                }
+                else if (FeatureType == Type.Custom2D)
+                {
+                    return 2;
+                }
+                else if (FeatureType == Type.Custom3D)
+                {
+                    return 3;
+                }
+                else if (FeatureType == Type.Custom4D)
+                {
+                    return 4;
+                }
+                Debug.Assert(false, "Size not defined for FeatureType: " + FeatureType.ToString());
+                return -1;
+            }
         }
 
         [System.Serializable]
@@ -292,6 +323,8 @@ namespace MotionMatching
         {
             MotionMatchingData data = (MotionMatchingData)target;
 
+            bool generateButtonError = false;
+
             // BVH
             EditorGUILayout.LabelField("BVHs", EditorStyles.boldLabel);
             EditorGUI.indentLevel++;
@@ -327,9 +360,10 @@ namespace MotionMatching
             if (math.abs(math.length(data.HipsForwardLocalVector) - 1.0f) > 1E-6f)
             {
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.HelpBox("Hips Forward Local Vector should be normalized", MessageType.Warning);
+                EditorGUILayout.HelpBox("Hips Forward Local Vector should be normalized", MessageType.Error);
                 if (GUILayout.Button("Fix")) data.HipsForwardLocalVector = math.normalize(data.HipsForwardLocalVector);
                 EditorGUILayout.EndHorizontal();
+                generateButtonError = true;
             }
             // HipsUpLocalVector
             data.HipsUpLocalVector = EditorGUILayout.Vector3Field(new GUIContent("Hips Up Local Vector", "Local vector (axis) pointing in the up direction of the hips"),
@@ -337,9 +371,10 @@ namespace MotionMatching
             if (math.abs(math.length(data.HipsUpLocalVector) - 1.0f) > 1E-6f)
             {
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.HelpBox("Hips Up Local Vector should be normalized", MessageType.Warning);
+                EditorGUILayout.HelpBox("Hips Up Local Vector should be normalized", MessageType.Error);
                 if (GUILayout.Button("Fix")) data.HipsUpLocalVector = math.normalize(data.HipsUpLocalVector);
                 EditorGUILayout.EndHorizontal();
+                generateButtonError = true;
             }
 
             // SmoothSimulationBone
@@ -450,24 +485,83 @@ namespace MotionMatching
                         trajectoryFeature.FramesPrediction = newFrames;
                     }
                     EditorGUILayout.EndHorizontal();
-                    // Bone
-                    trajectoryFeature.SimulationBone = EditorGUILayout.Toggle("Simulation Bone", trajectoryFeature.SimulationBone);
-                    if (!trajectoryFeature.SimulationBone)
+                    if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position ||
+                        trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction)
                     {
-                        trajectoryFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Bone", trajectoryFeature.Bone);
-                        GUI.enabled = !trajectoryFeature.ZeroY || !trajectoryFeature.ZeroZ;
-                        trajectoryFeature.ZeroX = EditorGUILayout.Toggle("Zero X", trajectoryFeature.ZeroX);
-                        GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroZ;
-                        trajectoryFeature.ZeroY = EditorGUILayout.Toggle("Zero Y", trajectoryFeature.ZeroY);
-                        GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroY;
-                        trajectoryFeature.ZeroZ = EditorGUILayout.Toggle("Zero Z", trajectoryFeature.ZeroZ);
-                        GUI.enabled = true;
+                        // Bone
+                        trajectoryFeature.SimulationBone = EditorGUILayout.Toggle("Simulation Bone", trajectoryFeature.SimulationBone);
+                        if (!trajectoryFeature.SimulationBone)
+                        {
+                            trajectoryFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Bone", trajectoryFeature.Bone);
+                            GUI.enabled = !trajectoryFeature.ZeroY || !trajectoryFeature.ZeroZ;
+                            trajectoryFeature.ZeroX = EditorGUILayout.Toggle("Zero X", trajectoryFeature.ZeroX);
+                            GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroZ;
+                            trajectoryFeature.ZeroY = EditorGUILayout.Toggle("Zero Y", trajectoryFeature.ZeroY);
+                            GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroY;
+                            trajectoryFeature.ZeroZ = EditorGUILayout.Toggle("Zero Z", trajectoryFeature.ZeroZ);
+                            GUI.enabled = true;
+                        }
+                        else
+                        {
+                            trajectoryFeature.ZeroX = false;
+                            trajectoryFeature.ZeroY = true; // project simulation bone to the ground
+                            trajectoryFeature.ZeroZ = false;
+                        }
                     }
                     else
                     {
-                        trajectoryFeature.ZeroX = false;
-                        trajectoryFeature.ZeroY = true; // project simulation bone to the ground
-                        trajectoryFeature.ZeroZ = false;
+                        if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom1D)
+                        {
+                            trajectoryFeature.FeatureExtractor = EditorGUILayout.TextField(new GUIContent("Feature Extractor", "Class implementing the 'IFeatureExtractor1D' interface"), trajectoryFeature.FeatureExtractor);
+                            if (trajectoryFeature.FeatureExtractor == null) trajectoryFeature.FeatureExtractor = "";
+                            System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
+                            if (type == null || type.GetInterface(nameof(IFeatureExtractor1D)) == null)
+                            {
+                                EditorGUILayout.HelpBox(trajectoryFeature.FeatureExtractor == "" ? "Please enter the name of a class implementing the 'IFeatureExtractor1D' interface" :
+                                                        trajectoryFeature.FeatureExtractor + " type does not exists or does not implement the 'IFeatureExtractor1D' interface",
+                                                        MessageType.Error);
+                                generateButtonError = true;
+                            }
+                        }
+                        else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom2D)
+                        {
+                            trajectoryFeature.FeatureExtractor = EditorGUILayout.TextField(new GUIContent("Feature Extractor", "Class implementing the 'IFeatureExtractor2D' interface"), trajectoryFeature.FeatureExtractor);
+                            if (trajectoryFeature.FeatureExtractor == null) trajectoryFeature.FeatureExtractor = "";
+                            System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
+                            if (type == null || type.GetInterface(nameof(IFeatureExtractor2D)) == null)
+                            {
+                                EditorGUILayout.HelpBox(trajectoryFeature.FeatureExtractor == "" ? "Please enter the name of a class implementing the 'IFeatureExtractor2D' interface" :
+                                                        trajectoryFeature.FeatureExtractor + " type does not exists or does not implement the 'IFeatureExtractor2D' interface",
+                                                        MessageType.Error);
+                                generateButtonError = true;
+                            }
+                        }
+                        else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom3D)
+                        {
+                            trajectoryFeature.FeatureExtractor = EditorGUILayout.TextField(new GUIContent("Feature Extractor", "Class implementing the 'IFeatureExtractor3D' interface"), trajectoryFeature.FeatureExtractor);
+                            if (trajectoryFeature.FeatureExtractor == null) trajectoryFeature.FeatureExtractor = "";
+                            System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
+                            if (type == null || type.GetInterface(nameof(IFeatureExtractor3D)) == null)
+                            {
+                                EditorGUILayout.HelpBox(trajectoryFeature.FeatureExtractor == "" ? "Please enter the name of a class implementing the 'IFeatureExtractor3D' interface" :
+                                                        trajectoryFeature.FeatureExtractor + " type does not exists or does not implement the 'IFeatureExtractor3D' interface",
+                                                        MessageType.Error);
+                                generateButtonError = true;
+                            }
+                        }
+                        else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom4D)
+                        {
+                            trajectoryFeature.FeatureExtractor = EditorGUILayout.TextField(new GUIContent("Feature Extractor", "Class implementing the 'IFeatureExtractor4D' interface"), trajectoryFeature.FeatureExtractor);
+                            if (trajectoryFeature.FeatureExtractor == null) trajectoryFeature.FeatureExtractor = "";
+                            System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
+                            if (type == null || type.GetInterface(nameof(IFeatureExtractor4D)) == null)
+                            {
+                                EditorGUILayout.HelpBox(trajectoryFeature.FeatureExtractor == "" ? "Please enter the name of a class implementing the 'IFeatureExtractor4D' interface" :
+                                                        trajectoryFeature.FeatureExtractor + " type does not exists or does not implement the 'IFeatureExtractor4D' interface",
+                                                        MessageType.Error);
+                                generateButtonError = true;
+                            }
+                        }
                     }
                     EditorGUILayout.EndVertical();
                 }
@@ -505,10 +599,16 @@ namespace MotionMatching
 
             // Generate Databases
             EditorGUILayout.Separator();
+            if (generateButtonError)
+            {
+                EditorGUILayout.HelpBox("Oops! Looks like there are errors in the feature definition. Please resolve them before generating the databases.", MessageType.Error);
+                GUI.enabled = false;
+            }
             if (GUILayout.Button("Generate Databases", GUILayout.Height(30)))
             {
                 data.GenerateDatabases();
             }
+            GUI.enabled = true;
 
             // Error Check
             if (data.JointsLocalForwardError)

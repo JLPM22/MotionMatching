@@ -126,20 +126,22 @@ namespace MotionMatching
             return rot * transform.rotation;
         }
         
-        public override void GetWorldSpacePrediction(TrajectoryFeature feature, int index, NativeArray<float> output)
+        public override void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
             if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
             switch (feature.FeatureType)
             {
                 case TrajectoryFeature.Type.Position:
-                    float2 value = GetWorldPredictedPos(index);
-                    output[0] = value.x;
-                    output[1] = value.y;
+                    float2 world = GetWorldPredictedPos(index);
+                    float3 local = character.InverseTransformPoint(new float3(world.x, 0.0f, world.y));
+                    output[0] = local.x;
+                    output[1] = local.z;
                     break;
                 case TrajectoryFeature.Type.Direction:
-                    float2 dir = GetWorldPredictedDir(index);
-                    output[0] = dir.x;
-                    output[1] = dir.y;
+                    float2 worldDir = GetWorldPredictedDir(index);
+                    float3 localDir = character.InverseTransformDirection(new Vector3(worldDir.x, 0.0f, worldDir.y));
+                    output[0] = localDir.x;
+                    output[1] = localDir.z;
                     break;
                 default:
                     Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);

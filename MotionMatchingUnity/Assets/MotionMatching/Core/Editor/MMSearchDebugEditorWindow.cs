@@ -90,7 +90,7 @@ namespace MotionMatching
             for (int t = 0; t < mmData.TrajectoryFeatures.Count; t++)
             {
                 var feature = mmData.TrajectoryFeatures[t];
-                int featureSize = 3 - (feature.ZeroX ? 1 : 0) - (feature.ZeroY ? 1 : 0) - (feature.ZeroZ ? 1 : 0);
+                int featureSize = feature.GetSize();
                 EditorGUILayout.LabelField(feature.Name);
                 for (int p = 0; p < feature.FramesPrediction.Length; p++)
                 {

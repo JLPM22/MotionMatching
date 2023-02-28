@@ -81,6 +81,7 @@ MonoBehaviour:
     ZeroX: 0
     ZeroY: 1
     ZeroZ: 0
+    FeatureExtractor: 
   - Name: FutureDirection
     FeatureType: 1
     FramesPrediction: 14000000280000003c000000
@@ -89,6 +90,7 @@ MonoBehaviour:
     ZeroX: 0
     ZeroY: 1
     ZeroZ: 0
+    FeatureExtractor: 
   PoseFeatures:
   - Name: LeftFootPosition
     FeatureType: 0
