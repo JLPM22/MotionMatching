@@ -20,7 +20,7 @@ namespace MotionMatching
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
         public bool LockFPS = true;
-        public int SearchFrames = 10; // Motion Matching every SearchFrames frames
+        public float SearchTime = 10.0f/60.0f; // Motion Matching search every SearchTime seconds
         public bool UseBVHSearch = true; // Use Bounding Volume Hierarchy acceleration structure for the search.
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         public bool FootLock = true; // Should lock the feet to the ground when contact information is true
@@ -39,7 +39,8 @@ namespace MotionMatching
 
         public float3 Velocity { get; private set; }
         public float3 AngularVelocity { get; private set; }
-        public float FrameTime { get; private set; }
+        public float DatabaseFrameTime { get; private set; }
+        public int DatabaseFrameRate { get; private set; }
 
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
@@ -50,7 +51,8 @@ namespace MotionMatching
         private quaternion MMTransformOriginRot; // Rotation of the transform right after motion matching search
         private int LastMMSearchFrame; // Frame before the last Motion Matching Search
         private int CurrentFrame; // Current frame index in the pose/feature set
-        private int SearchFrameCount;
+        private float CurrentFrameTime; // Current frame index as float to keep track of variable frame rate
+        private float SearchTimeLeft;
         private NativeArray<float> QueryFeature;
         private NativeArray<int> SearchResult;
         private NativeArray<float> FeaturesWeightsNativeArray;
@@ -95,15 +97,17 @@ namespace MotionMatching
             Inertialization = new Inertialization(PoseSet.Skeleton);
 
             // FPS
-            FrameTime = PoseSet.FrameTime;
+            DatabaseFrameTime = PoseSet.FrameTime;
+            DatabaseFrameRate = Mathf.RoundToInt(1.0f / DatabaseFrameTime);
             if (LockFPS)
             {
-                Application.targetFrameRate = Mathf.RoundToInt(1.0f / FrameTime);
+                Application.targetFrameRate = DatabaseFrameRate;
                 Debug.Log("[Motion Matching] Updated Target FPS: " + Application.targetFrameRate);
             }
             else
             {
                 Application.targetFrameRate = -1;
+                Debug.LogWarning("[Motion Matching] LockFPS is not set. Motion Matching will malfunction if the application frame rate is higher than the animation database.");
             }
 
             // Other initialization
@@ -174,7 +178,7 @@ namespace MotionMatching
 
         private void OnEnable()
         {
-            SearchFrameCount = 0;
+            SearchTimeLeft = 0;
             CharacterController.OnUpdated += OnCharacterControllerUpdated;
             CharacterController.OnInputChangedQuickly += OnInputChangedQuickly;
         }
@@ -188,7 +192,7 @@ namespace MotionMatching
         private void OnCharacterControllerUpdated(float deltaTime)
         {
             PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Total");
-            if (SearchFrameCount == 0)
+            if (SearchTimeLeft <= 0)
             {
                 // Motion Matching
                 PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Search");
@@ -203,6 +207,7 @@ namespace MotionMatching
                         Inertialization.PoseTransition(PoseSet, CurrentFrame, bestFrame);
                     }
                     LastMMSearchFrame = CurrentFrame;
+                    CurrentFrameTime = bestFrame + math.frac(CurrentFrameTime); // the fractional part is the error accumulated, add it to the current to avoid drifting
                     CurrentFrame = bestFrame;
                     // Update Current Animation Space Origin
                     PoseSet.GetPose(CurrentFrame, out PoseVector mmPose);
@@ -211,15 +216,19 @@ namespace MotionMatching
                     MMTransformOriginPose = SkeletonTransforms[0].position;
                     MMTransformOriginRot = SkeletonTransforms[0].rotation;
                 }
-                SearchFrameCount = SearchFrames;
+                SearchTimeLeft = SearchTime;
             }
             else
             {
                 // Advance
-                SearchFrameCount -= 1;
+                SearchTimeLeft -= deltaTime;
             }
             // Always advance one (bestFrame from motion matching is the best match to the current frame, but we want to move to the next frame)
-            CurrentFrame += 1;
+            // Ideally the applications runs at 1.0f/FrameTime fps (to match the database) however, as this may not happen, we may need to skip some frames
+            // from the database, e.g., if 1.0f/FrameTime = 60 and our game runes at 30, we need to advance 2 frames at each update
+            // However, as we are using Application.targetFrameRate=1.0f/FrameTime, we do not consider the case where the application runs faster than the database
+            CurrentFrameTime += DatabaseFrameRate * deltaTime; // DatabaseFrameRate / (1.0f / deltaTime)
+            CurrentFrame = (int)math.floor(CurrentFrameTime);
 
             UpdateTransformAndSkeleton(CurrentFrame);
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
@@ -227,7 +236,7 @@ namespace MotionMatching
 
         private void OnInputChangedQuickly()
         {
-            SearchFrameCount = 0; // Force search
+            SearchTimeLeft = 0; // Force search
         }
 
         private int SearchMotionMatching()

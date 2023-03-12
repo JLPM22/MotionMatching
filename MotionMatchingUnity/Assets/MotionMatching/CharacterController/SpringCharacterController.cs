@@ -121,7 +121,7 @@ namespace MotionMatching
         {
             // Rotations
             quaternion currentRotation = transform.rotation;
-            PredictRotations(currentRotation, AveragedDeltaTime);
+            PredictRotations(currentRotation, DatabaseDeltaTime);
             // Update Current Rotation
             quaternion newRot = ComputeNewRot(currentRotation);
 
@@ -129,7 +129,7 @@ namespace MotionMatching
             float2 desiredSpeed = InputMovement * MaxSpeed;
             float2 currentPos = new float2(transform.position.x, transform.position.z);
             // Predict
-            PredictPositions(currentPos, desiredSpeed, AveragedDeltaTime);
+            PredictPositions(currentPos, desiredSpeed, DatabaseDeltaTime);
             // Update Current Position
             float2 newPos = ComputeNewPos(currentPos, desiredSpeed);
 

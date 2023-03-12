@@ -384,7 +384,7 @@ MonoBehaviour:
   CharacterController: {fileID: 922198739}
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
   LockFPS: 1
-  SearchFrames: 10
+  SearchTime: 0.16666667
   UseBVHSearch: 1
   Inertialize: 1
   FootLock: 0

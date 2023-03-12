@@ -19,24 +19,11 @@ namespace MotionMatching
 
         public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
 
-        public bool LockFPS { get { return SimulationBone.LockFPS; } }
-        // Accumulated Delta Time
-        public float AveragedDeltaTime { get; private set; }
-        private Queue<float> LastDeltaTime = new Queue<float>();
-        private float SumDeltaTime;
-        // ---
+        public float DatabaseDeltaTime { get; private set; }
 
         private void Update()
         {
-            if (LockFPS)
-            {
-                AveragedDeltaTime = SimulationBone.FrameTime;
-            }
-            else
-            {
-                // Average DeltaTime (for prediction... it is better to have a stable frame rate)
-                AveragedDeltaTime = GetAveragedDeltaTime();
-            }
+            DatabaseDeltaTime = SimulationBone.DatabaseFrameTime;
             // Update the character
             OnUpdate();
             // Update other components depending on the character controller
@@ -73,14 +60,5 @@ namespace MotionMatching
         /// If index==1, it should return the position of the character at frame 40.
         /// </summary>
         public abstract void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output);
-
-        private float GetAveragedDeltaTime()
-        {
-            const int nAverageDeltaTime = 20;
-            SumDeltaTime += Time.deltaTime;
-            LastDeltaTime.Enqueue(Time.deltaTime);
-            if (LastDeltaTime.Count == nAverageDeltaTime + 1) SumDeltaTime -= LastDeltaTime.Dequeue();
-            return SumDeltaTime / nAverageDeltaTime;
-        }
     }
 }
