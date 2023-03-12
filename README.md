@@ -11,8 +11,7 @@
 3. [How to Use](#how-to-use)
 4. [Roadmap](#roadmap)
 5. [Citation](#citation)
-6. [Acknowledgments](#Acknowledgments)
-7. [License](#license)
+6. [License](#license)
 
 ## Structure
 
@@ -127,10 +126,6 @@ If you find this project useful, please include attribution to this repository o
   doi     = {10.13140/RG.2.2.31741.23528}
 }
 ```
-
-## Acknowledgments
-
-I want to thank [Daniel Holden](https://theorangeduck.com/) for his comprehensive articles about data-driven animations, and his paper [Learned motion matching](https://dl.acm.org/doi/abs/10.1145/3386569.3392440) which encouraged me to start researching about character animation and creating this project.
 
 ## License
 

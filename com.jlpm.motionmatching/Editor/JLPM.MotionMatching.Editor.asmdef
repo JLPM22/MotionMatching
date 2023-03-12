@@ -1,0 +1,8 @@
+{
+    "name": "JLPM.MotionMatching.Editor",
+    "references": [
+		"JLPM.MotionMatching",
+		"Unity.Mathematics"
+    ],
+    "allowUnsafeCode": true
+}
