@@ -14,6 +14,10 @@
     "name": "JLPM",
     "url": "https://joseluisponton.com/"
   },
+  "dependencies": {
+	"com.unity.burst": "1.6.4",
+	"com.unity.inputsystem": "1.3.0"
+  },
   "samples": [
         {
             "displayName": "Examples",
