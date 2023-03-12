@@ -34,6 +34,8 @@ Please, refer to my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for
 4. Type (or copy and paste) ``https://github.com/JLPM22/MotionMatching.git?path=/com.jlpm.motionmatching`` into the git URL field, then select **Add**.
 
 5. *[Optional]* From the Package Manager, select the package **Motion Matching**, and in the right window, import the examples: **Samples > Examples** select **Import**.
+   
+   > All samples are created using the Universal Render Pipeline (URP). You may need to convert the materials if you are using other render pipelines.
 
 6. *[Optional]* From the Project Window, navigate to the `Assets/Scenes` folder and choose either `JLSceneTest` or ``JLScenePathTest``.
 
