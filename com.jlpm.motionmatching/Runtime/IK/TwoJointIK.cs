@@ -64,7 +64,7 @@ namespace MotionMatching
             float3 rotationAxisACAT = math.normalize(math.cross(axisAC, axisAT));
             quaternion rotA2 = quaternion.AxisAngle(math.mul(math.inverse(jointA.rotation), rotationAxisACAT), angleACAT);
             // Apply the rotations
-            jointA.rotation = math.mul(jointA.rotation, math.mul(rotA, rotA2));
+            jointA.rotation = math.mul(jointA.rotation, math.mul(rotA2, rotA));
             jointB.rotation = math.mul(jointB.rotation, rotB);
         }
 
