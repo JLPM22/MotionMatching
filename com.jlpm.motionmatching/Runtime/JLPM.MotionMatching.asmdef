@@ -1,0 +1,9 @@
+{
+    "name": "JLPM.MotionMatching",
+    "references": [
+        "Unity.Burst",
+		"Unity.Mathematics",
+		"Unity.InputSystem"
+    ],
+    "allowUnsafeCode": true
+}

@@ -11,30 +11,37 @@
 3. [How to Use](#how-to-use)
 4. [Roadmap](#roadmap)
 5. [Citation](#citation)
-6. [Acknowledgments](#Acknowledgments)
-7. [License](#license)
+6. [License](#license)
 
 ## Structure
 
 This section defines the project's structure and where to find data, scripts, etc. For practical instructions on using the project, go to [How to Use](#how-to-use).
 
-The Unity project can be found in the ``MotionMatchingUnity`` directory, and the ``MotionMatchingUnity/Assets`` folder contains all scripts and data. From this point on, all directories and files will be specified relative to this ``Assets`` folder.
+The Unity package can be found in the ``com.jlpm.motionmatching`` directory, and the ``com.jlpm.motionmatching/Runtime`` folder contains all scripts and data.
 
-The ``Animations`` folder contains the motion capture (MoCap) files (*.bvh* files with the extension changed to *.txt* ) and the *MMData* files, which define an animation database to be used by the Motion Matching System.
-
-Most of the code is located in the ``MotionMatching`` folder grouped into the *MotionMatching* namespace. Please, refer to my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for a comprehensive explanation of some Motion Matching concepts. In this directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture (dashed nodes are not implemented; and for the Virtual Reality controllers of Motion Matching visit [this paper](https://upc-virvig.github.io/MMVR/)):
+Please, refer to my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for a comprehensive explanation of some Motion Matching concepts. In the ``Runtime`` directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture (dashed nodes are not implemented; and for the Virtual Reality controllers of Motion Matching visit [this paper](https://upc-virvig.github.io/MMVR/)):
 
 ![](.github/media/architecture_diagram.PNG)
 
-Finally, ``StreamingAssets/MMDatabases`` contains the processed pose and feature database and some skeletal information. This folder is automatically created when computing a new *MMData* file.
-
 ## Quick Start
 
-1. Clone this repository.
+1. Install **Unity 2021.2+** (other versions may work but are not tested).
 
-2. Install **Unity 2021.2.13f1** (other versions may work but are not tested).
+2. From the Unity Editor, open **Window > Package Manager**.
 
-3. Open the project and navigate to the `Assets/Scenes` folder and choose either `JLSceneTest` or ``JLScenePathTest``.
+3. From the Package Manager, select **Add (+) > Add package by git URL...**
+
+4. Type (or copy and paste) ``https://github.com/JLPM22/MotionMatching.git?path=/com.jlpm.motionmatching`` into the git URL field, then select **Add**.
+
+5. *[Optional]* From the Package Manager, select the package **Motion Matching**, and in the right window, import the examples: **Samples > Examples** select **Import**.
+   
+   > All samples are created using the Universal Render Pipeline (URP). You may need to convert the materials if you are using other render pipelines.
+
+6. *[Optional]* From the Project Window, navigate to the `Assets/Scenes` folder and choose either `JLSceneTest` or ``JLScenePathTest``.
+
+From the Samples folder, the ``Animations`` folder contains the motion capture (MoCap) files (*.bvh* files with the extension changed to *.txt* ) and the *MMData* files, which define an animation database to be used by the Motion Matching System.
+
+Finally, ``StreamingAssets/MMDatabases`` contains the processed pose and feature database and some skeletal information. This folder is automatically created when generating the databases from a *MMData* file.
 
 Demo scenes consist of two major GameObjects: a Character Controller and the MotionMatchingController:
 
@@ -108,7 +115,7 @@ Here, I write some of the features I want to add/improve in the future. This is 
 
 - Integrations tools/methods with Unity's animation system. (Allow seamless integration between systems. For example, use Unity's animation system for the upper body and motion matching for the lower body).
 
-- Restructure the project into a Unity package for easy distribution and integration.
+- ~~Restructure the project into a Unity package for easy distribution and integration.~~
 
 - Visual debugging tools.
 
@@ -127,10 +134,6 @@ If you find this project useful, please include attribution to this repository o
   doi     = {10.13140/RG.2.2.31741.23528}
 }
 ```
-
-## Acknowledgments
-
-I want to thank [Daniel Holden](https://theorangeduck.com/) for his comprehensive articles about data-driven animations, and his paper [Learned motion matching](https://dl.acm.org/doi/abs/10.1145/3386569.3392440) which encouraged me to start researching about character animation and creating this project.
 
 ## License
 
