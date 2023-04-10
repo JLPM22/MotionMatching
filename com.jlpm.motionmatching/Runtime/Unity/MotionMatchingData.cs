@@ -322,6 +322,15 @@ namespace MotionMatching
             AssetDatabase.Refresh();
         }
 #endif
+
+        private void OnDestroy()
+        {
+            if (FeatureSet != null)
+            {
+                FeatureSet.Dispose();
+                FeatureSet = null;
+            }
+        }
     }
 
 #if UNITY_EDITOR

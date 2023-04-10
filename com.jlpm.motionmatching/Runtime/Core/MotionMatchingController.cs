@@ -575,7 +575,6 @@ namespace MotionMatching
 
         private void OnDestroy()
         {
-            if (FeatureSet != null) FeatureSet.Dispose();
             if (QueryFeature != null && QueryFeature.IsCreated) QueryFeature.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
