@@ -10,6 +10,9 @@ using UnityEngine.SceneManagement;
 using UnityEditor.PackageManager.UI;
 using System.Runtime.CompilerServices;
 using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Net;
 
 namespace MotionMatching
 {
@@ -33,6 +36,15 @@ namespace MotionMatching
         private VisualElement Timeline;
         private VisualElement CurrentFrameIndicator;
 
+        // Ranges
+        private int SelectedTag;
+        private int SelectedStartRange;
+        private int SelectedEndRange;
+        private List<VisualElement> RangesContainer;
+        private List<List<VisualElement>> TagRangesLines;
+        private List<List<VisualElement>> TagRangesStart;
+        private List<List<VisualElement>> TagRangesEnd;
+
         private List<Tag> Tags;
 
         private int NumberFrames { get { return Animation.Frames.Length; } }
@@ -50,6 +62,11 @@ namespace MotionMatching
             
             Window.ReturnButton = new SceneGUI(currentScene);
             SceneView.duringSceneGui += Window.UpdateGUI;
+
+            // Init auxiliary variables
+            Window.SelectedTag = -1;
+            Window.SelectedStartRange = -1;
+            Window.SelectedEndRange = -1;
         }
 
         public void CreateGUI()
@@ -57,6 +74,7 @@ namespace MotionMatching
             VisualElement root = rootVisualElement;
             root.RegisterCallback<PointerMoveEvent>(OnPointerMoveRoot, TrickleDown.TrickleDown);
             root.RegisterCallback<PointerUpEvent>(OnPointerUpRoot, TrickleDown.TrickleDown);
+            root.parent.RegisterCallback<MouseLeaveEvent>(OnMouseLeaveRoot, TrickleDown.TrickleDown);
             CreateBVHAssetField(root);
         }
 
@@ -78,7 +96,7 @@ namespace MotionMatching
                     ImportTags();
                     CreateTimeline(rootVisualElement);
                     UpdateCurrentFrame(0);
-                    UpdateAnimation(forward: false);
+                    UpdatePose(forward: false);
                 }
             });
             root.Add(bvhAssetField);
@@ -98,6 +116,7 @@ namespace MotionMatching
                 {
                     BVHScale = x.newValue;
                     ImportBVH();
+                    UpdatePose(forward: false);
                 }
             });
             root.Add(bvhScaleField);
@@ -240,7 +259,7 @@ namespace MotionMatching
                 }
             };
             frameRuleLabels.Add(CurrentFrameIndicator);
-            UpdateCurrentFrameIndicator();
+            frameRuleLabels.RegisterCallback<GeometryChangedEvent>((_) => UpdateCurrentFrameIndicator());
             // Tags
             CreateTagsTimeline(Timeline);
         }
@@ -253,18 +272,28 @@ namespace MotionMatching
                 style =
                 {
                     flexDirection = FlexDirection.Column,
+                    alignSelf = Align.Stretch,
                     alignItems = Align.FlexStart,
                     justifyContent = Justify.FlexStart,
-                    alignSelf = Align.Stretch,
                     backgroundColor = new Color(0.6f, 0.6f, 0.6f, 1.0f),
                 }
             };
             root.Add(tagsContainer);
             // Tags
-            for (int i = 0; i < Tags.Count; ++i)
+            TagRangesLines ??= new List<List<VisualElement>>();
+            TagRangesStart ??= new List<List<VisualElement>>();
+            TagRangesEnd ??= new List<List<VisualElement>>();
+            RangesContainer ??= new List<VisualElement>();
+            TagRangesLines.Clear();
+            TagRangesStart.Clear();
+            TagRangesEnd.Clear();
+            RangesContainer.Clear();
+            for (int tagIndex = 0; tagIndex < Tags.Count; ++tagIndex)
             {
-                int tagIndex = i;
-                Tag tag = Tags[i];
+                Tag tag = Tags[tagIndex];
+                TagRangesLines.Add(new List<VisualElement>());
+                TagRangesStart.Add(new List<VisualElement>());
+                TagRangesEnd.Add(new List<VisualElement>());
                 VisualElement tagContainer = new VisualElement
                 {
                     style =
@@ -288,32 +317,32 @@ namespace MotionMatching
                         width = PlayButtonWidth,
                     }
                 };
+                int tagIndexCopy = tagIndex;
                 textField.RegisterValueChangedCallback(x =>
                 {
+                    Tag tag = Tags[tagIndexCopy];
                     tag.Name = x.newValue;
-                    Tags[tagIndex] = tag;
+                    Tags[tagIndexCopy] = tag;
                 });
                 tagContainer.Add(textField);
-                // Tag range
-                MinMaxSlider range = new MinMaxSlider
+                // Tag ranges container
+                VisualElement rangesContainer = new VisualElement
                 {
-                    value = new Vector2(tag.Start, tag.End),
-                    lowLimit = 0,
-                    highLimit = NumberFrames - 1,
                     style =
                     {
+                        flexDirection = FlexDirection.Row,
                         flexGrow = 1,
-                        flexShrink = 1,
-                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                        alignSelf = Align.Stretch,
+                        alignItems = Align.Center,
                     }
                 };
-                range.RegisterValueChangedCallback(x =>
-                {
-                    tag.Start = (int)x.newValue.x;
-                    tag.End = (int)x.newValue.y;
-                    Tags[tagIndex] = tag;
-                });
-                tagContainer.Add(range);
+                tagContainer.Add(rangesContainer);
+                RangesContainer.Add(rangesContainer);
+                rangesContainer.RegisterCallback<PointerDownEvent>((e) => OnPointerDownRangesContainer(e, tagIndexCopy));
+                // Ranges
+                CreateRangesVisual(tagIndex);
+                // Update Ranges Container
+                rangesContainer.RegisterCallback<GeometryChangedEvent>((_) => UpdateRangesContainer(tagIndexCopy));
             }
             // New Tag Button
             Button newTagButton = new Button
@@ -336,6 +365,151 @@ namespace MotionMatching
             root.Add(newTagButton);
         }
 
+        private void CreateRangesVisual(int tagIndex)
+        {
+            VisualElement rangesContainer = RangesContainer[tagIndex];
+            rangesContainer.Clear();
+
+            TagRangesLines[tagIndex].Clear();
+            TagRangesStart[tagIndex].Clear();
+            TagRangesEnd[tagIndex].Clear();
+
+            // Tag auxiliary line
+            VisualElement rangeAuxLine = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    flexGrow = 1,
+                    flexBasis = new StyleLength(StyleKeyword.Auto),
+                    backgroundColor = new Color(0.5f, 0.5f, 0.5f, 1.0f),
+                    height = 2,
+                }
+            };
+            rangesContainer.Add(rangeAuxLine);
+
+            Tag tag = Tags[tagIndex];
+            int tagSize = tag.Start == null ? 0 : tag.Start.Length;
+            for (int rangeIndex = 0; rangeIndex < tagSize; ++rangeIndex)
+            {
+                // Range line
+                VisualElement rangeLine = new VisualElement
+                {
+                    style =
+                    {
+                        alignItems = Align.FlexStart,
+                        justifyContent = Justify.FlexStart,
+                        flexGrow = 1,
+                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                        backgroundColor = new Color(0.68f, 0.42f, 0.25f, 1.0f),
+                        height = 4,
+                        position = Position.Absolute,
+                    }
+                };
+                rangesContainer.Add(rangeLine);
+                TagRangesLines[tagIndex].Add(rangeLine);
+                // Range start button
+                VisualElement rangeStart = new VisualElement
+                {
+                    style =
+                    {
+                        alignItems = Align.FlexStart,
+                        justifyContent = Justify.FlexStart,
+                        flexGrow = 1,
+                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                        backgroundColor = new Color(0.68f, 0.42f, 0.25f, 1.0f),
+                        width = 6,
+                        height = 12,
+                        position = Position.Absolute,
+                    }
+                };
+                rangesContainer.Add(rangeStart);
+                TagRangesStart[tagIndex].Add(rangeStart);
+                int tagIndexCopy = tagIndex;
+                int rangeIndexCopy = rangeIndex;
+                rangeStart.RegisterCallback<PointerDownEvent>((e) => OnPointerDownStartRange(e, tagIndexCopy, rangeIndexCopy));
+                // Range end button
+                VisualElement rangeEnd = new VisualElement
+                {
+                    style =
+                    {
+                        alignItems = Align.FlexStart,
+                        justifyContent = Justify.FlexStart,
+                        flexGrow = 1,
+                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                        backgroundColor = new Color(0.68f, 0.42f, 0.25f, 1.0f),
+                        width = 6,
+                        height = 12,
+                        position = Position.Absolute,
+                    }
+                };
+                rangesContainer.Add(rangeEnd);
+                TagRangesEnd[tagIndex].Add(rangeEnd);
+                rangeEnd.RegisterCallback<PointerDownEvent>((e) => OnPointerDownEndRange(e, tagIndexCopy, rangeIndexCopy));
+            }
+        }
+
+        private void UpdateRangesContainer(int tagIndex)
+        {
+            for (int rangeIndex = 0; rangeIndex < TagRangesLines[tagIndex].Count; ++rangeIndex)
+            {
+                Tag tag = Tags[tagIndex];
+                int startFrame = tag.Start[rangeIndex];
+                int endFrame = tag.End[rangeIndex];
+                VisualElement rangeLine = TagRangesLines[tagIndex][rangeIndex];
+                float rangesContainerWidth = rangeLine.parent.resolvedStyle.width;
+                float left = rangesContainerWidth * ((float)startFrame / NumberFrames);
+                float leftEnd = rangesContainerWidth * ((float)endFrame / NumberFrames);
+                float rightEnd = rangesContainerWidth - leftEnd;
+                rangeLine.style.left = left;
+                rangeLine.style.right = rightEnd;
+                VisualElement rangeStart = TagRangesStart[tagIndex][rangeIndex];
+                rangeStart.style.left = left;
+                VisualElement rangeEnd = TagRangesEnd[tagIndex][rangeIndex];
+                rangeEnd.style.left = leftEnd;
+            }
+        }
+
+        private void OnPointerDownRangesContainer(PointerDownEvent e, int tagIndex)
+        {
+            if (e.clickCount >= 2)
+            {
+                int frame = GetFrameFromPointer(e.position, RangesContainer[tagIndex]);
+
+                // check if already inside an existent range
+                Tag tag = Tags[tagIndex];
+                bool existent = false;
+                if (tag.Start != null)
+                {
+                    for (int rangeIndex = 0; rangeIndex < tag.Start.Length && !existent; ++rangeIndex)
+                    {
+                        existent = frame >= tag.Start[rangeIndex] - 1 && // ensure at least 2 consecutive frames are available
+                                   frame <= tag.End[rangeIndex];
+                    }
+                }
+                
+                if (!existent) CreateRange(tagIndex, frame);
+            }
+        }
+
+        private void OnPointerDownStartRange(PointerDownEvent e, int tagIndex, int rangeStartIndex)
+        {
+            if (e.button == 0) // left mouse button pressed
+            {
+                SelectedTag = tagIndex;
+                SelectedStartRange = rangeStartIndex;
+            }
+        }
+
+        private void OnPointerDownEndRange(PointerDownEvent e, int tagIndex, int rangeEndIndex)
+        {
+            if (e.button == 0) // left mouse button pressed
+            {
+                SelectedTag = tagIndex;
+                SelectedEndRange = rangeEndIndex;
+            }
+        }
+
         private bool PointerDownOnFrameRuler = false;
         private void OnPointerDownFrameRuler(PointerDownEvent e)
         {
@@ -347,9 +521,45 @@ namespace MotionMatching
         }
         private void OnPointerUpRoot(PointerUpEvent e)
         {
-            if (e.button == 0 && PointerDownOnFrameRuler) // left mouse button released
+            if (e.button == 0) // left mouse button released
+            {
+                if (PointerDownOnFrameRuler)
+                {
+                    PointerDownOnFrameRuler = false;
+                }
+                if (SelectedTag != -1)
+                {
+                    SelectedTag = -1;
+                }
+                if (SelectedStartRange != -1)
+                {
+                    SelectedStartRange = -1;
+                }
+                if (SelectedEndRange != -1)
+                {
+                    SelectedEndRange = -1;
+                }
+            }
+        }
+        private void OnMouseLeaveRoot(MouseLeaveEvent e)
+        {
+            if (e.target != rootVisualElement.parent) return;
+
+            if (PointerDownOnFrameRuler)
             {
                 PointerDownOnFrameRuler = false;
+            }
+            if (SelectedTag != -1)
+            {
+                SelectedTag = -1;
+            }
+            if (SelectedStartRange != -1)
+            {
+                SelectedStartRange = -1;
+            }
+            if (SelectedEndRange != -1)
+            {
+                SelectedEndRange = -1;
             }
         }
         private void OnPointerMoveRoot(PointerMoveEvent e)
@@ -358,20 +568,127 @@ namespace MotionMatching
             {
                 UpdateFrameFromPointer(e.position);
             }
+            if (SelectedTag != -1 && SelectedStartRange != -1)
+            {
+                UpdateStartTagFromPointer(e.position);
+            }
+            if (SelectedTag != -1 && SelectedEndRange != -1)
+            {
+                UpdateEndTagFromPointer(e.position);
+            }
         }
         private void UpdateFrameFromPointer(Vector2 pointer)
         {
-            float containerWidth = CurrentFrameIndicator.parent.resolvedStyle.width;
-            float x = CurrentFrameIndicator.parent.WorldToLocal(pointer).x;
-            int frame = Mathf.CeilToInt((x / containerWidth) * NumberFrames);
+            int frame = GetFrameFromPointer(pointer, CurrentFrameIndicator.parent);
             UpdateCurrentFrame(frame);
-            UpdateAnimation(forward: false);
+            UpdatePose(forward: false);
+        }
+
+        private void CreateRange(int tagIndex, int frame)
+        {
+            if (frame >= NumberFrames - 1)
+            {
+                frame = NumberFrames - 2;
+            }
+
+            Tag tag = Tags[tagIndex];
+            if (tag.Start == null)
+            {
+                tag.Start = new int[1] { frame };
+                tag.End = new int[1] { frame + 1 };
+            }
+            else
+            {
+                Array.Resize<int>(ref tag.Start, tag.Start.Length + 1);
+                Array.Resize<int>(ref tag.End, tag.End.Length + 1);
+                int rangeIndex = tag.Start.Length - 2;
+                for (; rangeIndex >= 0; --rangeIndex)
+                {
+                    if (tag.Start[rangeIndex] > frame)
+                    {
+                        tag.Start[rangeIndex + 1] = tag.Start[rangeIndex];
+                        tag.End[rangeIndex + 1] = tag.End[rangeIndex];
+                    }
+                    else
+                    {
+                        tag.Start[rangeIndex + 1] = frame;
+                        tag.End[rangeIndex + 1] = frame + 1;
+                        break;
+                    }
+                }
+                if (rangeIndex < 0)
+                {
+                    tag.Start[0] = frame;
+                    tag.End[0] = frame + 1;
+                }
+            }
+            Tags[tagIndex] = tag;
+
+            CreateRangesVisual(tagIndex);
+            UpdateRangesContainer(tagIndex);
+        }
+
+        private void UpdateStartTagFromPointer(Vector2 pointer)
+        {
+            Tag tag = Tags[SelectedTag];
+
+            int max = tag.End[SelectedStartRange] - 1;
+            int min = 0;
+            for (int rangeIndex = 0; rangeIndex < tag.End.Length; ++rangeIndex)
+            {
+                if (rangeIndex == SelectedStartRange) continue;
+
+                if (tag.End[rangeIndex] < tag.Start[SelectedStartRange])
+                {
+                    min = Math.Max(min, tag.End[rangeIndex] + 1);
+                }
+            }
+
+            VisualElement startRange = TagRangesStart[SelectedTag][SelectedStartRange];
+            int frame = GetFrameFromPointer(pointer, startRange.parent);
+            tag.Start[SelectedStartRange] = Mathf.Min(Mathf.Max(frame, min), max);
+
+            Tags[SelectedTag] = tag;
+
+            UpdateRangesContainer(SelectedTag);
+        }
+
+        private void UpdateEndTagFromPointer(Vector2 pointer)
+        {
+            Tag tag = Tags[SelectedTag];
+
+            int max = NumberFrames - 1;
+            int min = tag.Start[SelectedEndRange] + 1;
+            for (int rangeIndex = 0; rangeIndex < tag.Start.Length; ++rangeIndex)
+            {
+                if (rangeIndex == SelectedEndRange) continue;
+                
+                if (tag.Start[rangeIndex] > tag.End[SelectedEndRange])
+                {
+                    max = Math.Min(max, tag.Start[rangeIndex] - 1);
+                }
+            }
+
+            VisualElement endRange = TagRangesEnd[SelectedTag][SelectedEndRange];
+            int frame = GetFrameFromPointer(pointer, endRange.parent);
+            tag.End[SelectedEndRange] = Mathf.Min(Mathf.Max(frame, min), max);
+
+            Tags[SelectedTag] = tag;
+
+            UpdateRangesContainer(SelectedTag);
         }
 
         private void UpdateCurrentFrameIndicator()
         {
             float containerWidth = CurrentFrameIndicator.parent.resolvedStyle.width;
-            CurrentFrameIndicator.style.left = CurrentFrame * (containerWidth / NumberFrames);
+            CurrentFrameIndicator.style.left = containerWidth * ((float)CurrentFrame / NumberFrames);
+        }
+
+        private int GetFrameFromPointer(Vector2 pointer, VisualElement container)
+        {
+            float x = container.WorldToLocal(pointer).x;
+            int frame = Mathf.CeilToInt((x / container.resolvedStyle.width) * NumberFrames);
+            return frame;
         }
 
         private void CreateBVHFields()
@@ -464,8 +781,8 @@ namespace MotionMatching
             }
         }
 
-        private void UpdateAnimationForward() => UpdateAnimation();
-        private void UpdateAnimation(bool forward=true)
+        private void UpdateAnimationForward() => UpdatePose();
+        private void UpdatePose(bool forward=true)
         {
             if (Animation != null && LastUpdateTime + (1.0 / TargetFramerate) < EditorApplication.timeSinceStartup)
             {
