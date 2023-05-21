@@ -149,6 +149,7 @@ namespace MotionMatching
                 {
                     LastMMSearchFrame = i;
                     CurrentFrame = i;
+                    UpdateAnimationSpaceOrigin();
                     break;
                 }
             }
@@ -209,12 +210,7 @@ namespace MotionMatching
                     LastMMSearchFrame = CurrentFrame;
                     CurrentFrameTime = bestFrame + math.frac(CurrentFrameTime); // the fractional part is the error accumulated, add it to the current to avoid drifting
                     CurrentFrame = bestFrame;
-                    // Update Current Animation Space Origin
-                    PoseSet.GetPose(CurrentFrame, out PoseVector mmPose);
-                    AnimationSpaceOriginPos = mmPose.JointLocalPositions[0];
-                    InverseAnimationSpaceOriginRot = math.inverse(mmPose.JointLocalRotations[0]);
-                    MMTransformOriginPose = SkeletonTransforms[0].position;
-                    MMTransformOriginRot = SkeletonTransforms[0].rotation;
+                    UpdateAnimationSpaceOrigin();
                 }
                 SearchTimeLeft = SearchTime;
             }
@@ -232,6 +228,15 @@ namespace MotionMatching
 
             UpdateTransformAndSkeleton(CurrentFrame);
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
+        }
+
+        private void UpdateAnimationSpaceOrigin()
+        {
+            PoseSet.GetPose(CurrentFrame, out PoseVector mmPose);
+            AnimationSpaceOriginPos = mmPose.JointLocalPositions[0];
+            InverseAnimationSpaceOriginRot = math.inverse(mmPose.JointLocalRotations[0]);
+            MMTransformOriginPose = SkeletonTransforms[0].position;
+            MMTransformOriginRot = SkeletonTransforms[0].rotation;
         }
 
         private void OnInputChangedQuickly()
@@ -570,7 +575,6 @@ namespace MotionMatching
 
         private void OnDestroy()
         {
-            if (FeatureSet != null) FeatureSet.Dispose();
             if (QueryFeature != null && QueryFeature.IsCreated) QueryFeature.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
