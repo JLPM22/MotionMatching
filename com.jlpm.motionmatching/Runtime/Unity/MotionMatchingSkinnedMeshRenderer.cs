@@ -25,8 +25,6 @@ namespace MotionMatching
         // Mapping Hips Orientation
         private Quaternion HipsCorrection;
         
-        public bool ShouldRetarget { get { return MotionMatching.MMData.BVHTPose != null; } }
-
         private void Awake()
         {
             Animator = GetComponent<Animator>();
@@ -44,8 +42,7 @@ namespace MotionMatching
 
         private void Start()
         {
-            // BindSkinnedMeshRenderers();
-            if (ShouldRetarget) InitRetargeting();
+            InitRetargeting();
         }
 
         private void InitRetargeting()
@@ -55,10 +52,8 @@ namespace MotionMatching
             TargetTPose = new Quaternion[BodyJoints.Length];
             SourceBones = new Transform[BodyJoints.Length];
             TargetBones = new Transform[BodyJoints.Length];
-            // Source TPose (BVH with TPose)
-            BVHImporter bvhImporter = new BVHImporter();
-            // Animation containing in the first frame a TPose
-            BVHAnimation tposeAnimation = bvhImporter.Import(mmData.BVHTPose, mmData.UnitScale, true);
+            // Animation containing in the first frame a T-Pose
+            BVHAnimation tposeAnimation = mmData.AnimationDataTPose.GetAnimation();
             // Store Rotations
             // Source
             Skeleton skeleton = tposeAnimation.Skeleton;
@@ -112,7 +107,6 @@ namespace MotionMatching
 
         private void OnSkeletonTransformUpdated()
         {
-            if (!ShouldRetarget) return;
             // Motion
             transform.position = MotionMatching.transform.position;
             // Retargeting

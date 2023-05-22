@@ -22,11 +22,9 @@ namespace MotionMatching
         public static AnimationViewerEditorWindow Window;
         private SceneGUI ReturnButton;
 
-        private BVHAnimation Animation;
         private Transform[] Skeleton;
         private int CurrentFrame = 0;
-        private TextAsset BVHAsset;
-        private float BVHScale = 1.0f;
+        private AnimationData AnimationData;
         private int TargetFramerate;
         private double LastUpdateTime;
 
@@ -45,9 +43,7 @@ namespace MotionMatching
         private List<List<VisualElement>> TagRangesStart;
         private List<List<VisualElement>> TagRangesEnd;
 
-        private List<Tag> Tags;
-
-        private int NumberFrames { get { return Animation.Frames.Length; } }
+        private int NumberFrames { get { return AnimationData.GetAnimation().Frames.Length; } }
 
         [MenuItem("MotionMatching/Animation Viewer")]
         public static void ShowWindow()
@@ -62,15 +58,15 @@ namespace MotionMatching
             
             Window.ReturnButton = new SceneGUI(currentScene);
             SceneView.duringSceneGui += Window.UpdateGUI;
-
-            // Init auxiliary variables
-            Window.SelectedTag = -1;
-            Window.SelectedStartRange = -1;
-            Window.SelectedEndRange = -1;
         }
 
         public void CreateGUI()
         {
+            // Init auxiliary variables
+            SelectedTag = -1;
+            SelectedStartRange = -1;
+            SelectedEndRange = -1;
+
             VisualElement root = rootVisualElement;
             root.RegisterCallback<PointerMoveEvent>(OnPointerMoveRoot, TrickleDown.TrickleDown);
             root.RegisterCallback<PointerUpEvent>(OnPointerUpRoot, TrickleDown.TrickleDown);
@@ -80,46 +76,25 @@ namespace MotionMatching
 
         private void CreateBVHAssetField(VisualElement root)
         {
-            ObjectField bvhAssetField = new ObjectField
+            ObjectField animationDataField = new ObjectField
             {
-                label = "BVH Asset",
-                objectType = typeof(TextAsset)
+                label = "Animation Data",
+                objectType = typeof(AnimationData)
             };
-            bvhAssetField.RegisterValueChangedCallback(x =>
+            animationDataField.RegisterValueChangedCallback(x =>
             {
-                BVHAsset = null;
+                AnimationData = null;
                 if (x.newValue != null && x.newValue != x.previousValue)
                 {
-                    BVHAsset = (TextAsset)x.newValue;
+                    AnimationData = (AnimationData)x.newValue;
                     CreateBVHFields();
                     ImportBVH();
-                    ImportTags();
                     CreateTimeline(rootVisualElement);
                     UpdateCurrentFrame(0);
                     UpdatePose(forward: false);
                 }
             });
-            root.Add(bvhAssetField);
-        }
-
-        private void CreateScaleField(VisualElement root)
-        {
-            FloatField bvhScaleField = new FloatField
-            {
-                label = "Scale",
-                value = BVHScale,
-                isDelayed = true
-            };
-            bvhScaleField.RegisterValueChangedCallback(x =>
-            {
-                if (x.newValue != x.previousValue)
-                {
-                    BVHScale = x.newValue;
-                    ImportBVH();
-                    UpdatePose(forward: false);
-                }
-            });
-            root.Add(bvhScaleField);
+            root.Add(animationDataField);
         }
 
         private void CreateFrameField(VisualElement root)
@@ -288,9 +263,9 @@ namespace MotionMatching
             TagRangesStart.Clear();
             TagRangesEnd.Clear();
             RangesContainer.Clear();
-            for (int tagIndex = 0; tagIndex < Tags.Count; ++tagIndex)
+            for (int tagIndex = 0; tagIndex < AnimationData.Tags.Count; ++tagIndex)
             {
-                Tag tag = Tags[tagIndex];
+                Tag tag = AnimationData.Tags[tagIndex];
                 TagRangesLines.Add(new List<VisualElement>());
                 TagRangesStart.Add(new List<VisualElement>());
                 TagRangesEnd.Add(new List<VisualElement>());
@@ -320,9 +295,9 @@ namespace MotionMatching
                 int tagIndexCopy = tagIndex;
                 textField.RegisterValueChangedCallback(x =>
                 {
-                    Tag tag = Tags[tagIndexCopy];
+                    Tag tag = AnimationData.Tags[tagIndexCopy];
                     tag.Name = x.newValue;
-                    Tags[tagIndexCopy] = tag;
+                    AnimationData.Tags[tagIndexCopy] = tag;
                 });
                 tagContainer.Add(textField);
                 // Tag ranges container
@@ -357,7 +332,8 @@ namespace MotionMatching
             newTagButton.clicked += () =>
             {
                 Tag newTag = new Tag();
-                Tags.Add(newTag);
+                AnimationData.Tags.Add(newTag);
+                AnimationData.SaveEditor();
                 root.Remove(tagsContainer);
                 root.Remove(newTagButton);
                 CreateTagsTimeline(root);
@@ -388,7 +364,7 @@ namespace MotionMatching
             };
             rangesContainer.Add(rangeAuxLine);
 
-            Tag tag = Tags[tagIndex];
+            Tag tag = AnimationData.Tags[tagIndex];
             int tagSize = tag.Start == null ? 0 : tag.Start.Length;
             for (int rangeIndex = 0; rangeIndex < tagSize; ++rangeIndex)
             {
@@ -453,7 +429,7 @@ namespace MotionMatching
         {
             for (int rangeIndex = 0; rangeIndex < TagRangesLines[tagIndex].Count; ++rangeIndex)
             {
-                Tag tag = Tags[tagIndex];
+                Tag tag = AnimationData.Tags[tagIndex];
                 int startFrame = tag.Start[rangeIndex];
                 int endFrame = tag.End[rangeIndex];
                 VisualElement rangeLine = TagRangesLines[tagIndex][rangeIndex];
@@ -477,7 +453,7 @@ namespace MotionMatching
                 int frame = GetFrameFromPointer(e.position, RangesContainer[tagIndex]);
 
                 // check if already inside an existent range
-                Tag tag = Tags[tagIndex];
+                Tag tag = AnimationData.Tags[tagIndex];
                 bool existent = false;
                 if (tag.Start != null)
                 {
@@ -571,10 +547,12 @@ namespace MotionMatching
             if (SelectedTag != -1 && SelectedStartRange != -1)
             {
                 UpdateStartTagFromPointer(e.position);
+                AnimationData.SaveEditor();
             }
             if (SelectedTag != -1 && SelectedEndRange != -1)
             {
                 UpdateEndTagFromPointer(e.position);
+                AnimationData.SaveEditor();
             }
         }
         private void UpdateFrameFromPointer(Vector2 pointer)
@@ -591,7 +569,7 @@ namespace MotionMatching
                 frame = NumberFrames - 2;
             }
 
-            Tag tag = Tags[tagIndex];
+            Tag tag = AnimationData.Tags[tagIndex];
             if (tag.Start == null)
             {
                 tag.Start = new int[1] { frame };
@@ -622,7 +600,8 @@ namespace MotionMatching
                     tag.End[0] = frame + 1;
                 }
             }
-            Tags[tagIndex] = tag;
+            AnimationData.Tags[tagIndex] = tag;
+            AnimationData.SaveEditor();
 
             CreateRangesVisual(tagIndex);
             UpdateRangesContainer(tagIndex);
@@ -630,7 +609,7 @@ namespace MotionMatching
 
         private void UpdateStartTagFromPointer(Vector2 pointer)
         {
-            Tag tag = Tags[SelectedTag];
+            Tag tag = AnimationData.Tags[SelectedTag];
 
             int max = tag.End[SelectedStartRange] - 1;
             int min = 0;
@@ -648,14 +627,14 @@ namespace MotionMatching
             int frame = GetFrameFromPointer(pointer, startRange.parent);
             tag.Start[SelectedStartRange] = Mathf.Min(Mathf.Max(frame, min), max);
 
-            Tags[SelectedTag] = tag;
+            AnimationData.Tags[SelectedTag] = tag;
 
             UpdateRangesContainer(SelectedTag);
         }
 
         private void UpdateEndTagFromPointer(Vector2 pointer)
         {
-            Tag tag = Tags[SelectedTag];
+            Tag tag = AnimationData.Tags[SelectedTag];
 
             int max = NumberFrames - 1;
             int min = tag.Start[SelectedEndRange] + 1;
@@ -673,7 +652,7 @@ namespace MotionMatching
             int frame = GetFrameFromPointer(pointer, endRange.parent);
             tag.End[SelectedEndRange] = Mathf.Min(Mathf.Max(frame, min), max);
 
-            Tags[SelectedTag] = tag;
+            AnimationData.Tags[SelectedTag] = tag;
 
             UpdateRangesContainer(SelectedTag);
         }
@@ -693,22 +672,20 @@ namespace MotionMatching
 
         private void CreateBVHFields()
         {
-            CreateScaleField(rootVisualElement);
             CreateFrameField(rootVisualElement);
         }
 
         private void ImportBVH()
         {
             RemoveSkeleton();
-            BVHImporter bvhImporter = new BVHImporter();
-            Animation = bvhImporter.Import(BVHAsset, BVHScale);
-            UpdateTargetFramerate(Mathf.CeilToInt(1.0f / Animation.FrameTime));
+            BVHAnimation animation = AnimationData.GetAnimation();
+            UpdateTargetFramerate(Mathf.CeilToInt(1.0f / animation.FrameTime));
             // Create skeleton
-            Skeleton = new Transform[Animation.Skeleton.Joints.Count];
+            Skeleton = new Transform[animation.Skeleton.Joints.Count];
             for (int j = 0; j < Skeleton.Length; j++)
             {
                 // Joints
-                Skeleton.Joint joint = Animation.Skeleton.Joints[j];
+                Skeleton.Joint joint = animation.Skeleton.Joints[j];
                 Transform t = (new GameObject()).transform;
                 t.name = joint.Name;
                 if (j > 0)
@@ -746,11 +723,6 @@ namespace MotionMatching
             }
         }
 
-        private void ImportTags()
-        {
-            Tags = new List<Tag>();
-        }
-
         private void UpdateTargetFramerate(int newValue)
         {
             TargetFramerate = newValue;
@@ -759,7 +731,7 @@ namespace MotionMatching
 
         private void UpdateCurrentFrame(int newValue)
         {
-            newValue = Mathf.Clamp(newValue, 0, Animation.Frames.Length - 1);
+            newValue = Mathf.Clamp(newValue, 0, AnimationData.GetAnimation().Frames.Length - 1);
             CurrentFrame = newValue;
             CurrentFrameField.value = CurrentFrame;
             UpdateCurrentFrameIndicator();
@@ -784,17 +756,18 @@ namespace MotionMatching
         private void UpdateAnimationForward() => UpdatePose();
         private void UpdatePose(bool forward=true)
         {
-            if (Animation != null && LastUpdateTime + (1.0 / TargetFramerate) < EditorApplication.timeSinceStartup)
+            BVHAnimation animation = AnimationData.GetAnimation();
+            if (animation != null && LastUpdateTime + (1.0 / TargetFramerate) < EditorApplication.timeSinceStartup)
             {
                 // Update skeleton
-                BVHAnimation.Frame frame = Animation.Frames[CurrentFrame];
+                BVHAnimation.Frame frame = animation.Frames[CurrentFrame];
                 Skeleton[0].position = frame.RootMotion;
                 for (int i = 0; i < Skeleton.Length; i++)
                 {
                     Skeleton[i].localRotation = frame.LocalRotations[i];
                 }
                 // Update frame index
-                if (forward) UpdateCurrentFrame((CurrentFrame + 1) % Animation.Frames.Length);
+                if (forward) UpdateCurrentFrame((CurrentFrame + 1) % animation.Frames.Length);
                 LastUpdateTime = EditorApplication.timeSinceStartup;
             }
         }

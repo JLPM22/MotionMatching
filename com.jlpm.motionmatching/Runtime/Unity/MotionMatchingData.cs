@@ -21,10 +21,9 @@ namespace MotionMatching
     {
         // TODO: DefaultHipsForward... detect/suggest automatically? try to fix automatically at BVHAnimation level? 
         // (if it is fixed some code can be deleted... all code related to DefaultHipsForward and in the UpdateTransform() when correcting the hips forward)
-
-        public List<TextAsset> BVHs;
-        public TextAsset BVHTPose; // BVH with a TPose in the first frame, used for retargeting
-        public float UnitScale = 1.0f;
+        
+        public List<AnimationData> AnimationDatas;
+        public AnimationData AnimationDataTPose; // Animation with a TPose in the first frame, used for retargeting
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
         public float3 HipsUpLocalVector = new float3(0, 1, 0); // Local vector (axis) pointing in the up direction of the hips
         // TODO: Implement Savitzky-Golay filter or similar low-pass filter in Unity (before I was using Python implementation)
@@ -46,13 +45,12 @@ namespace MotionMatching
         {
             Animations = new List<BVHAnimation>();
             PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
-            for (int i = 0; i < BVHs.Count; i++)
+            for (int i = 0; i < AnimationDatas.Count; i++)
             {
-                BVHImporter importer = new BVHImporter();
-                BVHAnimation animation = importer.Import(BVHs[i], UnitScale);
+                BVHAnimation animation = AnimationDatas[i].GetAnimation();
                 Animations.Add(animation);
                 // Add Mecanim mapping information
-                animation.UpdateMecanimInformation(this);
+                AnimationDatas[i].UpdateMecanimInformation(this);
             }
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("BVH Import");
         }
@@ -127,8 +125,7 @@ namespace MotionMatching
         private void ComputeJointsLocalForward()
         {
             // Import T-Pose
-            BVHImporter bvhImporter = new BVHImporter();
-            BVHAnimation tposeAnimation = bvhImporter.Import(BVHTPose, UnitScale, true);
+            BVHAnimation tposeAnimation = AnimationDataTPose.GetAnimation();
             JointsLocalForward = new float3[tposeAnimation.Skeleton.Joints.Count + 1]; // +1 for the simulation bone
             // Find forward character vector by projecting hips forward vector onto the ground
             Quaternion[] localRotations = tposeAnimation.Frames[0].LocalRotations;
@@ -347,34 +344,28 @@ namespace MotionMatching
             bool generateButtonError = false;
 
             // BVH
-            EditorGUILayout.LabelField("BVHs", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Animations", EditorStyles.boldLabel);
             EditorGUI.indentLevel++;
-            for (int i = 0; i < (data.BVHs == null ? 0 : data.BVHs.Count); i++)
+            for (int i = 0; i < (data.AnimationDatas == null ? 0 : data.AnimationDatas.Count); i++)
             {
-                data.BVHs[i] = (TextAsset)EditorGUILayout.ObjectField(data.BVHs[i], typeof(TextAsset), false);
+                data.AnimationDatas[i] = (AnimationData)EditorGUILayout.ObjectField(data.AnimationDatas[i], typeof(AnimationData), false);
             }
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Add BVH"))
+            if (GUILayout.Button("Add Animation"))
             {
-                if (data.BVHs == null) data.BVHs = new List<TextAsset>();
-                data.BVHs.Add(null);
+                data.AnimationDatas ??= new List<AnimationData>();
+                data.AnimationDatas.Add(null);
             }
-            if (GUILayout.Button("Remove BVH"))
+            if (GUILayout.Button("Remove Animation"))
             {
-                data.BVHs.RemoveAt(data.BVHs.Count - 1);
+                data.AnimationDatas.RemoveAt(data.AnimationDatas.Count - 1);
             }
             EditorGUILayout.EndHorizontal();
             EditorGUI.indentLevel--;
-            if (data.BVHs == null) return;
+            if (data.AnimationDatas == null) return;
             // BVH TPose
-            data.BVHTPose = (TextAsset)EditorGUILayout.ObjectField(new GUIContent("BVH with TPose", "BVH with a TPose in the first frame, used for retargeting"),
-                                                                   data.BVHTPose, typeof(TextAsset), false);
-            // UnitScale
-            EditorGUILayout.BeginHorizontal();
-            data.UnitScale = EditorGUILayout.FloatField("Unit Scale", data.UnitScale);
-            if (GUILayout.Button("m")) data.UnitScale = 1.0f;
-            if (GUILayout.Button("cm")) data.UnitScale = 0.01f;
-            EditorGUILayout.EndHorizontal();
+            data.AnimationDataTPose = (AnimationData)EditorGUILayout.ObjectField(new GUIContent("Animation with T-Pose", "Animation with a T-Pose in the first frame, used for retargeting"),
+                                                                                 data.AnimationDataTPose, typeof(AnimationData), false);
             // DefaultHipsForward
             data.HipsForwardLocalVector = EditorGUILayout.Vector3Field(new GUIContent("Hips Forward Local Vector", "Local vector (axis) pointing in the forward direction of the hips"),
                                                                        data.HipsForwardLocalVector);
@@ -407,10 +398,14 @@ namespace MotionMatching
                                                                         data.ContactVelocityThreshold);
 
             // SkeletonToMecanim
+            if (data.AnimationDataTPose == null)
+            {
+                EditorGUILayout.HelpBox("Animation with T-Pose not set", MessageType.Warning);
+                return;
+            }
             if (GUILayout.Button("Read Skeleton from BVH"))
             {
-                BVHImporter importer = new BVHImporter();
-                BVHAnimation animation = importer.Import(data.BVHTPose != null ? data.BVHTPose : data.BVHs[0], data.UnitScale);
+                BVHAnimation animation = data.AnimationDataTPose.GetAnimation();
                 // Check if SkeletonToMecanim should be reset
                 bool shouldResetSkeletonToMecanim = true || data.SkeletonToMecanim.Count != animation.Skeleton.Joints.Count;
                 if (!shouldResetSkeletonToMecanim)

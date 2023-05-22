@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5cb821b417c4644c970687c3ddeadfc, type: 3}
+  m_Name: jl_motionMatching
+  m_EditorClassIdentifier: 
+  BVH: {fileID: 4900000, guid: 1861b3ddede746946859c5bbc1daaad8, type: 3}
+  UnitScale: 0.01
+  Tags:
+  - Name: walk
+    Start: 00000000f30b000044230000
+    End: b1030000411a0000c1280000
+  - Name: run
+    Start: 4b0400007d1f0000
+    End: c20b00005a260000
+  - Name: 
+    Start: bb100000
+    End: 151a0000
+  - Name: jump
+    Start: 
+    End: 
+  - Name: test2
+    Start: ef11000035240000
+    End: f0110000ab280000
+  - Name: test3
+    Start: bd160000
+    End: f8350000
