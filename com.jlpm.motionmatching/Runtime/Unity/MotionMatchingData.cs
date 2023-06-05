@@ -323,7 +323,7 @@ namespace MotionMatching
         }
 #endif
 
-        private void OnDestroy()
+        public void Dispose()
         {
             if (FeatureSet != null)
             {

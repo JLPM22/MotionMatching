@@ -137,6 +137,16 @@ PrefabInstance:
       propertyPath: MotionMatching
       value: 
       objectReference: {fileID: 1702772098}
+    - target: {fileID: 469515505234092066, guid: 17d2ceb469f508a47ade33a62a335e9d,
+        type: 3}
+      propertyPath: ToesSoleOffset.z
+      value: -0.02
+      objectReference: {fileID: 0}
+    - target: {fileID: 469515505234092066, guid: 17d2ceb469f508a47ade33a62a335e9d,
+        type: 3}
+      propertyPath: AvoidToesFloorPenetration
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1580200354592299286, guid: 17d2ceb469f508a47ade33a62a335e9d,
         type: 3}
       propertyPath: m_Name
@@ -217,6 +227,16 @@ PrefabInstance:
       propertyPath: MotionMatching
       value: 
       objectReference: {fileID: 488265980}
+    - target: {fileID: 469515505234092066, guid: 17d2ceb469f508a47ade33a62a335e9d,
+        type: 3}
+      propertyPath: ToesSoleOffset.z
+      value: -0.02
+      objectReference: {fileID: 0}
+    - target: {fileID: 469515505234092066, guid: 17d2ceb469f508a47ade33a62a335e9d,
+        type: 3}
+      propertyPath: AvoidToesFloorPenetration
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1580200354592299286, guid: 17d2ceb469f508a47ade33a62a335e9d,
         type: 3}
       propertyPath: m_Name
@@ -276,6 +296,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5207854012189514198, guid: 17d2ceb469f508a47ade33a62a335e9d,
+        type: 3}
+      propertyPath: m_Controller
+      value: 
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 17d2ceb469f508a47ade33a62a335e9d, type: 3}
@@ -351,7 +376,7 @@ MonoBehaviour:
   CharacterController: {fileID: 1897668723}
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
   LockFPS: 1
-  SearchFrames: 10
+  SearchTime: 0.16666667
   UseBVHSearch: 1
   Inertialize: 1
   FootLock: 1
@@ -360,7 +385,6 @@ MonoBehaviour:
   Responsiveness: 1
   Quality: 1
   FeatureWeights:
-  - 1
   - 1
   - 1
   - 1
@@ -743,7 +767,7 @@ MonoBehaviour:
   CharacterController: {fileID: 506783193}
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
   LockFPS: 1
-  SearchFrames: 10
+  SearchTime: 0.16666667
   UseBVHSearch: 1
   Inertialize: 1
   FootLock: 1
@@ -1173,7 +1197,7 @@ MonoBehaviour:
   CharacterController: {fileID: 1536473772}
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
   LockFPS: 1
-  SearchFrames: 10
+  SearchTime: 0.16666667
   UseBVHSearch: 1
   Inertialize: 1
   FootLock: 1
@@ -1432,6 +1456,16 @@ PrefabInstance:
       propertyPath: MotionMatching
       value: 
       objectReference: {fileID: 845368627}
+    - target: {fileID: 469515505234092066, guid: 17d2ceb469f508a47ade33a62a335e9d,
+        type: 3}
+      propertyPath: ToesSoleOffset.z
+      value: -0.02
+      objectReference: {fileID: 0}
+    - target: {fileID: 469515505234092066, guid: 17d2ceb469f508a47ade33a62a335e9d,
+        type: 3}
+      propertyPath: AvoidToesFloorPenetration
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1580200354592299286, guid: 17d2ceb469f508a47ade33a62a335e9d,
         type: 3}
       propertyPath: m_Name
@@ -1440,7 +1474,7 @@ PrefabInstance:
     - target: {fileID: 2208504847699526572, guid: 17d2ceb469f508a47ade33a62a335e9d,
         type: 3}
       propertyPath: m_RootOrder
-      value: 3
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 2208504847699526572, guid: 17d2ceb469f508a47ade33a62a335e9d,
         type: 3}
