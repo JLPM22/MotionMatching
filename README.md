@@ -2,7 +2,7 @@
 
 ![](.github/media/path_mm.jpg)
 
-**Motion Matching** implementation for the **Unity** game engine. This project is part of my master thesis, which you can download [here](.github/pdfs/Master_Thesis_JoseLuis.pdf) to obtain a detailed description of both Motion Matching and this project. I intend to update this project in my spare time, adding more features until it is a complete Motion Matching solution for Unity. For now, it may be useful for those wanting to learn/implement their own Motion Matching solution or extend this project. 
+**Motion Matching** implementation for the **Unity** game engine. This project is part of my master thesis, which you can download [here](https://www.researchgate.net/publication/363377742_Motion_Matching_for_Character_Animation_and_Virtual_Reality_Avatars_in_Unity) to obtain a detailed description of both Motion Matching and this project. I intend to update this project in my spare time, adding more features until it is a complete Motion Matching solution for Unity. For now, it may be useful for those wanting to learn/implement their own Motion Matching solution or extend this project. 
 
 ## Contents
 
@@ -19,7 +19,7 @@ This section defines the project's structure and where to find data, scripts, et
 
 The Unity package can be found in the ``com.jlpm.motionmatching`` directory, and the ``com.jlpm.motionmatching/Runtime`` folder contains all scripts and data.
 
-Please, refer to my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for a comprehensive explanation of some Motion Matching concepts. In the ``Runtime`` directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture (dashed nodes are not implemented; and for the Virtual Reality controllers of Motion Matching visit [this paper](https://upc-virvig.github.io/MMVR/)):
+Please, refer to my [master thesis](https://www.researchgate.net/publication/363377742_Motion_Matching_for_Character_Animation_and_Virtual_Reality_Avatars_in_Unity) for a comprehensive explanation of some Motion Matching concepts. In the ``Runtime`` directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture (dashed nodes are not implemented; and for the Virtual Reality controllers of Motion Matching visit [this paper](https://upc-virvig.github.io/MMVR/)):
 
 ![](.github/media/architecture_diagram.PNG)
 
