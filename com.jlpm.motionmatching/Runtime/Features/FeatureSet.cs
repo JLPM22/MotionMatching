@@ -159,11 +159,19 @@ namespace MotionMatching
         public void SetValid(NativeArray<bool> valid)
         {
             Debug.Assert(valid.Length == NumberFeatureVectors, "Valid array has wrong size");
+            if (Valid != null && Valid.IsCreated)
+            {
+                Valid.Dispose();
+            }
             Valid = valid;
         }
         public void SetFeatures(NativeArray<float> features)
         {
             Debug.Assert(features.Length == NumberFeatureVectors * FeatureSize, "Feature vector has wrong size");
+            if (Features != null && Features.IsCreated)
+            {
+                Features.Dispose();
+            }
             Features = features;
         }
         public void SetMean(float[] mean)

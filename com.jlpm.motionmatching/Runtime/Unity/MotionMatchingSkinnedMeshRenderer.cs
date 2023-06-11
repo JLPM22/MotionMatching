@@ -10,8 +10,14 @@ namespace MotionMatching
     public class MotionMatchingSkinnedMeshRenderer : MonoBehaviour
     {
         public MotionMatchingController MotionMatching;
-        [Tooltip("Local vector (axis) pointing in the forward direction of the character")] public Vector3 ForwardLocalVector = new Vector3(0, 0, 1);
-        [Tooltip("Local vector (axis) pointing in the up direction of the character")] public Vector3 UpLocalVector = new Vector3(0, 1, 0);
+        [Tooltip("Local vector (axis) pointing in the forward direction of the character")] 
+        public Vector3 ForwardLocalVector = new Vector3(0, 0, 1);
+        [Tooltip("Local vector (axis) pointing in the up direction of the character")] 
+        public Vector3 UpLocalVector = new Vector3(0, 1, 0);
+        [Tooltip("Enable to avoid the toes joint (+ ToesSoleOffset) to penetrate the floor (assuming floor at y=0). The root joint will be adjusted to compensate the height difference.")] 
+        public bool AvoidToesFloorPenetration;
+        [Tooltip("Offset added to the toes joint to determine the sole position to avoid toes-floor penetration.")] 
+        public Vector3 ToesSoleOffset;
 
         private Animator Animator;
 
@@ -24,6 +30,8 @@ namespace MotionMatching
         private Transform[] TargetBones;
         // Mapping Hips Orientation
         private Quaternion HipsCorrection;
+        // Toes-Floor Penetration
+        private float ToesPenetrationMovingCorrection;
         
         private void Awake()
         {
@@ -131,41 +139,58 @@ namespace MotionMatching
                 // sourceRotation -> Local Source -> World (Source)
                 TargetBones[i].rotation = sourceRotation * Quaternion.Inverse(sourceTPoseRotation) * HipsCorrection * targetTPoseRotation;
             }
-            // Hips Height
+            // Hips
             TargetBones[0].position = MotionMatching.GetSkeletonTransforms()[1].position;
+
+            // Toes-Floor Penetration
+            if (AvoidToesFloorPenetration)
+            {
+                const int leftToesIndex = 17;
+                const int rightToesIndex = 21;
+                float height = Mathf.Min(TargetBones[leftToesIndex].TransformPoint(ToesSoleOffset).y,
+                                         TargetBones[rightToesIndex].TransformPoint(ToesSoleOffset).y);
+                height = height < 0.0f ? -height : 0.0f;
+
+                const float movingAverangeFactor = 0.99f;
+                ToesPenetrationMovingCorrection = ToesPenetrationMovingCorrection * movingAverangeFactor + height * (1.0f - movingAverangeFactor);
+
+                Vector3 hipsPos = TargetBones[0].position;
+                hipsPos.y += ToesPenetrationMovingCorrection;
+                TargetBones[0].position = hipsPos;
+            }
         }
 
         // Used for retargeting. First parent, then children
         private HumanBodyBones[] BodyJoints =
         {
-            HumanBodyBones.Hips,
+            HumanBodyBones.Hips, // 0
 
-            HumanBodyBones.Spine,
-            HumanBodyBones.Chest,
-            HumanBodyBones.UpperChest,
+            HumanBodyBones.Spine, // 1
+            HumanBodyBones.Chest, // 2
+            HumanBodyBones.UpperChest, // 3
 
-            HumanBodyBones.Neck,
-            HumanBodyBones.Head,
+            HumanBodyBones.Neck, // 4
+            HumanBodyBones.Head, // 5
 
-            HumanBodyBones.LeftShoulder,
-            HumanBodyBones.LeftUpperArm,
-            HumanBodyBones.LeftLowerArm,
-            HumanBodyBones.LeftHand,
+            HumanBodyBones.LeftShoulder, // 6
+            HumanBodyBones.LeftUpperArm, // 7
+            HumanBodyBones.LeftLowerArm, // 8
+            HumanBodyBones.LeftHand, // 9
 
-            HumanBodyBones.RightShoulder,
-            HumanBodyBones.RightUpperArm,
-            HumanBodyBones.RightLowerArm,
-            HumanBodyBones.RightHand,
+            HumanBodyBones.RightShoulder, // 10
+            HumanBodyBones.RightUpperArm, // 11
+            HumanBodyBones.RightLowerArm, // 12
+            HumanBodyBones.RightHand, // 13
 
-            HumanBodyBones.LeftUpperLeg,
-            HumanBodyBones.LeftLowerLeg,
-            HumanBodyBones.LeftFoot,
-            HumanBodyBones.LeftToes,
+            HumanBodyBones.LeftUpperLeg, // 14
+            HumanBodyBones.LeftLowerLeg, // 15
+            HumanBodyBones.LeftFoot, // 16
+            HumanBodyBones.LeftToes, // 17
 
-            HumanBodyBones.RightUpperLeg,
-            HumanBodyBones.RightLowerLeg,
-            HumanBodyBones.RightFoot,
-            HumanBodyBones.RightToes
+            HumanBodyBones.RightUpperLeg, // 18
+            HumanBodyBones.RightLowerLeg, // 19
+            HumanBodyBones.RightFoot, // 20
+            HumanBodyBones.RightToes // 21
         };
 
         private void OnValidate()
@@ -175,5 +200,20 @@ namespace MotionMatching
                 Debug.LogWarning("ForwardLocalVector is too close to zero. Object: " + name);
             }
         }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmosSelected()
+        {
+            Animator animator = GetComponent<Animator>();
+
+            if (animator == null) return;
+
+            Vector3 leftSole = animator.GetBoneTransform(HumanBodyBones.LeftToes).TransformPoint(ToesSoleOffset);
+            Vector3 rightSole = animator.GetBoneTransform(HumanBodyBones.RightToes).TransformPoint(ToesSoleOffset);
+            Gizmos.color = Color.red;
+            Gizmos.DrawSphere(leftSole, 0.005f);
+            Gizmos.DrawSphere(rightSole, 0.005f);
+        }
+#endif
     }
 }

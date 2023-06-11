@@ -80,11 +80,13 @@ public class FeatureDebug : MonoBehaviour
 
     private void OnDestroy()
     {
+        MMData.Dispose();
         FeatureSet.Dispose();
     }
 
     private void OnApplicationQuit()
     {
+        MMData.Dispose();
         FeatureSet.Dispose();
     }
 
