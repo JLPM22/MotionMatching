@@ -63,6 +63,7 @@ namespace MotionMatching
     public struct BVHMotionMatchingSearchBurst : IJob
     {
         [ReadOnly] public NativeArray<bool> Valid; // TODO: If all features are valid, this will be unnecessary
+        [ReadOnly] public NativeArray<bool> TagMask; // TODO: convert to a bitmask to optimize memory
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> QueryFeature;
         [ReadOnly] public NativeArray<float> FeatureWeights; // Size = FeatureSize
@@ -145,8 +146,8 @@ namespace MotionMatching
                     // Search inside small box
                     while (i < iSmallNext && i < endIndex)
                     {
-                        // Skip non-valid
-                        if (!Valid[i])
+                        // Skip non-valid or not correct tag
+                        if (!Valid[i] || !TagMask[i])
                         {
                             i += 1;
                             continue;

@@ -11,6 +11,7 @@ namespace MotionMatching
     public struct LinearMotionMatchingSearchBurst : IJob
     {
         [ReadOnly] public NativeArray<bool> Valid; // TODO: If all features are valid, this will be unnecessary
+        [ReadOnly] public NativeArray<bool> TagMask; // TODO: convert to a bitmask to optimize memory
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> QueryFeature;
         [ReadOnly] public NativeArray<float> FeatureWeights; // Size = FeatureSize
@@ -44,22 +45,22 @@ namespace MotionMatching
                 // Compare
                 if (math.any(sqrDistance < min)) // most of the time this will be false... (profiling: 5-10% speedup)
                 {
-                    if (sqrDistance.x < min.x && Valid[index]) // Checking Valid here is more performant than using it to avoid calculations... probably most of the time sqrDistance < min is false and reduces memory accesses (Valid is not used)
+                    if (sqrDistance.x < min.x && Valid[index] && TagMask[index]) // Checking Valid here is more performant than using it to avoid calculations... probably most of the time sqrDistance < min is false and reduces memory accesses (Valid is not used)
                     {
                         min.x = sqrDistance.x;
                         bestIndex.x = index;
                     }
-                    if (sqrDistance.y < min.y && Valid[index + 1])
+                    if (sqrDistance.y < min.y && Valid[index + 1] && TagMask[index + 1])
                     {
                         min.y = sqrDistance.y;
                         bestIndex.y = index + 1;
                     }
-                    if (sqrDistance.z < min.z && Valid[index + 2])
+                    if (sqrDistance.z < min.z && Valid[index + 2] && TagMask[index + 1])
                     {
                         min.z = sqrDistance.z;
                         bestIndex.z = index + 2;
                     }
-                    if (sqrDistance.w < min.w && Valid[index + 3])
+                    if (sqrDistance.w < min.w && Valid[index + 3] && TagMask[index + 1])
                     {
                         min.w = sqrDistance.w;
                         bestIndex.w = index + 3;
@@ -84,7 +85,7 @@ namespace MotionMatching
                     float diff = Features[featureIndex + j] - QueryFeature[j];
                     sqrDistance += diff * diff * FeatureWeights[j];
                 }
-                if (sqrDistance < _min && Valid[index])
+                if (sqrDistance < _min && Valid[index] && TagMask[index])
                 {
                     _min = sqrDistance;
                     _bestIndex = index;

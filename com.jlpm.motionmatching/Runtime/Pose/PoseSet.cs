@@ -194,9 +194,17 @@ namespace MotionMatching
         /// <summary>
         /// Returns the tag at the given index
         /// </summary>
-        public Tag GetTag(int tagIndex)
+        public Tag GetTag(int index)
         {
-            return Tags[tagIndex];
+            return Tags[index];
+        }
+
+        /// <summary>
+        /// Returns the tag with the given name
+        /// </summary>
+        public Tag GetTag(string name)
+        {
+            return Tags[TagNameToIndex[name]];
         }
 
         /// <summary>
@@ -263,6 +271,16 @@ namespace MotionMatching
             {
                 StartRangesList.Add(start);
                 EndRangesList.Add(end);
+            }
+
+            public NativeArray<int> GetStartRanges()
+            {
+                return StartRanges;
+            }
+
+            public NativeArray<int> GetEndRanges()
+            {
+                return EndRanges;
             }
 
             public void ConvertToNativeArray()

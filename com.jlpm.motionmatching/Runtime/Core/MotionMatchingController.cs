@@ -58,10 +58,12 @@ namespace MotionMatching
         private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
         // BVH Acceleration Structure
-        public NativeArray<float> LargeBoundingBoxMin;
-        public NativeArray<float> LargeBoundingBoxMax;
-        public NativeArray<float> SmallBoundingBoxMin;
-        public NativeArray<float> SmallBoundingBoxMax;
+        private NativeArray<float> LargeBoundingBoxMin;
+        private NativeArray<float> LargeBoundingBoxMax;
+        private NativeArray<float> SmallBoundingBoxMin;
+        private NativeArray<float> SmallBoundingBoxMax;
+        // Tags
+        private NativeArray<bool> TagMask;
         // Foot Lock
         private bool IsLeftFootContact, IsRightFootContact;
         private float3 LeftToesContactTarget, RightToesContactTarget; // Target position of the toes
@@ -153,6 +155,9 @@ namespace MotionMatching
                     break;
                 }
             }
+            // Tags
+            TagMask = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
+            DisableTag();
             // Foot Lock
             if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.LogError("[Motion Matching] LeftToes not found");
             LeftToesIndex = leftToesJoint.Index;
@@ -274,6 +279,7 @@ namespace MotionMatching
                 var job = new BVHMotionMatchingSearchBurst
                 {
                     Valid = FeatureSet.GetValid(),
+                    TagMask = TagMask,
                     Features = FeatureSet.GetFeatures(),
                     QueryFeature = QueryFeature,
                     FeatureWeights = FeaturesWeightsNativeArray,
@@ -293,6 +299,7 @@ namespace MotionMatching
                 var job = new LinearMotionMatchingSearchBurst
                 {
                     Valid = FeatureSet.GetValid(),
+                    TagMask = TagMask,
                     Features = FeatureSet.GetFeatures(),
                     QueryFeature = QueryFeature,
                     FeatureWeights = FeaturesWeightsNativeArray,
@@ -492,6 +499,34 @@ namespace MotionMatching
         }
 
         /// <summary>
+        /// Disables any previous set tag so searches are performed over the entire pose set
+        /// </summary>
+        public void DisableTag()
+        {
+            var job = new DisableTagBurst
+            {
+                TagMask = TagMask,
+            };
+            job.Schedule().Complete();
+        }
+
+        /// <summary>
+        /// Searches over those poses marked with the tag
+        /// </summary>
+        public void SetTag(string name)
+        {
+            PoseSet.Tag tag = PoseSet.GetTag(name);
+            // TODO: cache results to avoid duplicated computations...
+            var job = new SetTagBurst
+            {
+                TagMask = TagMask,
+                StartRanges = tag.GetStartRanges(),
+                EndRanges = tag.GetEndRanges(),
+            };
+            job.Schedule().Complete();
+        }
+
+        /// <summary>
         /// Adds an offset to the current transform space (useful to move the character to a different position)
         /// Simply changing the transform won't work because motion matching applies root motion based on the current motion matching search space
         /// </summary>
@@ -583,6 +618,7 @@ namespace MotionMatching
             if (LargeBoundingBoxMax != null && LargeBoundingBoxMax.IsCreated) LargeBoundingBoxMax.Dispose();
             if (SmallBoundingBoxMin != null && SmallBoundingBoxMin.IsCreated) SmallBoundingBoxMin.Dispose();
             if (SmallBoundingBoxMax != null && SmallBoundingBoxMax.IsCreated) SmallBoundingBoxMax.Dispose();
+            if (TagMask != null && TagMask.IsCreated) TagMask.Dispose();
         }
 
         private void OnApplicationQuit()
