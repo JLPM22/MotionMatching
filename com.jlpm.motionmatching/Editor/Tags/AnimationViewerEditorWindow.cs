@@ -16,6 +16,8 @@ using System.Net;
 
 namespace MotionMatching
 {
+    using Tag = AnimationData.Tag;
+
     /* More info on how to create a new scene: https://gist.github.com/ulrikdamm/338392c3b0900de225ec6dd10864cab4 */
     public class AnimationViewerEditorWindow : EditorWindow
     {

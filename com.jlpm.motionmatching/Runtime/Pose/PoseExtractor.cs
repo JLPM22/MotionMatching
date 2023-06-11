@@ -22,7 +22,7 @@ namespace MotionMatching
         /// poseSet is not cleared, it will add bvhAnimation the the existing poses
         /// Returns true if the bvhAnimation was added to the poseSet, false otherwise
         /// </summary>
-        public bool Extract(BVHAnimation bvhAnimation, PoseSet poseSet, MotionMatchingData mmData)
+        public bool Extract(BVHAnimation bvhAnimation, PoseSet poseSet, MotionMatchingData mmData, out int animationClip)
         {
             // Set Poses
             int nFrames = bvhAnimation.Frames.Length;
@@ -36,7 +36,7 @@ namespace MotionMatching
             //{
                 //SmoothSimulationBone(poses, poseSet);
             //}
-            return poseSet.AddClip(poses, bvhAnimation.FrameTime);
+            return poseSet.AddClip(poses, bvhAnimation.FrameTime, out animationClip);
         }
 
         private void SmoothContacts(PoseVector[] poses)

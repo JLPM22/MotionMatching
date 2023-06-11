@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -17,16 +18,21 @@ namespace MotionMatching
         public float FrameTime { get; private set; }
         public int NumberPoses { get { return Poses.Count; } }
         public int NumberClips { get { return Clips.Count; } }
+        public int NumberTags { get { return Tags.Count; } }
 
         // Private ---
-        private List<PoseVector> Poses;
-        private List<AnimationClip> Clips;
-        private int MaximumFramesPrediction;
+        private readonly List<PoseVector> Poses;
+        private readonly List<AnimationClip> Clips;
+        private readonly int MaximumFramesPrediction;
+        private readonly List<Tag> Tags;
+        private readonly Dictionary<string, int> TagNameToIndex;
 
         public PoseSet(MotionMatchingData mmData)
         {
             Poses = new List<PoseVector>();
             Clips = new List<AnimationClip>();
+            Tags = new List<Tag>();
+            TagNameToIndex = new Dictionary<string, int>();
             FrameTime = -1.0f;
             MaximumFramesPrediction = 0;
             foreach (var t in mmData.TrajectoryFeatures)
@@ -76,7 +82,7 @@ namespace MotionMatching
         /// Add the animation clip to the current pose set
         /// Returns true if the clip was added, false if the skeleton is not compatible and the clip was not added
         /// </summary>
-        public bool AddClip(PoseVector[] poses, float frameTime)
+        public bool AddClip(PoseVector[] poses, float frameTime, out int animationClip)
         {
             // Check if the skeleton and frameTime are compatible
             Debug.Assert(Skeleton != null, "Skeleton shold be set first. Use SetSkeleton(...)");
@@ -87,6 +93,7 @@ namespace MotionMatching
             int start = Poses.Count;
             int nPoses = poses.Length;
 
+            animationClip = Clips.Count;
             Clips.Add(new AnimationClip(start, start + nPoses, frameTime));
             Poses.AddRange(poses);
 
@@ -94,19 +101,63 @@ namespace MotionMatching
         }
 
         /// <summary>
-        /// Add the set of poses to the current pose set
-        /// Unsafe version used when deserializing from binary format
+        /// Add a tag to the current pose set
+        /// The corresponding animation clip should be added before using AddClip(...)
         /// </summary>
-        public void AddClipUnsafe(PoseVector[] poses)
+        public void AddTag(int animationClip, AnimationData.Tag dataTag)
+        {
+            // Tag Index
+            if (!TagNameToIndex.TryGetValue(dataTag.Name, out int tagIndex))
+            {
+                tagIndex = Tags.Count;
+                TagNameToIndex[dataTag.Name] = tagIndex;
+                Tags.Add(new Tag(dataTag.Name));
+            }
+            // Write tag ranges
+            Tag tag = Tags[tagIndex];
+            int frameOffset = Clips[animationClip].Start;
+            for (int i = 0; i < dataTag.Start.Length; ++i)
+            {
+                tag.AddRange(dataTag.Start[i] + frameOffset, dataTag.End[i] + frameOffset);
+            }
+        }
+
+        /// <summary>
+        /// Add a tag to the current pose set
+        /// Used when deserializing from binary format
+        /// </summary>
+        public void AddTagDeserialized(string name, List<int> startRangesList, List<int> endRangesList)
+        {
+            TagNameToIndex[name] = Tags.Count;
+            Tags.Add(new Tag(name, startRangesList, endRangesList));
+        }
+
+        /// <summary>
+        /// Converts all tags-related data stored in C# data structures to NativeArrays
+        /// Use this function after adding all tags with AddTag(...)
+        /// </summary>
+        public void ConvertTagsToNativeArrays()
+        {
+            foreach (Tag tag in Tags)
+            {
+                tag.ConvertToNativeArray();
+            }
+        }
+
+        /// <summary>
+        /// Add the set of poses to the current pose set
+        /// Used when deserializing from binary format
+        /// </summary>
+        public void AddClipDeserialized(PoseVector[] poses)
         {
             Poses.AddRange(poses);
         }
 
         /// <summary>
         /// Add the animation clip to the current clips
-        /// Unsafe version used when deserializing from binary format
+        /// Used when deserializing from binary format
         /// </summary>
-        public void AddAnimationClipUnsafe(AnimationClip clip)
+        public void AddAnimationClipDeserialized(AnimationClip clip)
         {
             Debug.Assert(math.abs(FrameTime + 1.0f) < 0.001f || math.abs(clip.FrameTime - FrameTime) < 0.001f, "Mixed frame rates");
             FrameTime = clip.FrameTime;
@@ -131,7 +182,7 @@ namespace MotionMatching
 
         /// <summary>
         /// Returns the pose at the given index.
-        /// Teturn true if the pose can be used for prediction
+        /// Return true if the pose can be used for prediction
         /// </summary>
         public bool GetPose(int poseIndex, out PoseVector pose)
         {
@@ -140,10 +191,32 @@ namespace MotionMatching
             return isPredictionSafe;
         }
 
-        public AnimationClip GetClip(int clipIndex)
+        /// <summary>
+        /// Returns the tag at the given index
+        /// </summary>
+        public Tag GetTag(int tagIndex)
+        {
+            return Tags[tagIndex];
+        }
+
+        /// <summary>
+        /// Returns the animation clip at the given index
+        /// </summary>
+        public AnimationClip GetAnimationClip(int clipIndex)
         {
             Debug.Assert(clipIndex >= 0 && clipIndex < Clips.Count, "Clip index out of range");
             return Clips[clipIndex];
+        }
+
+        public void Dispose()
+        {
+            if (Tags != null)
+            {
+                foreach (Tag tag in Tags) 
+                {
+                    tag.Dispose();
+                }
+            }
         }
 
         public struct AnimationClip
@@ -157,6 +230,61 @@ namespace MotionMatching
                 Start = start;
                 End = end;
                 FrameTime = frameTime;
+            }
+        }
+
+        public class Tag
+        {
+            public readonly string Name;
+
+            private List<int> StartRangesList;
+            private List<int> EndRangesList;
+
+            private NativeArray<int> StartRanges;
+            private NativeArray<int> EndRanges;
+
+            public int NumberRanges { get { return StartRanges.Length; } }
+
+            public Tag(string name)
+            {
+                Name = name;
+                StartRangesList = new List<int>();
+                EndRangesList = new List<int>();
+            }
+
+            public Tag(string name, List<int> startRangesList, List<int> endRangesList)
+            {
+                Name = name;
+                StartRangesList = startRangesList;
+                EndRangesList = endRangesList;
+            }
+
+            public void AddRange(int start, int end)
+            {
+                StartRangesList.Add(start);
+                EndRangesList.Add(end);
+            }
+
+            public void ConvertToNativeArray()
+            {
+                StartRanges = new NativeArray<int>(StartRangesList.ToArray(), Allocator.Persistent);
+                EndRanges = new NativeArray<int>(EndRangesList.ToArray(), Allocator.Persistent);
+
+                StartRangesList = null;
+                EndRangesList = null;
+            }
+
+            public void GetRange(int rangeIndex, out int start, out int end)
+            {
+                Debug.Assert(StartRanges.IsCreated && EndRanges.IsCreated, "Call first ConvertToNativeArray() before operating over the tags.");
+                start = StartRanges[rangeIndex];
+                end = EndRanges[rangeIndex];
+            }
+
+            public void Dispose()
+            {
+                if (StartRanges != null && StartRanges.IsCreated) StartRanges.Dispose();
+                if (EndRanges != null && EndRanges.IsCreated) EndRanges.Dispose();
             }
         }
     }

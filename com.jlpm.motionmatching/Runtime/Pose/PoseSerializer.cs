@@ -50,14 +50,15 @@ namespace MotionMatching
                     // Serialize Animation Clips
                     for (int i = 0; i < poseSet.NumberClips; ++i)
                     {
-                        PoseSet.AnimationClip clip = poseSet.GetClip(i);
+                        PoseSet.AnimationClip clip = poseSet.GetAnimationClip(i);
                         writer.Write((uint)clip.Start);
                         writer.Write((uint)clip.End);
                         writer.Write(clip.FrameTime);
                     }
-                    // Serialize Number Poses & Number Joints
+                    // Serialize Number Poses & Number Joints & Number Tags
                     writer.Write((uint)poseSet.NumberPoses);
                     writer.Write((uint)poseSet.Skeleton.Joints.Count);
+                    writer.Write((uint)poseSet.NumberTags);
                     // Serialize Poses
                     for (int i = 0; i < poseSet.NumberPoses; ++i)
                     {
@@ -68,6 +69,19 @@ namespace MotionMatching
                         WriteFloat3Array(writer, pose.JointLocalAngularVelocities);
                         writer.Write(pose.LeftFootContact ? 1u : 0u);
                         writer.Write(pose.RightFootContact ? 1u : 0u);
+                    }
+                    // Serialize Tags
+                    for (int i = 0; i < poseSet.NumberTags; ++i)
+                    {
+                        PoseSet.Tag tag = poseSet.GetTag(i);
+                        writer.Write(tag.Name);
+                        writer.Write((uint)tag.NumberRanges);
+                        for (int r = 0; r < tag.NumberRanges; ++r)
+                        {
+                            tag.GetRange(r, out int startRange, out int endRange);
+                            writer.Write((uint)startRange);
+                            writer.Write((uint)endRange);
+                        }
                     }
                 }
             }
@@ -126,11 +140,12 @@ namespace MotionMatching
                             uint start = reader.ReadUInt32();
                             uint end = reader.ReadUInt32();
                             float frameTime = reader.ReadSingle();
-                            poseSet.AddAnimationClipUnsafe(new PoseSet.AnimationClip((int)start, (int)end, frameTime));
+                            poseSet.AddAnimationClipDeserialized(new PoseSet.AnimationClip((int)start, (int)end, frameTime));
                         }
-                        // Deserialize Number Poses & Number Joints
+                        // Deserialize Number Poses & Number Joints & Number Tags
                         uint nPoses = reader.ReadUInt32();
                         uint nJoints = reader.ReadUInt32();
+                        uint nTags = reader.ReadUInt32();
                         Debug.Assert(nJoints == skeleton.Joints.Count, "Number of joints in skeleton and pose do not match");
                         // Deserialize Poses
                         PoseVector[] poses = new PoseVector[nPoses];
@@ -146,7 +161,22 @@ namespace MotionMatching
                             poses[i] = pose;
                         }
                         // Set Poses in poseSet
-                        poseSet.AddClipUnsafe(poses);
+                        poseSet.AddClipDeserialized(poses);
+                        // Deserialize Tags
+                        for (int i = 0; i < nTags; ++i)
+                        {
+                            string name = reader.ReadString();
+                            int nRanges = (int)reader.ReadUInt32();
+                            List<int> tagStarts = new List<int>(nRanges);
+                            List<int> tagEnds = new List<int>(nRanges);
+                            for (int r = 0; r < nRanges; ++r)
+                            {
+                                tagStarts.Add((int)reader.ReadUInt32());
+                                tagEnds.Add((int)reader.ReadUInt32());
+                            }
+                            poseSet.AddTagDeserialized(name, tagStarts, tagEnds);
+                        }
+                        poseSet.ConvertTagsToNativeArrays();
                     }
                 }
             }

@@ -38,9 +38,22 @@ namespace MotionMatching
             return Animation;
         }
 
+        public List<Tag> GetTags()
+        {
+            return Tags;
+        }
+
         public void UpdateMecanimInformation(MotionMatchingData mmData)
         {
             Animation.UpdateMecanimInformation(mmData);
+        }
+
+        [System.Serializable]
+        public struct Tag
+        {
+            public string Name;
+            public int[] Start; // Each element with index i, where, 0 <= i <= Start.Length == End.Length
+            public int[] End;   // represents a range. That is, for an arbitrary i -> [Start[i], End[i]]
         }
 
 #if UNITY_EDITOR
@@ -81,7 +94,7 @@ namespace MotionMatching
                 GUI.enabled = false;
                 for (int tagIndex = 0; tagIndex < (data.Tags == null ? 0 : data.Tags.Count); ++tagIndex)
                 {
-                    Tag tag = data.Tags[tagIndex];
+                    AnimationData.Tag tag = data.Tags[tagIndex];
                     tag.Name = EditorGUILayout.TextField(tag.Name);
                     for (int rangeIndex = 0; rangeIndex < (tag.Start == null ? 0 : tag.Start.Length); ++rangeIndex)
                     {

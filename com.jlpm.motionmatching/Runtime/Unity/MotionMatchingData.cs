@@ -33,7 +33,6 @@ namespace MotionMatching
         public List<TrajectoryFeature> TrajectoryFeatures = new List<TrajectoryFeature>();
         public List<PoseFeature> PoseFeatures = new List<PoseFeature>();
 
-        private List<BVHAnimation> Animations;
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
 
@@ -43,12 +42,10 @@ namespace MotionMatching
 
         private void ImportAnimations()
         {
-            Animations = new List<BVHAnimation>();
             PROFILE.BEGIN_SAMPLE_PROFILING("BVH Import");
             for (int i = 0; i < AnimationDatas.Count; i++)
             {
-                BVHAnimation animation = AnimationDatas[i].GetAnimation();
-                Animations.Add(animation);
+                AnimationDatas[i].GetAnimation(); // Imports the animation
                 // Add Mecanim mapping information
                 AnimationDatas[i].UpdateMecanimInformation(this);
             }
@@ -81,16 +78,23 @@ namespace MotionMatching
         {
             ImportAnimations();
             PoseSet = new PoseSet(this);
-            PoseSet.SetSkeletonFromBVH(Animations[0].Skeleton);
-            for (int i = 0; i < Animations.Count; i++)
+            PoseSet.SetSkeletonFromBVH(AnimationDatas[0].GetAnimation().Skeleton);
+            for (int i = 0; i < AnimationDatas.Count; i++)
             {
-                BVHAnimation animation = Animations[i];
+                // Extract poses
+                BVHAnimation animation = AnimationDatas[i].GetAnimation();
                 PoseExtractor poseExtractor = new PoseExtractor();
-                if (!poseExtractor.Extract(animation, PoseSet, this))
+                if (!poseExtractor.Extract(animation, PoseSet, this, out int animationClip))
                 {
                     Debug.LogError("[FeatureDebug] Failed to extract pose from BVHAnimation. BVH Index: " + i);
                 }
+                // Add tags
+                foreach (AnimationData.Tag tag in AnimationDatas[i].Tags)
+                {
+                    PoseSet.AddTag(animationClip, tag);
+                }
             }
+            PoseSet.ConvertTagsToNativeArrays();
         }
 
         public FeatureSet GetOrImportFeatureSet()
@@ -309,12 +313,19 @@ namespace MotionMatching
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize");
             FeatureSerializer featureSerializer = new FeatureSerializer();
             featureSerializer.Serialize(FeatureSet, this, GetAssetPath(), this.name);
+            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize");
+
+            // Dispose
+            if (PoseSet != null)
+            {
+                PoseSet.Dispose();
+                PoseSet = null;
+            }
             if (FeatureSet != null)
             {
                 FeatureSet.Dispose();
                 FeatureSet = null;
             }
-            PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize");
 
             AssetDatabase.Refresh();
         }
@@ -322,6 +333,11 @@ namespace MotionMatching
 
         public void Dispose()
         {
+            if (PoseSet != null)
+            {
+                PoseSet.Dispose();
+                PoseSet = null;
+            }
             if (FeatureSet != null)
             {
                 FeatureSet.Dispose();
