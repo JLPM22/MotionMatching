@@ -43,6 +43,23 @@ namespace MotionMatching
             return Tags;
         }
 
+        public void AddTag()
+        {
+            Tag newTag = new Tag();
+            Tags.Add(newTag);
+            SaveEditor();
+        }
+        
+        public void RemoveTag(int index)
+        {
+            for (int i = index + 1; i < Tags.Count; ++i)
+            {
+                Tags[i - 1] = Tags[i];
+            }
+            Tags.RemoveAt(Tags.Count - 1);
+            SaveEditor();
+        }
+
         public void UpdateMecanimInformation(MotionMatchingData mmData)
         {
             Animation.UpdateMecanimInformation(mmData);
