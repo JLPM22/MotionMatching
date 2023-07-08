@@ -36,6 +36,9 @@ namespace MotionMatching
         private VisualElement TimelineContainer;
         private VisualElement CurrentFrameIndicator;
 
+        private EditorApplication.CallbackFunction UpdatePoseFunction;
+        private Action OnUpdatePoseStopped;
+
         // Ranges
         private int SelectedTag;
         private int SelectedStartRange;
@@ -125,8 +128,8 @@ namespace MotionMatching
         }
 
         const float FrameRuleHeight = 20;
-        const float PlayButtonWidth = 50;
-        const float RemoveButtonWidth = 10;
+        const float PlayButtonWidth = 70;
+        const float TagButtonWidth = 10;
         const float MarginWidth = 5;
         private void CreateTimeline(VisualElement root)
         {
@@ -200,13 +203,25 @@ namespace MotionMatching
             {
                 if (playButton.text == "Play")
                 {
+                    if (OnUpdatePoseStopped != null)
+                    {
+                        OnUpdatePoseStopped();
+                        OnUpdatePoseStopped = null;
+                    }
                     playButton.text = "Stop";
-                    EditorApplication.update += UpdateAnimationForward;
+                    UpdatePoseFunction = () => UpdatePose();
+                    EditorApplication.update += UpdatePoseFunction;
+                    OnUpdatePoseStopped = () =>
+                    {
+                        playButton.text = "Play";
+                        EditorApplication.update -= UpdatePoseFunction;
+                        UpdatePoseFunction = null;
+                    };
                 }
                 else
                 {
-                    playButton.text = "Play";
-                    EditorApplication.update -= UpdateAnimationForward;
+                    OnUpdatePoseStopped();
+                    OnUpdatePoseStopped = null;
                 }
             };
             frameRule.Add(playButton);
@@ -343,7 +358,7 @@ namespace MotionMatching
                     {
                         alignItems = Align.FlexStart,
                         justifyContent = Justify.FlexStart,
-                        width = PlayButtonWidth - RemoveButtonWidth - MarginWidth,
+                        width = PlayButtonWidth - 2 * TagButtonWidth - 3 * MarginWidth,
                         marginLeft = MarginWidth,
                         marginRight = MarginWidth,
                     }
@@ -364,7 +379,7 @@ namespace MotionMatching
                     style =
                     {
                         height = FrameRuleHeight,
-                        width = RemoveButtonWidth,
+                        width = TagButtonWidth,
                         marginLeft = 0,
                         marginRight = MarginWidth,
                     }
@@ -378,6 +393,46 @@ namespace MotionMatching
                     CreateTagsTimeline(root);
                 };
                 leftContainer.Add(tagRemoveButton);
+                // Tag play button
+                Button tagPlayButton = new Button()
+                {
+                    text = "p",
+                    style =
+                    {
+                        height = FrameRuleHeight,
+                        width = TagButtonWidth,
+                        marginLeft = 0,
+                        marginRight = MarginWidth,
+                    }
+                };
+                int tagIndexCopy3 = tagIndex;
+                tagPlayButton.clicked += () =>
+                {
+                    if (tagPlayButton.text == "p")
+                    {
+                        if (OnUpdatePoseStopped != null)
+                        {
+                            OnUpdatePoseStopped();
+                            OnUpdatePoseStopped = null;
+                        }
+                        tagPlayButton.text = "s";
+                        UpdateCurrentFrame(0);
+                        UpdatePoseFunction = () => UpdatePose(true, tagIndexCopy3);
+                        EditorApplication.update += UpdatePoseFunction;
+                        OnUpdatePoseStopped = () =>
+                        {
+                            tagPlayButton.text = "p";
+                            EditorApplication.update -= UpdatePoseFunction;
+                            UpdatePoseFunction = null;
+                        };
+                    }
+                    else
+                    {
+                        OnUpdatePoseStopped();
+                        OnUpdatePoseStopped = null;
+                    }
+                };
+                leftContainer.Add(tagPlayButton);
                 // Tag ranges container
                 VisualElement rangesContainer = new VisualElement
                 {
@@ -520,7 +575,7 @@ namespace MotionMatching
                     {
                         leftEnd = left + RangeHandleWidth * 2;
                         int candidateEnd = (int)((leftEnd / rangesContainerWidth) * NumberFrames);
-                        if (rangeIndex < tag.Start.Length - 1)
+                        if (rangeIndex < tag.Start.Length - 1 && rangeIndex > 0)
                         {
                             candidateEnd = Mathf.Min(candidateEnd, tag.End[rangeIndex - 1] - 1);
                         }
@@ -614,6 +669,12 @@ namespace MotionMatching
         {
             if (e.button == 0) // left mouse button pressed
             {
+                if (OnUpdatePoseStopped != null)
+                {
+                    OnUpdatePoseStopped();
+                    OnUpdatePoseStopped = null;
+                }
+
                 PointerDownOnFrameRuler = true;
                 UpdateFrameFromPointer(e.position);
             }
@@ -918,8 +979,7 @@ namespace MotionMatching
             }
         }
 
-        private void UpdateAnimationForward() => UpdatePose();
-        private void UpdatePose(bool forward=true)
+        private void UpdatePose(bool forward=true, int tagIndex=-1)
         {
             BVHAnimation animation = AnimationData.GetAnimation();
             if (animation != null && LastUpdateTime + (1.0 / TargetFramerate) < EditorApplication.timeSinceStartup)
@@ -932,7 +992,37 @@ namespace MotionMatching
                     Skeleton[i].localRotation = frame.LocalRotations[i];
                 }
                 // Update frame index
-                if (forward) UpdateCurrentFrame((CurrentFrame + 1) % animation.Frames.Length);
+                if (forward)
+                {
+                    if (tagIndex == -1)
+                    {
+                        UpdateCurrentFrame((CurrentFrame + 1) % animation.Frames.Length);
+                    }
+                    else
+                    {
+                        Tag tag = AnimationData.Tags[tagIndex];
+                        bool found = false;
+                        for (int rangeIndex = 0; rangeIndex < tag.Start.Length && !found; ++rangeIndex)
+                        {
+                            if (CurrentFrame <= tag.End[rangeIndex])
+                            {
+                                if (CurrentFrame < tag.Start[rangeIndex])
+                                {
+                                    UpdateCurrentFrame(tag.Start[rangeIndex]);
+                                }
+                                else
+                                {
+                                    UpdateCurrentFrame(CurrentFrame + 1);
+                                }
+                                found = true;
+                            }
+                        }
+                        if (!found)
+                        {
+                            UpdateCurrentFrame(tag.Start[0]);
+                        }
+                    }
+                }
                 LastUpdateTime = EditorApplication.timeSinceStartup;
             }
         }
@@ -945,7 +1035,7 @@ namespace MotionMatching
         private void OnDestroy()
         {
             ReturnButton.ReturnScene();
-            EditorApplication.update -= UpdateAnimationForward;
+            EditorApplication.update -= UpdatePoseFunction;
             SceneView.duringSceneGui -= UpdateGUI;
         }
     }
