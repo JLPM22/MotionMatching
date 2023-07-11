@@ -35,6 +35,8 @@ namespace MotionMatching
 
         private VisualElement TimelineContainer;
         private VisualElement CurrentFrameIndicator;
+        private VisualElement FrameRuleLabels;
+        private Button PlayButton;
 
         private EditorApplication.CallbackFunction UpdatePoseFunction;
         private Action OnUpdatePoseStopped;
@@ -47,6 +49,11 @@ namespace MotionMatching
         private List<List<VisualElement>> TagRangesLines;
         private List<List<VisualElement>> TagRangesStart;
         private List<List<VisualElement>> TagRangesEnd;
+
+        // Colors
+        private static readonly Color HighlightColor = new Color(0.25f, 0.42f, 0.68f, 1.0f);
+        private static readonly Color TagColor = new Color(0.68f, 0.42f, 0.25f, 1.0f);
+        private static readonly Color DarkGrey = new Color(0.4f, 0.4f, 0.4f,  1.0f);
 
         private int NumberFrames { get { return AnimationData.GetAnimation().Frames.Length; } }
 
@@ -77,6 +84,17 @@ namespace MotionMatching
             root.RegisterCallback<PointerUpEvent>(OnPointerUpRoot, TrickleDown.TrickleDown);
             root.parent.RegisterCallback<MouseLeaveEvent>(OnMouseLeaveRoot, TrickleDown.TrickleDown);
             CreateBVHAssetField(root);
+        }
+
+        private void OnGUI()
+        {
+            if (AnimationData == null) return;
+
+            // Check if the spacebar key is pressed
+            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Space)
+            {
+                PlayButtonClick();
+            }
         }
 
         private void CreateBVHAssetField(VisualElement root)
@@ -131,6 +149,7 @@ namespace MotionMatching
         const float PlayButtonWidth = 70;
         const float TagButtonWidth = 10;
         const float MarginWidth = 5;
+        const float FrameIndicatorWidth = 5;
         private void CreateTimeline(VisualElement root)
         {
             if (root.Contains(TimelineContainer))
@@ -156,7 +175,7 @@ namespace MotionMatching
                 style =
                 {
                     flexDirection = FlexDirection.Column,
-                    backgroundColor = new Color(0.6f, 0.6f, 0.6f, 1.0f),
+                    backgroundColor = DarkGrey,
                     width = 5
                 }
             };
@@ -171,7 +190,7 @@ namespace MotionMatching
                     flexBasis = new StyleLength(StyleKeyword.Auto),
                     alignItems = Align.Center,
                     justifyContent = Justify.FlexStart,
-                    backgroundColor = new Color(0.6f, 0.6f, 0.6f, 1.0f)
+                    backgroundColor = DarkGrey,
                 }
             };
             TimelineContainer.Add(timeline);
@@ -188,7 +207,7 @@ namespace MotionMatching
                 }
             };
             timeline.Add(frameRule);
-            Button playButton = new Button
+            PlayButton = new Button
             {
                 text = "Play",
                 style =
@@ -199,33 +218,9 @@ namespace MotionMatching
                     marginRight = MarginWidth,
                 }
             };
-            playButton.clicked += () =>
-            {
-                if (playButton.text == "Play")
-                {
-                    if (OnUpdatePoseStopped != null)
-                    {
-                        OnUpdatePoseStopped();
-                        OnUpdatePoseStopped = null;
-                    }
-                    playButton.text = "Stop";
-                    UpdatePoseFunction = () => UpdatePose();
-                    EditorApplication.update += UpdatePoseFunction;
-                    OnUpdatePoseStopped = () =>
-                    {
-                        playButton.text = "Play";
-                        EditorApplication.update -= UpdatePoseFunction;
-                        UpdatePoseFunction = null;
-                    };
-                }
-                else
-                {
-                    OnUpdatePoseStopped();
-                    OnUpdatePoseStopped = null;
-                }
-            };
-            frameRule.Add(playButton);
-            VisualElement frameRuleLabels = new VisualElement
+            PlayButton.clicked += PlayButtonClick;
+            frameRule.Add(PlayButton);
+            FrameRuleLabels = new VisualElement
             {
                 style =
                 {
@@ -235,36 +230,13 @@ namespace MotionMatching
                     flexBasis = new StyleLength(StyleKeyword.Auto),
                     alignItems = Align.Center,
                     justifyContent = Justify.FlexStart,
-                    backgroundColor = new Color(0.4f, 0.4f, 0.4f, 1.0f),
+                    backgroundColor = DarkGrey,
                     height = FrameRuleHeight,
                     color = Color.black,
                 }
             };
-            frameRuleLabels.RegisterCallback<PointerDownEvent>(OnPointerDownFrameRuler, TrickleDown.TrickleDown);
-            frameRule.Add(frameRuleLabels);
-            // Add reference labels
-            const int maxFramesPerRule = 20;
-            int framesStep = Mathf.Max(1, NumberFrames / maxFramesPerRule);
-            for (int i = 0; i < NumberFrames; i += framesStep)
-            {
-                VisualElement frameLabelBox = new VisualElement
-                {
-                    style =
-                    {
-                        flexDirection = FlexDirection.Row,
-                        flexGrow = 1,
-                        flexShrink = 1,
-                        flexBasis = new StyleLength(StyleKeyword.Auto),
-                        alignItems = Align.Center,
-                        justifyContent = Justify.FlexStart,
-                        height = FrameRuleHeight,
-                        color = Color.black
-                    }
-                };
-                Label frameLabel = new Label(i.ToString());
-                frameLabelBox.Add(frameLabel);
-                frameRuleLabels.Add(frameLabelBox);
-            }
+            FrameRuleLabels.RegisterCallback<PointerDownEvent>(OnPointerDownFrameRuler, TrickleDown.TrickleDown);
+            frameRule.Add(FrameRuleLabels);
             // Add current frame indicator
             CurrentFrameIndicator = new VisualElement
             {
@@ -272,16 +244,43 @@ namespace MotionMatching
                 {
                     alignItems = Align.FlexStart,
                     justifyContent = Justify.FlexStart,
-                    backgroundColor = new Color(0.25f, 0.42f, 0.68f, 1.0f),
+                    backgroundColor = HighlightColor,
                     height = FrameRuleHeight,
-                    width = 5,
+                    width = FrameIndicatorWidth,
                     position = Position.Absolute,
                 }
             };
-            frameRuleLabels.Add(CurrentFrameIndicator);
-            frameRuleLabels.RegisterCallback<GeometryChangedEvent>((_) => UpdateCurrentFrameIndicator());
+            FrameRuleLabels.Add(CurrentFrameIndicator);
+            FrameRuleLabels.RegisterCallback<GeometryChangedEvent>((_) => UpdateCurrentFrameIndicator());
+            FrameRuleLabels.RegisterCallback<GeometryChangedEvent>((_) => UpdateFrameLabels());
             // Tags
             CreateTagsTimeline(timeline);
+        }
+
+        private void PlayButtonClick()
+        {
+            if (PlayButton.text == "Play")
+            {
+                if (OnUpdatePoseStopped != null)
+                {
+                    OnUpdatePoseStopped();
+                    OnUpdatePoseStopped = null;
+                }
+                PlayButton.text = "Stop";
+                UpdatePoseFunction = () => UpdatePose();
+                EditorApplication.update += UpdatePoseFunction;
+                OnUpdatePoseStopped = () =>
+                {
+                    PlayButton.text = "Play";
+                    EditorApplication.update -= UpdatePoseFunction;
+                    UpdatePoseFunction = null;
+                };
+            }
+            else
+            {
+                OnUpdatePoseStopped();
+                OnUpdatePoseStopped = null;
+            }
         }
 
         private void CreateTagsTimeline(VisualElement root)
@@ -332,7 +331,7 @@ namespace MotionMatching
                         alignSelf = Align.Stretch,
                         alignItems = Align.Center,
                         justifyContent = Justify.FlexStart,
-                        backgroundColor = new Color(0.4f, 1.4f, 0.4f, 1.0f),
+                        backgroundColor = DarkGrey,
                     }
                 };
                 tagsContainer.Add(tagContainer);
@@ -344,7 +343,7 @@ namespace MotionMatching
                         alignSelf = Align.Stretch,
                         alignItems = Align.Center,
                         justifyContent = Justify.FlexStart,
-                        backgroundColor = new Color(1.4f, 0.4f, 0.4f, 1.0f),
+                        backgroundColor = DarkGrey,
                         width = PlayButtonWidth + 2 * MarginWidth,
                         overflow = Overflow.Hidden,
                     }
@@ -500,7 +499,7 @@ namespace MotionMatching
                         justifyContent = Justify.FlexStart,
                         flexGrow = 1,
                         flexBasis = new StyleLength(StyleKeyword.Auto),
-                        backgroundColor = new Color(0.68f, 0.42f, 0.25f, 1.0f),
+                        backgroundColor = TagColor,
                         height = 4,
                         position = Position.Absolute,
                     }
@@ -516,7 +515,7 @@ namespace MotionMatching
                         justifyContent = Justify.FlexStart,
                         flexGrow = 1,
                         flexBasis = new StyleLength(StyleKeyword.Auto),
-                        backgroundColor = new Color(0.68f, 0.42f, 0.25f, 1.0f),
+                        backgroundColor = TagColor,
                         width = RangeHandleWidth,
                         height = RangeHandleHeight,
                         position = Position.Absolute,
@@ -536,7 +535,7 @@ namespace MotionMatching
                         justifyContent = Justify.FlexStart,
                         flexGrow = 1,
                         flexBasis = new StyleLength(StyleKeyword.Auto),
-                        backgroundColor = new Color(0.68f, 0.42f, 0.25f, 1.0f),
+                        backgroundColor = TagColor,
                         width = RangeHandleWidth,
                         height = RangeHandleHeight,
                         position = Position.Absolute,
@@ -571,7 +570,7 @@ namespace MotionMatching
                         }
                         tag.Start[rangeIndex] = candidateStart;
                     }
-                    else
+                    else if (SelectedEndRange != -1)
                     {
                         leftEnd = left + RangeHandleWidth * 2;
                         int candidateEnd = (int)((leftEnd / rangesContainerWidth) * NumberFrames);
@@ -886,7 +885,79 @@ namespace MotionMatching
         private void UpdateCurrentFrameIndicator()
         {
             float containerWidth = CurrentFrameIndicator.parent.resolvedStyle.width;
-            CurrentFrameIndicator.style.left = containerWidth * ((float)CurrentFrame / NumberFrames);
+            CurrentFrameIndicator.style.left = containerWidth * ((float)CurrentFrame / NumberFrames) - FrameIndicatorWidth / 2;
+        }
+
+        private static readonly int[] CandidatesFramesStep = { 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000 };
+        private void UpdateFrameLabels()
+        {
+            // Remove all children but the FrameIndicator
+            for (int i = FrameRuleLabels.childCount - 1; i >= 1; i--) FrameRuleLabels.RemoveAt(i);
+
+            int maxLabels = Mathf.Max(1, (int)(FrameRuleLabels.resolvedStyle.width / 50.0f));
+
+            int framesStep = 1;
+            int framesStepIndex = 0;
+            while (NumberFrames / framesStep > maxLabels)
+            {
+                framesStep = CandidatesFramesStep[framesStepIndex++];
+            }
+            for (int i = 0; i < NumberFrames - framesStep; i += framesStep)
+            {
+                VisualElement frameLabelBox = new VisualElement
+                {
+                    style =
+                    {
+                        alignItems = Align.Center,
+                        justifyContent = Justify.Center,
+                        height = FrameRuleHeight,
+                        color = Color.black,
+                        position = Position.Absolute,
+                    }
+                };
+                TextElement frameLabel = new TextElement
+                {
+                    text = i.ToString(),
+                    style =
+                    {
+                        unityTextAlign = TextAnchor.MiddleCenter,
+                    }
+                };
+                frameLabelBox.Add(frameLabel);
+                FrameRuleLabels.Add(frameLabelBox);
+
+                // Use a local variable to capture the loop variable
+                int index = i;
+
+                frameLabelBox.RegisterCallback<GeometryChangedEvent>((evt) =>
+                {
+                    float newLeft = FrameRuleLabels.resolvedStyle.width * ((float)index / NumberFrames) - frameLabel.resolvedStyle.width / 2;
+                    if (Mathf.Abs(frameLabelBox.style.left.value.value - newLeft) > 0.01f)
+                    {
+                        frameLabelBox.style.left = newLeft;
+                    }
+                });
+            }
+        }
+
+        private void UpdateTagRangeFrameIndicator()
+        {
+            for (int tagIndex = 0; tagIndex < AnimationData.Tags.Count; ++tagIndex)
+            {
+                Tag tag = AnimationData.Tags[tagIndex];
+                for (int rangeIndex = 0; rangeIndex < tag.Start.Length;  rangeIndex++)
+                {
+                    TagRangesLines[tagIndex][rangeIndex].style.backgroundColor = TagColor;
+                    TagRangesStart[tagIndex][rangeIndex].style.backgroundColor = TagColor;
+                    TagRangesEnd[tagIndex][rangeIndex].style.backgroundColor = TagColor;
+                    if (CurrentFrame >= tag.Start[rangeIndex] && CurrentFrame <= tag.End[rangeIndex])
+                    {
+                        TagRangesLines[tagIndex][rangeIndex].style.backgroundColor = HighlightColor;
+                        TagRangesStart[tagIndex][rangeIndex].style.backgroundColor = HighlightColor;
+                        TagRangesEnd[tagIndex][rangeIndex].style.backgroundColor = HighlightColor;
+                    }
+                }
+            }
         }
 
         private int GetFrameFromPointer(Vector2 pointer, VisualElement container)
@@ -961,6 +1032,7 @@ namespace MotionMatching
             CurrentFrame = newValue;
             CurrentFrameField.value = CurrentFrame;
             UpdateCurrentFrameIndicator();
+            UpdateTagRangeFrameIndicator();
         }
         
         private void RemoveSkeleton()
