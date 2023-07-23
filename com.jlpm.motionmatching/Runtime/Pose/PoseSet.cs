@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
@@ -102,7 +103,7 @@ namespace MotionMatching
 
         /// <summary>
         /// Add a tag to the current pose set
-        /// The corresponding animation clip should be added before using AddClip(...)
+        /// The corresponding animation clip should be added before using AddTag(...)
         /// </summary>
         public void AddTag(int animationClip, AnimationData.Tag dataTag)
         {
@@ -245,7 +246,7 @@ namespace MotionMatching
         {
             public readonly string Name;
 
-            private List<int> StartRangesList;
+            private List<int> StartRangesList; // Temporal lists until they are converted to NativeArrays
             private List<int> EndRangesList;
 
             private NativeArray<int> StartRanges;

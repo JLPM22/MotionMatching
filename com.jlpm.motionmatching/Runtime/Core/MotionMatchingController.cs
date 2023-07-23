@@ -499,7 +499,7 @@ namespace MotionMatching
         }
 
         /// <summary>
-        /// Disables any previous set tag so searches are performed over the entire pose set
+        /// Disables any previous set tag or query so searches are performed over the entire pose set
         /// </summary>
         public void DisableTag()
         {
@@ -511,7 +511,7 @@ namespace MotionMatching
         }
 
         /// <summary>
-        /// Searches over those poses marked with the tag
+        /// Motion Matching will only search over those poses belonging to the tag
         /// </summary>
         public void SetTag(string name)
         {
@@ -524,6 +524,14 @@ namespace MotionMatching
                 EndRanges = tag.GetEndRanges(),
             };
             job.Schedule().Complete();
+        }
+
+        /// <summary>
+        /// Motion Matching will only search over those poses belonging to the query tag
+        /// </summary>
+        public void SetQueryTag(QueryTag query)
+        {
+
         }
 
         /// <summary>

@@ -50,10 +50,19 @@ namespace MotionMatching
         private List<List<VisualElement>> TagRangesStart;
         private List<List<VisualElement>> TagRangesEnd;
 
+        // QueryTag
+        private QueryTag CurrentQueryTag;
+        private VisualElement QueryTagRangesContainer;
+        private List<VisualElement> QueryTagRangesLine;
+        private List<VisualElement> QueryTagRangesStart;
+        private List<VisualElement> QueryTagRangesEnd;
+
         // Colors
         private static readonly Color HighlightColor = new Color(0.25f, 0.42f, 0.68f, 1.0f);
         private static readonly Color TagColor = new Color(0.68f, 0.42f, 0.25f, 1.0f);
-        private static readonly Color DarkGrey = new Color(0.4f, 0.4f, 0.4f,  1.0f);
+        private static readonly Color QueryColor = new Color(0.42f, 0.68f, 0.25f, 1.0f);
+        private static readonly Color LightGray = new Color(0.4f, 0.4f, 0.4f,  1.0f);
+        private static readonly Color DarkGray = new Color(0.3f, 0.3f, 0.3f,  1.0f);
 
         private int NumberFrames { get { return AnimationData.GetAnimation().Frames.Length; } }
 
@@ -175,7 +184,7 @@ namespace MotionMatching
                 style =
                 {
                     flexDirection = FlexDirection.Column,
-                    backgroundColor = DarkGrey,
+                    backgroundColor = DarkGray,
                     width = 5
                 }
             };
@@ -190,7 +199,7 @@ namespace MotionMatching
                     flexBasis = new StyleLength(StyleKeyword.Auto),
                     alignItems = Align.Center,
                     justifyContent = Justify.FlexStart,
-                    backgroundColor = DarkGrey,
+                    backgroundColor = DarkGray,
                 }
             };
             TimelineContainer.Add(timeline);
@@ -230,7 +239,7 @@ namespace MotionMatching
                     flexBasis = new StyleLength(StyleKeyword.Auto),
                     alignItems = Align.Center,
                     justifyContent = Justify.FlexStart,
-                    backgroundColor = DarkGrey,
+                    backgroundColor = DarkGray,
                     height = FrameRuleHeight,
                     color = Color.black,
                 }
@@ -331,7 +340,7 @@ namespace MotionMatching
                         alignSelf = Align.Stretch,
                         alignItems = Align.Center,
                         justifyContent = Justify.FlexStart,
-                        backgroundColor = DarkGrey,
+                        backgroundColor = LightGray,
                     }
                 };
                 tagsContainer.Add(tagContainer);
@@ -343,7 +352,7 @@ namespace MotionMatching
                         alignSelf = Align.Stretch,
                         alignItems = Align.Center,
                         justifyContent = Justify.FlexStart,
-                        backgroundColor = DarkGrey,
+                        backgroundColor = DarkGray,
                         width = PlayButtonWidth + 2 * MarginWidth,
                         overflow = Overflow.Hidden,
                     }
@@ -459,6 +468,91 @@ namespace MotionMatching
                 CreateTagsTimeline(root);
             };
             root.Add(newTagButton);
+            // Query tag test
+            VisualElement queryContainer = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    alignSelf = Align.Stretch,
+                    alignItems = Align.Center,
+                    justifyContent = Justify.FlexStart,
+                    backgroundColor = LightGray,
+                }
+            };
+            root.Add(queryContainer);
+            VisualElement leftQueryContainer = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    alignSelf = Align.Stretch,
+                    alignItems = Align.Center,
+                    justifyContent = Justify.FlexStart,
+                    backgroundColor = DarkGray,
+                    width = PlayButtonWidth + 2 * MarginWidth,
+                    overflow = Overflow.Hidden,
+                }
+            };
+            queryContainer.Add(leftQueryContainer);
+            // Query name
+            TextField queryTextField = new TextField
+            {
+                value = "",
+                style =
+                {
+                    alignItems = Align.FlexStart,
+                    justifyContent = Justify.FlexStart,
+                    width = PlayButtonWidth,
+                    marginLeft = MarginWidth,
+                    marginRight = MarginWidth,
+                }
+            };
+            queryTextField.RegisterValueChangedCallback(x =>
+            {
+                if (CurrentQueryTag != null) CurrentQueryTag.Dispose();
+                CurrentQueryTag = null;
+                bool res = QueryTag.Parse(x.newValue, out QueryTag queryTag);
+                if (res)
+                {
+                    // Check all Tags exist
+                    foreach (string tagName in queryTag.GetTags())
+                    {
+                        bool found = false;
+                        foreach (Tag tag in AnimationData.Tags)
+                        {
+                            if (tag.Name == tagName)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            CreateQueryRangesVisual();
+                            return;
+                        }
+                    }
+                    // Process query tag
+                    queryTag.ComputeRanges(null, AnimationData.Tags);
+                    CurrentQueryTag = queryTag;
+                }
+                CreateQueryRangesVisual();
+            });
+            leftQueryContainer.Add(queryTextField);
+            QueryTagRangesContainer = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    flexGrow = 1,
+                    alignSelf = Align.Stretch,
+                    alignItems = Align.Center,
+                }
+            };
+            queryContainer.Add(QueryTagRangesContainer);
+            // Update Ranges Container
+            QueryTagRangesContainer.RegisterCallback<GeometryChangedEvent>((_) => UpdateQueryTagRangesContainer());
         }
 
         const int RangeHandleHeight = 12;
@@ -468,9 +562,13 @@ namespace MotionMatching
             VisualElement rangesContainer = RangesContainer[tagIndex];
             rangesContainer.Clear();
 
-            TagRangesLines[tagIndex].Clear();
-            TagRangesStart[tagIndex].Clear();
-            TagRangesEnd[tagIndex].Clear();
+            QueryTagRangesLine ??= new List<VisualElement>();
+            QueryTagRangesStart ??= new List<VisualElement>();
+            QueryTagRangesEnd ??= new List<VisualElement>();
+
+            QueryTagRangesLine.Clear();
+            QueryTagRangesStart.Clear();
+            QueryTagRangesEnd.Clear();
 
             // Tag auxiliary line
             VisualElement rangeAuxLine = new VisualElement
@@ -547,6 +645,87 @@ namespace MotionMatching
             }
         }
 
+        private void CreateQueryRangesVisual()
+        {
+            QueryTagRangesContainer.Clear();
+
+            // Auxiliary line
+            VisualElement rangeAuxLine = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    flexGrow = 1,
+                    flexBasis = new StyleLength(StyleKeyword.Auto),
+                    backgroundColor = new Color(0.5f, 0.5f, 0.5f, 1.0f),
+                    height = 2,
+                }
+            };
+            QueryTagRangesContainer.Add(rangeAuxLine);
+
+            QueryTagRangesLine.Clear();
+            QueryTagRangesStart.Clear();
+            QueryTagRangesEnd.Clear();
+
+            if (CurrentQueryTag == null) return;
+
+            for (int rangeIndex = 0; rangeIndex < CurrentQueryTag.GetStartRanges().Length; ++rangeIndex)
+            {
+                // Range line
+                VisualElement rangeLine = new VisualElement
+                {
+                    style =
+                    {
+                        alignItems = Align.FlexStart,
+                        justifyContent = Justify.FlexStart,
+                        flexGrow = 1,
+                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                        backgroundColor = QueryColor,
+                        height = 4,
+                        position = Position.Absolute,
+                    }
+                };
+                QueryTagRangesContainer.Add(rangeLine);
+                QueryTagRangesLine.Add(rangeLine);
+                // Range start button
+                VisualElement rangeStart = new VisualElement
+                {
+                    style =
+                    {
+                        alignItems = Align.FlexStart,
+                        justifyContent = Justify.FlexStart,
+                        flexGrow = 1,
+                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                        backgroundColor = QueryColor,
+                        width = RangeHandleWidth,
+                        height = RangeHandleHeight,
+                        position = Position.Absolute,
+                    }
+                };
+                QueryTagRangesContainer.Add(rangeStart);
+                QueryTagRangesStart.Add(rangeStart);
+                // Range end button
+                VisualElement rangeEnd = new VisualElement
+                {
+                    style =
+                    {
+                        alignItems = Align.FlexStart,
+                        justifyContent = Justify.FlexStart,
+                        flexGrow = 1,
+                        flexBasis = new StyleLength(StyleKeyword.Auto),
+                        backgroundColor = QueryColor,
+                        width = RangeHandleWidth,
+                        height = RangeHandleHeight,
+                        position = Position.Absolute,
+                    }
+                };
+                QueryTagRangesContainer.Add(rangeEnd);
+                QueryTagRangesEnd.Add(rangeEnd);
+            }
+
+            UpdateQueryTagRangesContainer();
+        }
+
         private void UpdateRangesContainer(int tagIndex)
         {
             for (int rangeIndex = 0; rangeIndex < TagRangesLines[tagIndex].Count; ++rangeIndex)
@@ -587,6 +766,43 @@ namespace MotionMatching
                 VisualElement rangeStart = TagRangesStart[tagIndex][rangeIndex];
                 rangeStart.style.left = left;
                 VisualElement rangeEnd = TagRangesEnd[tagIndex][rangeIndex];
+                rangeEnd.style.left = leftEnd - RangeHandleWidth;
+            }
+
+            if (CurrentQueryTag != null) CurrentQueryTag.ComputeRanges(null, AnimationData.Tags, force:true);
+
+            CreateQueryRangesVisual();
+        }
+
+        private void UpdateQueryTagRangesContainer()
+        {
+            if (QueryTagRangesLine == null) return;
+
+            for (int rangeIndex = 0; rangeIndex < QueryTagRangesLine.Count; ++rangeIndex)
+            {
+                int startFrame = CurrentQueryTag.GetStartRanges()[rangeIndex];
+                int endFrame = CurrentQueryTag.GetEndRanges()[rangeIndex];
+                VisualElement rangeLine = QueryTagRangesLine[rangeIndex];
+                float rangesContainerWidth = rangeLine.parent.resolvedStyle.width;
+                float left = rangesContainerWidth * ((float)startFrame / NumberFrames);
+                float leftEnd = rangesContainerWidth * ((float)endFrame / NumberFrames);
+                if (left + RangeHandleWidth > leftEnd - RangeHandleWidth)
+                {
+                    if (SelectedStartRange != -1)
+                    {
+                        left = leftEnd - RangeHandleWidth * 2;
+                    }
+                    else if (SelectedEndRange != -1)
+                    {
+                        leftEnd = left + RangeHandleWidth * 2;
+                    }
+                }
+                float rightEnd = rangesContainerWidth - leftEnd;
+                rangeLine.style.left = left;
+                rangeLine.style.right = rightEnd;
+                VisualElement rangeStart = QueryTagRangesStart[rangeIndex];
+                rangeStart.style.left = left;
+                VisualElement rangeEnd = QueryTagRangesEnd[rangeIndex];
                 rangeEnd.style.left = leftEnd - RangeHandleWidth;
             }
         }
@@ -1106,6 +1322,7 @@ namespace MotionMatching
 
         private void OnDestroy()
         {
+            if (CurrentQueryTag != null) CurrentQueryTag.Dispose();
             ReturnButton.ReturnScene();
             EditorApplication.update -= UpdatePoseFunction;
             SceneView.duringSceneGui -= UpdateGUI;
