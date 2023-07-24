@@ -52,6 +52,7 @@ namespace MotionMatching
 
         // QueryTag
         private QueryTag CurrentQueryTag;
+        private TextField QueryTagTextField;
         private VisualElement QueryTagRangesContainer;
         private List<VisualElement> QueryTagRangesLine;
         private List<VisualElement> QueryTagRangesStart;
@@ -317,6 +318,18 @@ namespace MotionMatching
                     width = 200,
                 }
             };
+            // Query Tag Container
+            VisualElement queryContainer = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    alignSelf = Align.Stretch,
+                    alignItems = Align.Center,
+                    justifyContent = Justify.FlexStart,
+                    backgroundColor = LightGray,
+                }
+            };
             // Tags
             TagRangesLines ??= new List<List<VisualElement>>();
             TagRangesStart ??= new List<List<VisualElement>>();
@@ -362,6 +375,7 @@ namespace MotionMatching
                 TextField textField = new TextField
                 {
                     value = tag.Name,
+                    isDelayed = true,
                     style =
                     {
                         alignItems = Align.FlexStart,
@@ -375,7 +389,8 @@ namespace MotionMatching
                 textField.RegisterValueChangedCallback(x =>
                 {
                     Tag tag = AnimationData.Tags[tagIndexCopy];
-                    tag.Name = x.newValue;
+                    tag.Name = GetAvailableTagName(x.newValue);
+                    textField.SetValueWithoutNotify(tag.Name);
                     AnimationData.Tags[tagIndexCopy] = tag;
                     AnimationData.SaveEditor();
                 });
@@ -395,9 +410,19 @@ namespace MotionMatching
                 int tagIndexCopy2 = tagIndex;
                 tagRemoveButton.clicked += () =>
                 {
+                    if (OnUpdatePoseStopped != null)
+                    {
+                        OnUpdatePoseStopped();
+                        OnUpdatePoseStopped = null;
+                    }
+                    if (CurrentQueryTag != null)
+                    {
+                        QueryTagExpressionChanged(QueryTagTextField.value);
+                    }
                     AnimationData.RemoveTag(tagIndexCopy2);
                     root.Remove(tagsContainer);
                     root.Remove(newTagButton);
+                    root.Remove(queryContainer);
                     CreateTagsTimeline(root);
                 };
                 leftContainer.Add(tagRemoveButton);
@@ -424,7 +449,6 @@ namespace MotionMatching
                             OnUpdatePoseStopped = null;
                         }
                         tagPlayButton.text = "s";
-                        UpdateCurrentFrame(0);
                         UpdatePoseFunction = () => UpdatePose(true, tagIndexCopy3);
                         EditorApplication.update += UpdatePoseFunction;
                         OnUpdatePoseStopped = () =>
@@ -462,25 +486,15 @@ namespace MotionMatching
             }
             newTagButton.clicked += () =>
             {
-                AnimationData.AddTag();
+                AnimationData.AddTag(GetAvailableTagName(""));
                 root.Remove(tagsContainer);
                 root.Remove(newTagButton);
+                root.Remove(queryContainer);
                 CreateTagsTimeline(root);
             };
             root.Add(newTagButton);
-            // Query tag test
-            VisualElement queryContainer = new VisualElement
-            {
-                style =
-                {
-                    flexDirection = FlexDirection.Row,
-                    alignSelf = Align.Stretch,
-                    alignItems = Align.Center,
-                    justifyContent = Justify.FlexStart,
-                    backgroundColor = LightGray,
-                }
-            };
             root.Add(queryContainer);
+            // Query tag
             VisualElement leftQueryContainer = new VisualElement
             {
                 style =
@@ -496,50 +510,66 @@ namespace MotionMatching
             };
             queryContainer.Add(leftQueryContainer);
             // Query name
-            TextField queryTextField = new TextField
+            QueryTagTextField = new TextField
             {
-                value = "",
+                value = QueryTagTextField != null ? QueryTagTextField.value : "((tag1 & tag2) | tag3) - tag4",
                 style =
                 {
                     alignItems = Align.FlexStart,
                     justifyContent = Justify.FlexStart,
-                    width = PlayButtonWidth,
+                    width = PlayButtonWidth - TagButtonWidth - MarginWidth,
                     marginLeft = MarginWidth,
                     marginRight = MarginWidth,
                 }
             };
-            queryTextField.RegisterValueChangedCallback(x =>
+            QueryTagTextField.RegisterValueChangedCallback(x => QueryTagExpressionChanged(x.newValue));
+            leftQueryContainer.Add(QueryTagTextField);
+            // Tag play button
+            Button queryTagPlayButton = new Button()
             {
-                if (CurrentQueryTag != null) CurrentQueryTag.Dispose();
-                CurrentQueryTag = null;
-                bool res = QueryTag.Parse(x.newValue, out QueryTag queryTag);
-                if (res)
+                text = "p",
+                style =
                 {
-                    // Check all Tags exist
-                    foreach (string tagName in queryTag.GetTags())
-                    {
-                        bool found = false;
-                        foreach (Tag tag in AnimationData.Tags)
-                        {
-                            if (tag.Name == tagName)
-                            {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found)
-                        {
-                            CreateQueryRangesVisual();
-                            return;
-                        }
-                    }
-                    // Process query tag
-                    queryTag.ComputeRanges(null, AnimationData.Tags);
-                    CurrentQueryTag = queryTag;
+                    height = FrameRuleHeight,
+                    width = TagButtonWidth,
+                    marginLeft = 0,
+                    marginRight = MarginWidth,
                 }
-                CreateQueryRangesVisual();
-            });
-            leftQueryContainer.Add(queryTextField);
+            };
+            queryTagPlayButton.clicked += () =>
+            {
+                if (queryTagPlayButton.text == "p")
+                {
+                    if (OnUpdatePoseStopped != null)
+                    {
+                        OnUpdatePoseStopped();
+                        OnUpdatePoseStopped = null;
+                    }
+                    queryTagPlayButton.text = "s";
+                    UpdatePoseFunction = () =>
+                    {
+                        if (CurrentQueryTag != null) UpdatePose(true, queryTag: true);
+                        else
+                        {
+                            OnUpdatePoseStopped();
+                            OnUpdatePoseStopped = null;
+                        }
+                    };
+                    EditorApplication.update += UpdatePoseFunction;
+                    OnUpdatePoseStopped = () =>
+                    {
+                        queryTagPlayButton.text = "p";
+                        EditorApplication.update -= UpdatePoseFunction;
+                        UpdatePoseFunction = null;
+                    };
+                }
+                else
+                {
+                    OnUpdatePoseStopped();
+                    OnUpdatePoseStopped = null;
+                }
+            };
+            leftQueryContainer.Add(queryTagPlayButton);
             QueryTagRangesContainer = new VisualElement
             {
                 style =
@@ -805,6 +835,38 @@ namespace MotionMatching
                 VisualElement rangeEnd = QueryTagRangesEnd[rangeIndex];
                 rangeEnd.style.left = leftEnd - RangeHandleWidth;
             }
+        }
+
+        private void QueryTagExpressionChanged(string newExpression)
+        {
+            if (CurrentQueryTag != null) CurrentQueryTag.Dispose();
+            CurrentQueryTag = null;
+            bool res = QueryTag.Parse(newExpression, out QueryTag queryTag);
+            if (res)
+            {
+                // Check all Tags exist
+                foreach (string tagName in queryTag.GetTags())
+                {
+                    bool found = false;
+                    foreach (Tag tag in AnimationData.Tags)
+                    {
+                        if (tag.Name == tagName)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        CreateQueryRangesVisual();
+                        return;
+                    }
+                }
+                // Process query tag
+                queryTag.ComputeRanges(null, AnimationData.Tags);
+                CurrentQueryTag = queryTag;
+            }
+            CreateQueryRangesVisual();
         }
 
         private void OnPointerDownRangesContainer(PointerDownEvent e, int tagIndex, VisualElement element)
@@ -1161,7 +1223,7 @@ namespace MotionMatching
             for (int tagIndex = 0; tagIndex < AnimationData.Tags.Count; ++tagIndex)
             {
                 Tag tag = AnimationData.Tags[tagIndex];
-                for (int rangeIndex = 0; rangeIndex < tag.Start.Length;  rangeIndex++)
+                for (int rangeIndex = 0; rangeIndex < tag.Start.Length; ++rangeIndex)
                 {
                     TagRangesLines[tagIndex][rangeIndex].style.backgroundColor = TagColor;
                     TagRangesStart[tagIndex][rangeIndex].style.backgroundColor = TagColor;
@@ -1174,6 +1236,55 @@ namespace MotionMatching
                     }
                 }
             }
+            if (CurrentQueryTag != null)
+            { 
+                for (int rangeIndex = 0; rangeIndex < CurrentQueryTag.GetStartRanges().Length; ++rangeIndex)
+                {
+                    QueryTagRangesLine[rangeIndex].style.backgroundColor = QueryColor;
+                    QueryTagRangesStart[rangeIndex].style.backgroundColor = QueryColor;
+                    QueryTagRangesEnd[rangeIndex].style.backgroundColor = QueryColor;
+                    if (CurrentFrame >= CurrentQueryTag.GetStartRanges()[rangeIndex] && CurrentFrame <= CurrentQueryTag.GetEndRanges()[rangeIndex])
+                    {
+                        QueryTagRangesLine[rangeIndex].style.backgroundColor = HighlightColor;
+                        QueryTagRangesStart[rangeIndex].style.backgroundColor = HighlightColor;
+                        QueryTagRangesEnd[rangeIndex].style.backgroundColor = HighlightColor;
+                    }
+                }
+            }
+        }
+
+        private string GetAvailableTagName(string tagName)
+        {
+            if (tagName == "")
+            {
+                tagName = "NewTag";
+            }
+
+            string initialName = tagName;
+
+            bool available = false;
+
+            while (!available)
+            {
+                available = true;
+                foreach (var tag in AnimationData.Tags)
+                {
+                    if (tag.Name == tagName)
+                    {
+                        int num = 1;
+                        string[] splitName = tag.Name.Split(".");
+                        if (splitName.Length > 1 && int.TryParse(splitName[splitName.Length - 1], out int candidateNum))
+                        {
+                            num = candidateNum + 1;
+                        }
+                        tagName = initialName + "." + num.ToString();
+                        available = false;
+                        break;
+                    }
+                }
+            }
+
+            return tagName;
         }
 
         private int GetFrameFromPointer(Vector2 pointer, VisualElement container)
@@ -1267,7 +1378,7 @@ namespace MotionMatching
             }
         }
 
-        private void UpdatePose(bool forward=true, int tagIndex=-1)
+        private void UpdatePose(bool forward=true, int tagIndex=-1, bool queryTag=false)
         {
             BVHAnimation animation = AnimationData.GetAnimation();
             if (animation != null && LastUpdateTime + (1.0 / TargetFramerate) < EditorApplication.timeSinceStartup)
@@ -1282,11 +1393,11 @@ namespace MotionMatching
                 // Update frame index
                 if (forward)
                 {
-                    if (tagIndex == -1)
+                    if (tagIndex == -1 && !queryTag)
                     {
                         UpdateCurrentFrame((CurrentFrame + 1) % animation.Frames.Length);
                     }
-                    else
+                    else if (!queryTag)
                     {
                         Tag tag = AnimationData.Tags[tagIndex];
                         bool found = false;
@@ -1308,6 +1419,29 @@ namespace MotionMatching
                         if (!found)
                         {
                             UpdateCurrentFrame(tag.Start[0]);
+                        }
+                    }
+                    else
+                    {
+                        bool found = false;
+                        for (int rangeIndex = 0; rangeIndex < CurrentQueryTag.GetStartRanges().Length && !found; ++rangeIndex)
+                        {
+                            if (CurrentFrame <= CurrentQueryTag.GetEndRanges()[rangeIndex])
+                            {
+                                if (CurrentFrame < CurrentQueryTag.GetStartRanges()[rangeIndex])
+                                {
+                                    UpdateCurrentFrame(CurrentQueryTag.GetStartRanges()[rangeIndex]);
+                                }
+                                else
+                                {
+                                    UpdateCurrentFrame(CurrentFrame + 1);
+                                }
+                                found = true;
+                            }
+                        }
+                        if (!found)
+                        {
+                            UpdateCurrentFrame(CurrentQueryTag.GetStartRanges()[0]);
                         }
                     }
                 }

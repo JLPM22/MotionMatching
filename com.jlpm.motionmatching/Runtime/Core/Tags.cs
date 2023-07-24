@@ -66,7 +66,7 @@ namespace MotionMatching
             List<NativeArray<int>> endRanges = new();   // indices are represented in Graph as Tags.Length + i (where i is an index of startRanges or endRanges).
             List<NativeArray<int>> toDelete = new();
 
-            void GetRangesFromGraphIndex(int g, out NativeArray<int> start, out NativeArray<int> end)
+            bool GetRangesFromGraphIndex(int g, out NativeArray<int> start, out NativeArray<int> end)
             {
                 if (g < Tags.Length) // single tag
                 {
@@ -75,18 +75,18 @@ namespace MotionMatching
                         Debug.Assert(tags != null);
                         foreach (var tag in tags)
                         {
-                            if (tag.Name == Tags[g])
+                            if (tag.Name == Tags[g] && tag.Start != null)
                             {
                                 start = new NativeArray<int>(tag.Start, Allocator.Temp);
                                 end = new NativeArray<int>(tag.End, Allocator.Temp);
                                 toDelete.Add(start);
                                 toDelete.Add(end);
-                                return;
+                                return true;
                             }
                         }
                         start = new NativeArray<int>();
                         end = new NativeArray<int>();
-                        Debug.Assert(false, "No tag found");
+                        return false;
                     }
                     else
                     {
@@ -101,6 +101,7 @@ namespace MotionMatching
                     start = startRanges[index];
                     end = endRanges[index];
                 }
+                return true;
             }
 
             Queue<int> graph = new Queue<int>(); // queue used to process Graph
@@ -165,9 +166,11 @@ namespace MotionMatching
             if (graph.Count > 0) // not empty query
             {
                 int g = graph.Dequeue();
-                GetRangesFromGraphIndex(g, out NativeArray<int> start, out NativeArray<int> end);
-                StartRanges = new NativeArray<int>(start, Allocator.Persistent);
-                EndRanges = new NativeArray<int>(end, Allocator.Persistent);
+                if (GetRangesFromGraphIndex(g, out NativeArray<int> start, out NativeArray<int> end))
+                {
+                    StartRanges = new NativeArray<int>(start, Allocator.Persistent);
+                    EndRanges = new NativeArray<int>(end, Allocator.Persistent);
+                }
             }
             
             // Dispose auxiliary ranges

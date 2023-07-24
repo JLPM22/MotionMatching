@@ -43,9 +43,12 @@ namespace MotionMatching
             return Tags;
         }
 
-        public void AddTag()
+        public void AddTag(string name)
         {
-            Tag newTag = new Tag();
+            Tag newTag = new Tag
+            {
+                Name = name
+            };
             Tags.Add(newTag);
             SaveEditor();
         }

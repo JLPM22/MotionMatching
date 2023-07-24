@@ -531,7 +531,14 @@ namespace MotionMatching
         /// </summary>
         public void SetQueryTag(QueryTag query)
         {
-
+            query.ComputeRanges(PoseSet);
+            var job = new SetTagBurst
+            {
+                TagMask = TagMask,
+                StartRanges = query.GetStartRanges(),
+                EndRanges = query.GetEndRanges(),
+            };
+            job.Schedule().Complete();
         }
 
         /// <summary>
