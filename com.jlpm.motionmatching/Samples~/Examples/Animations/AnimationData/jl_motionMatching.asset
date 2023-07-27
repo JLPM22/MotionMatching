@@ -16,20 +16,11 @@ MonoBehaviour:
   UnitScale: 0.01
   Tags:
   - Name: walk
-    Start: 00000000f30b000044230000
-    End: b1030000411a0000c1280000
+    Start: b302000068140000341f0000b22c00002a380000
+    End: 3e0b00001c1c0000dc27000001340000d53c0000
   - Name: run
-    Start: 4b0400007d1f0000
-    End: c20b00005a260000
-  - Name: 
-    Start: bb100000
-    End: 151a0000
-  - Name: jump
-    Start: 
-    End: 
-  - Name: test2
-    Start: ef11000035240000
-    End: f0110000ab280000
-  - Name: test3
-    Start: bd160000
-    End: f8350000
+    Start: 3e0b0000ff1b0000bf270000e4330000
+    End: 681400005f1f0000cf2c000047380000
+  - Name: idle
+    Start: 00000000
+    End: c1020000
