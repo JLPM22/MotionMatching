@@ -5,6 +5,7 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
+using System.Diagnostics;
 
 namespace MotionMatching
 {
@@ -314,6 +315,8 @@ namespace MotionMatching
             // Check if use current or best
             int best = SearchResult[0];
             if (currentValid && best == -1) best = CurrentFrame;
+
+            Debug.Assert(best != -1, "Motion Matching is not able to find any valid pose. Maybe the motion database is empty or the query tag used produces an empty set of poses?");
 
             return best;
         }
