@@ -17,13 +17,13 @@ namespace MotionMatching
         public event Action<float> OnUpdated;
         public event Action OnInputChangedQuickly;
 
-        public MotionMatchingController SimulationBone; // MotionMatchingController's transform is the SimulationBone of the character
+        public MotionMatchingController MotionMatching; // MotionMatchingController's transform is the SimulationBone of the character
 
         public float DatabaseDeltaTime { get; private set; }
 
         private void Update()
         {
-            DatabaseDeltaTime = SimulationBone.DatabaseFrameTime;
+            DatabaseDeltaTime = MotionMatching.DatabaseFrameTime;
             // Update the character
             OnUpdate();
             // Update other components depending on the character controller

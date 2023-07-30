@@ -39,10 +39,6 @@ namespace MotionMatching
             Graph[0] = 0;
             Dirty = true;
         }
-        ~QueryTag() 
-        {
-            Dispose();
-        }
 
         public string[] GetTags() { return Tags; }
         public NativeArray<int> GetStartRanges() 
@@ -627,6 +623,7 @@ namespace MotionMatching
             bool res = ParseLeaf(tokens, ref left, out QueryTag leftQueryTag);
             if (!res)
             {
+                if (leftQueryTag != null) leftQueryTag.Dispose();
                 queryTag = null;
                 return false;
             }
@@ -668,12 +665,17 @@ namespace MotionMatching
                 res = ParseLeaf(tokens, ref left, out QueryTag rightQueryTag);
                 if (!res)
                 {
+                    if (leftQueryTag != null) leftQueryTag.Dispose();
+                    if (rightQueryTag != null) rightQueryTag.Dispose();
                     queryTag = null;
                     return false;
                 }
 
                 // Create new QueryTag based on op
-                leftQueryTag = QueryTag.Op(leftQueryTag, rightQueryTag, op);
+                QueryTag tmpLeftQueryTag = QueryTag.Op(leftQueryTag, rightQueryTag, op);
+                if (leftQueryTag != null) leftQueryTag.Dispose();
+                if (rightQueryTag != null) rightQueryTag.Dispose();
+                leftQueryTag = tmpLeftQueryTag;
             }
         }
         private static bool ParseLeaf(List<string> tokens, ref int left, out QueryTag queryTag)
@@ -703,6 +705,7 @@ namespace MotionMatching
                 // Check and skip ")"
                 if (!res || left >= tokens.Count || tokens[left] != ")")
                 {
+                    if (queryTag != null) queryTag.Dispose();
                     // Missing close parenthesis
                     return false;
                 }

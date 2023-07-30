@@ -157,7 +157,7 @@ namespace MotionMatching
             }
             // Tags
             TagMask = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
-            DisableTag();
+            DisableQueryTag();
             // Foot Lock
             if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.LogError("[Motion Matching] LeftToes not found");
             LeftToesIndex = leftToesJoint.Index;
@@ -261,7 +261,7 @@ namespace MotionMatching
             // Get next feature vector (when doing motion matching search, they need less error than this)
             float currentDistance = float.MaxValue;
             bool currentValid = false;
-            if (FeatureSet.IsValidFeature(CurrentFrame))
+            if (FeatureSet.IsValidFeature(CurrentFrame) && TagMask[CurrentFrame])
             {
                 currentValid = true;
                 currentDistance = 0.0f;
@@ -501,29 +501,32 @@ namespace MotionMatching
         /// <summary>
         /// Disables any previous set tag or query so searches are performed over the entire pose set
         /// </summary>
-        public void DisableTag()
+        public void DisableQueryTag()
         {
             var job = new DisableTagBurst
             {
                 TagMask = TagMask,
             };
             job.Schedule().Complete();
+            OnInputChangedQuickly();
         }
 
         /// <summary>
         /// Motion Matching will only search over those poses belonging to the tag
         /// </summary>
-        public void SetTag(string name)
+        public void SetQueryTag(string name)
         {
             PoseSet.Tag tag = PoseSet.GetTag(name);
             // TODO: cache results to avoid duplicated computations...
             var job = new SetTagBurst
             {
+                MaximumFramesPrediction = PoseSet.MaximumFramesPrediction,
                 TagMask = TagMask,
                 StartRanges = tag.GetStartRanges(),
                 EndRanges = tag.GetEndRanges(),
             };
             job.Schedule().Complete();
+            OnInputChangedQuickly();
         }
 
         /// <summary>
@@ -534,11 +537,13 @@ namespace MotionMatching
             query.ComputeRanges(PoseSet);
             var job = new SetTagBurst
             {
+                MaximumFramesPrediction = PoseSet.MaximumFramesPrediction,
                 TagMask = TagMask,
                 StartRanges = query.GetStartRanges(),
                 EndRanges = query.GetEndRanges(),
             };
             job.Schedule().Complete();
+            OnInputChangedQuickly();
         }
 
         /// <summary>

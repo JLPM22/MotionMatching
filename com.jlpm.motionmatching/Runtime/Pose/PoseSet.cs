@@ -21,10 +21,11 @@ namespace MotionMatching
         public int NumberClips { get { return Clips.Count; } }
         public int NumberTags { get { return Tags.Count; } }
 
+        public readonly int MaximumFramesPrediction; // Number of prediction frames of the longest trajectory feature
+
         // Private ---
         private readonly List<PoseVector> Poses;
         private readonly List<AnimationClip> Clips;
-        private readonly int MaximumFramesPrediction;
         private readonly List<Tag> Tags;
         private readonly Dictionary<string, int> TagNameToIndex;
 

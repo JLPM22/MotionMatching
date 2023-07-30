@@ -11,6 +11,7 @@ public class InputManager : MonoBehaviour
 {
     public event Action<Vector2> OnMovementDirectionChanged; // Vector2 with the direction of movement
     public event Action OnFixOrientationSwap; // Called when the orientation is fixed/unfixed
+    public event Action OnSwitchTag; // Called when the query tag expression is enabled/disabled
 
     private PlayerInput Input;
 
@@ -24,6 +25,7 @@ public class InputManager : MonoBehaviour
         Input.Player.Enable();
         Input.Player.Movement.performed += OnMovementPerformed;
         Input.Player.FixOrientation.performed += OnFixOrientationSwapPerformed;
+        Input.Player.SwitchTag.performed += OnSwitchTagPerformed;
     }
 
     private void OnDisable()
@@ -31,6 +33,7 @@ public class InputManager : MonoBehaviour
         Input.Player.Disable();
         Input.Player.Movement.performed -= OnMovementPerformed;
         Input.Player.FixOrientation.performed -= OnFixOrientationSwapPerformed;
+        Input.Player.SwitchTag.performed -= OnSwitchTagPerformed;
     }
 
     private void OnMovementPerformed(InputAction.CallbackContext context)
@@ -42,5 +45,10 @@ public class InputManager : MonoBehaviour
     private void OnFixOrientationSwapPerformed(InputAction.CallbackContext context)
     {
         if (OnFixOrientationSwap != null) OnFixOrientationSwap();
+    }
+
+    private void OnSwitchTagPerformed(InputAction.CallbackContext context)
+    {
+        if (OnSwitchTag != null) OnSwitchTag();
     }
 }

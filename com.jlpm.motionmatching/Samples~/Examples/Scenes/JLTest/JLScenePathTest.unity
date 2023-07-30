@@ -576,7 +576,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14d8336587724e7438d61a3d804f1202, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SimulationBone: {fileID: 845368627}
+  MotionMatching: {fileID: 845368627}
   TrajectoryPositionFeatureName: FuturePosition
   TrajectoryDirectionFeatureName: FutureDirection
   Path:
@@ -835,7 +835,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3263f4711897b924aa892c1da8c94ed6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SimulationBone: {fileID: 845368627}
+  MotionMatching: {fileID: 0}
   TrajectoryPositionFeatureName: FuturePosition
   TrajectoryDirectionFeatureName: FutureDirection
   MaxSpeed: 3
@@ -849,7 +849,7 @@ MonoBehaviour:
   PosMaximumAdjustmentRatio: 0.1
   RotMaximumAdjustmentRatio: 0.1
   DoClamping: 0
-  MaxDistanceSimulationBoneAndObject: 1
+  MaxDistanceMMAndCharacterController: 0.1
   DebugCurrent: 1
   DebugPrediction: 1
   DebugClamping: 1
@@ -1102,7 +1102,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14d8336587724e7438d61a3d804f1202, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SimulationBone: {fileID: 1702772098}
+  MotionMatching: {fileID: 1702772098}
   TrajectoryPositionFeatureName: FuturePosition
   TrajectoryDirectionFeatureName: FutureDirection
   Path:
@@ -1381,7 +1381,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14d8336587724e7438d61a3d804f1202, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SimulationBone: {fileID: 488265980}
+  MotionMatching: {fileID: 488265980}
   TrajectoryPositionFeatureName: FuturePosition
   TrajectoryDirectionFeatureName: FutureDirection
   Path:

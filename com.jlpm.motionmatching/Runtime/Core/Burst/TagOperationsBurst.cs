@@ -24,6 +24,7 @@ namespace MotionMatching
     [BurstCompile]
     public struct SetTagBurst : IJob
     {
+        [ReadOnly] public int MaximumFramesPrediction; // Number of prediction frames of the longest trajectory feature
         [ReadOnly] public NativeArray<int> StartRanges;
         [ReadOnly] public NativeArray<int> EndRanges;
         [WriteOnly] public NativeArray<bool> TagMask;
@@ -38,7 +39,7 @@ namespace MotionMatching
             {
                 int start = StartRanges[i];
                 int end = EndRanges[i];
-                for (int j = start; j < end; j++)
+                for (int j = start; j < end - MaximumFramesPrediction; j++)
                 {
                     TagMask[j] = true;
                 }

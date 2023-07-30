@@ -443,6 +443,7 @@ GameObject:
   - component: {fileID: 922198743}
   - component: {fileID: 922198742}
   - component: {fileID: 922198739}
+  - component: {fileID: 922198744}
   m_Layer: 0
   m_Name: CharacterController
   m_TagString: Untagged
@@ -493,7 +494,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &922198742
 MonoBehaviour:
@@ -519,6 +520,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4214c09160b148640afde91a8d0e634f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &922198744
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 922198738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d4c463597135b44384675fcf727d2e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  QueryExpression: walk
 --- !u!1 &939603974
 GameObject:
   m_ObjectHideFlags: 0
@@ -883,7 +897,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 30, y: 0, z: 0}
 --- !u!114 &1823688468
 MonoBehaviour:
