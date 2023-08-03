@@ -21,7 +21,7 @@ namespace MotionMatching
 
         public float DatabaseDeltaTime { get; private set; }
 
-        private void Update()
+        private void LateUpdate()
         {
             DatabaseDeltaTime = MotionMatching.DatabaseFrameTime;
             // Update the character

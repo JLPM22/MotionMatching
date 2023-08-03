@@ -142,9 +142,9 @@ namespace MotionMatching
         /// Compute the offsets from the source pose to the target pose.
         /// Offsets are in/out since we may start a inertialization in the middle of another inertialization.
         /// </summary>
-        private static void InertializeJointTransition(quaternion sourceRot, float3 sourceAngularVel,
-                                                       quaternion targetRot, float3 targetAngularVel,
-                                                       ref quaternion offsetRot, ref float3 offsetAngularVel)
+        public static void InertializeJointTransition(quaternion sourceRot, float3 sourceAngularVel,
+                                                      quaternion targetRot, float3 targetAngularVel,
+                                                      ref quaternion offsetRot, ref float3 offsetAngularVel)
         {
             offsetRot = math.normalizesafe(MathExtensions.Abs(math.mul(math.inverse(targetRot), math.mul(sourceRot, offsetRot))));
             offsetAngularVel = (sourceAngularVel + offsetAngularVel) - targetAngularVel;
@@ -153,9 +153,9 @@ namespace MotionMatching
         /// Compute the offsets from the source pose to the target pose.
         /// Offsets are in/out since we may start a inertialization in the middle of another inertialization.
         /// </summary>
-        private static void InertializeJointTransition(float3 source, float3 sourceVel,
-                                                       float3 target, float3 targetVel,
-                                                       ref float3 offset, ref float3 offsetVel)
+        public static void InertializeJointTransition(float3 source, float3 sourceVel,
+                                                      float3 target, float3 targetVel,
+                                                      ref float3 offset, ref float3 offsetVel)
         {
             offset = (source + offset) - target;
             offsetVel = (sourceVel + offsetVel) - targetVel;
@@ -164,9 +164,9 @@ namespace MotionMatching
         /// Compute the offsets from the source pose to the target pose.
         /// Offsets are in/out since we may start a inertialization in the middle of another inertialization.
         /// </summary>
-        private static void InertializeJointTransition(float source, float sourceVel,
-                                                       float target, float targetVel,
-                                                       ref float offset, ref float offsetVel)
+        public static void InertializeJointTransition(float source, float sourceVel,
+                                                      float target, float targetVel,
+                                                      ref float offset, ref float offsetVel)
         {
             offset = (source + offset) - target;
             offsetVel = (sourceVel + offsetVel) - targetVel;
@@ -175,10 +175,10 @@ namespace MotionMatching
         /// <summary>
         /// Updates the inertialization decaying the offset and applying it to the target pose
         /// </summary>
-        private static void InertializeJointUpdate(quaternion targetRot, float3 targetAngularVel,
-                                                   float halfLife, float deltaTime,
-                                                   ref quaternion offsetRot, ref float3 offsetAngularVel,
-                                                   out quaternion newRot, out float3 newAngularVel)
+        public static void InertializeJointUpdate(quaternion targetRot, float3 targetAngularVel,
+                                                  float halfLife, float deltaTime,
+                                                  ref quaternion offsetRot, ref float3 offsetAngularVel,
+                                                  out quaternion newRot, out float3 newAngularVel)
         {
             Spring.DecaySpringDamperImplicit(ref offsetRot, ref offsetAngularVel, halfLife, deltaTime);
             newRot = math.mul(targetRot, offsetRot);
@@ -187,10 +187,10 @@ namespace MotionMatching
         /// <summary>
         /// Updates the inertialization decaying the offset and applying it to the target pose
         /// </summary>
-        private static void InertializeJointUpdate(float3 target, float3 targetVel,
-                                                   float halfLife, float deltaTime,
-                                                   ref float3 offset, ref float3 offsetVel,
-                                                   out float3 newValue, out float3 newVel)
+        public static void InertializeJointUpdate(float3 target, float3 targetVel,
+                                                  float halfLife, float deltaTime,
+                                                  ref float3 offset, ref float3 offsetVel,
+                                                  out float3 newValue, out float3 newVel)
         {
             Spring.DecaySpringDamperImplicit(ref offset, ref offsetVel, halfLife, deltaTime);
             newValue = target + offset;
@@ -199,10 +199,10 @@ namespace MotionMatching
         /// <summary>
         /// Updates the inertialization decaying the offset and applying it to the target pose
         /// </summary>
-        private static void InertializeJointUpdate(float target, float targetVel,
-                                                   float halfLife, float deltaTime,
-                                                   ref float offset, ref float offsetVel,
-                                                   out float newValue, out float newVel)
+        public static void InertializeJointUpdate(float target, float targetVel,
+                                                  float halfLife, float deltaTime,
+                                                  ref float offset, ref float offsetVel,
+                                                  out float newValue, out float newVel)
         {
             Spring.DecaySpringDamperImplicit(ref offset, ref offsetVel, halfLife, deltaTime);
             newValue = target + offset;
