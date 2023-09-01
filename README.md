@@ -1,8 +1,10 @@
 # Motion Matching
 
-📚 **[Documentation](https://jlpm22.github.io/motionmatching-docs/)**
-
 ![](.github/media/path_mm.jpg)
+
+------
+
+📚 **[Documentation](https://jlpm22.github.io/motionmatching-docs/)**
 
 Welcome to the **Motion Matching** implementation designed for the **Unity** game engine. This project originated from the author's master thesis, providing a deep dive into both the Motion Matching technique and the workings of this specific Unity package. Download the complete thesis [here](https://www.researchgate.net/publication/363377742_Motion_Matching_for_Character_Animation_and_Virtual_Reality_Avatars_in_Unity) for an extensive overview. The project is a work-in-progress, aiming to offer a comprehensive Motion Matching solution for Unity. It can serve as a useful resource for those keen to learn or implement their own Motion Matching solution or even extend this existing package.
 
