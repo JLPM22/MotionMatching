@@ -47,9 +47,10 @@ public class TagSwitchHelper : MonoBehaviour
         IsQuerySet = false;
     }
 
-    private void SetExpression(string expression)
+    public void SetExpression(string expression)
     {
         QueryExpression = expression;
+        UpdateQuery();
     }
 
     private void Dispose()
