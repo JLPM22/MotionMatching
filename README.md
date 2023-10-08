@@ -89,7 +89,7 @@ If you find this package beneficial, kindly attribute it to this repository or c
   title   = {Motion Matching for Character Animation and Virtual Reality Avatars in Unity},
   school  = {Universitat Politecnica de Catalunya},
   year    = {2022},
-  doi     = {10.13140/RG.2.2.31741.23528}
+  doi     = {10.13140/RG.2.2.31741.23528/1}
 }
 ```
 
