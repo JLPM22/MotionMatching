@@ -6,6 +6,7 @@ using System;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 
 namespace MotionMatching
 {
@@ -26,12 +27,6 @@ namespace MotionMatching
         public bool BlendPoses = true;
         [Tooltip("Decrease this value to accelerate blending. Time needed to move half of the distance between the source to the target pose.")]
         [Range(0.0f, 1.0f)] public float BlendHalfLife = 0.05f;
-
-        [Header("Retargeting")]
-        [Tooltip("Local vector (axis) pointing in the forward direction of the character")] 
-        public Vector3 ForwardLocalVector = new Vector3(0, 0, 1);
-        [Tooltip("Local vector (axis) pointing in the up direction of the character")] 
-        public Vector3 UpLocalVector = new Vector3(0, 1, 0);
 
         [Header("Toes Floor Penetration")]
         [Tooltip("Enable to avoid the toes joint (+ ToesSoleOffset) to penetrate the floor (assuming floor at y=0). The root joint will be adjusted to compensate the height difference.")] 
@@ -111,14 +106,49 @@ namespace MotionMatching
             // Target
             Quaternion rot = Animator.transform.rotation;
             Animator.transform.rotation = Quaternion.identity;
+            SkeletonBone[] targetSkeletonBones = Animator.avatar.humanDescription.skeleton;
+            Quaternion hipsRot = Quaternion.identity;
             for (int i = 0; i < BodyJoints.Length; i++)
             {
-                TargetTPose[i] = Animator.GetBoneTransform(BodyJoints[i]).rotation;
+                Transform targetJoint = Animator.GetBoneTransform(BodyJoints[i]);
+
+                // Use Array.FindIndex to find the index of the joint in the targetSkeletonBones array
+                int targetJointIndex = Array.FindIndex(targetSkeletonBones, bone => bone.name == targetJoint.name);
+                Debug.Assert(targetJointIndex != -1, "Target joint not found: " + targetJoint.name);
+
+                // Initialize the rotation as the local rotation of the joint
+                Quaternion cumulativeRotation = targetSkeletonBones[targetJointIndex].rotation;
+
+                // Traverse up the hierarchy until reaching the Animator's transform
+                Transform currentTransform = targetJoint.parent;
+                while (currentTransform != null && currentTransform != Animator.transform)
+                {
+                    int parentIndex = Array.FindIndex(targetSkeletonBones, bone => bone.name == currentTransform.name);
+                    if (parentIndex != -1)
+                    {
+                        // Multiply with the parent's local rotation
+                        cumulativeRotation = targetSkeletonBones[parentIndex].rotation * cumulativeRotation;
+                    }
+                    Debug.Assert(parentIndex != -1, "Parent joint not found: " + currentTransform.name);
+
+                    // Move to the next parent in the hierarchy
+                    currentTransform = currentTransform.parent;
+                }
+
+                // Store the world rotation
+                TargetTPose[i] = cumulativeRotation;
+                if (BodyJoints[i] == HumanBodyBones.Hips)
+                {
+                    hipsRot = cumulativeRotation;
+                }
             }
             Animator.transform.rotation = rot;
+            // Find ForwardLocalVector and UpLocalVector
+            float3 forwardLocalVector = math.mul(math.inverse(hipsRot), math.forward());
+            float3 upLocalVector = math.mul(math.inverse(hipsRot), math.up());
             // Correct body orientation so they are both facing the same direction
-            float3 targetWorldForward = math.mul(TargetTPose[0], ForwardLocalVector);
-            float3 targetWorldUp = math.mul(TargetTPose[0], UpLocalVector);
+            float3 targetWorldForward = math.mul(TargetTPose[0], forwardLocalVector);
+            float3 targetWorldUp = math.mul(TargetTPose[0], upLocalVector);
             float3 sourceWorldForward = math.mul(SourceTPose[0], mmData.HipsForwardLocalVector);
             float3 sourceWorldUp = math.mul(SourceTPose[0], mmData.HipsUpLocalVector);
             quaternion targetLookAt = quaternion.LookRotation(targetWorldForward, targetWorldUp);
@@ -309,14 +339,6 @@ namespace MotionMatching
             HumanBodyBones.RightFoot, // 20
             HumanBodyBones.RightToes // 21
         };
-
-        private void OnValidate()
-        {
-            if (math.abs(math.length(ForwardLocalVector)) < 1E-3f)
-            {
-                Debug.LogWarning("ForwardLocalVector is too close to zero. Object: " + name);
-            }
-        }
 
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
