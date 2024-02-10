@@ -18,6 +18,9 @@ namespace MotionMatching
 
             MotionMatchingController controller = (MotionMatchingController)target;
 
+            if(controller == null) { return; }
+            if(controller.MMData == null) { return; }
+
             // Feature Weights
             if (controller.FeatureWeights.Length != (controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count))
             {
