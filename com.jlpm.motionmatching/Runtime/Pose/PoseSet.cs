@@ -194,6 +194,25 @@ namespace MotionMatching
         }
 
         /// <summary>
+        /// Returns the pose at the given index.
+        /// Return true if the pose can be used for prediction
+        /// </summary>
+        public bool GetPose(int poseIndex, out PoseVector pose, out int animationClip)
+        {
+            animationClip = -1;
+            for (int clipIdx = 0; clipIdx < Clips.Count; ++clipIdx)
+            {
+                if (poseIndex >= Clips[clipIdx].Start && poseIndex < Clips[clipIdx].End)
+                {
+                    animationClip = clipIdx;
+                    break;
+                }
+            }
+            Debug.Assert(animationClip != -1, "Clip index not found");
+            return GetPose(poseIndex, out pose);
+        }
+
+        /// <summary>
         /// Returns the tag at the given index
         /// </summary>
         public Tag GetTag(int index)

@@ -15,7 +15,7 @@ namespace MotionMatching
         /// Called for each pose in the motion clip.
         /// StartExtracting(...) is always called once before ExtractFeature(...) is called multiple times.
         /// </summary
-        public float ExtractFeature(PoseVector pose, int poseIndex, Skeleton skeleton, float3 characterOrigin, float3 characterForward);
+        public float ExtractFeature(PoseVector pose, int poseIndex, int animationClip, Skeleton skeleton, float3 characterOrigin, float3 characterForward);
         /// <summary>
         /// Called when Gizmos are drawn to debug features
         /// StartExtracting(...) is not called before DrawGizmos(...)
@@ -34,7 +34,7 @@ namespace MotionMatching
         /// Called for each pose in the motion clip.
         /// StartExtracting(...) is always called once before ExtractFeature(...) is called multiple times.
         /// </summary
-        public float2 ExtractFeature(PoseVector pose, int poseIndex, Skeleton skeleton, float3 characterOrigin, float3 characterForward);
+        public float2 ExtractFeature(PoseVector pose, int poseIndex, int animationClip, Skeleton skeleton, float3 characterOrigin, float3 characterForward);
         /// <summary>
         /// Called when Gizmos are drawn to debug features
         /// StartExtracting(...) is not called before DrawGizmos(...)
@@ -53,7 +53,7 @@ namespace MotionMatching
         /// Called for each pose in the motion clip.
         /// StartExtracting(...) is always called once before ExtractFeature(...) is called multiple times.
         /// </summary
-        public float3 ExtractFeature(PoseVector pose, int poseIndex, Skeleton skeleton, float3 characterOrigin, float3 characterForward);
+        public float3 ExtractFeature(PoseVector pose, int poseIndex, int animationClip, Skeleton skeleton, float3 characterOrigin, float3 characterForward);
         /// <summary>
         /// Called when Gizmos are drawn to debug features
         /// StartExtracting(...) is not called before DrawGizmos(...)
@@ -72,7 +72,7 @@ namespace MotionMatching
         /// Called for each pose in the motion clip.
         /// StartExtracting(...) is always called once before ExtractFeature(...) is called multiple times.
         /// </summary
-        public float4 ExtractFeature(PoseVector pose, int poseIndex, Skeleton skeleton, float3 characterOrigin, float3 characterForward);
+        public float4 ExtractFeature(PoseVector pose, int poseIndex, int animationClip, Skeleton skeleton, float3 characterOrigin, float3 characterForward);
         /// <summary>
         /// Called when Gizmos are drawn to debug features
         /// StartExtracting(...) is not called before DrawGizmos(...)

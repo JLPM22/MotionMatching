@@ -399,7 +399,7 @@ namespace MotionMatching
                 {
                     int predictionOffset = featureOffset + p * NumberFloatsTrajectory[i];
                     int futurePoseIndex = poseIndex + trajectoryFeature.FramesPrediction[p];
-                    poseSet.GetPose(futurePoseIndex, out PoseVector futurePose);
+                    poseSet.GetPose(futurePoseIndex, out PoseVector futurePose, out int animationClip);
                     float3 value = new float3();
                     switch (trajectoryFeature.FeatureType)
                     {
@@ -427,7 +427,7 @@ namespace MotionMatching
                                     extractor1D = (IFeatureExtractor1D)Activator.CreateInstance(type);
                                     extractor1D.StartExtracting(poseSet.Skeleton);
                                 }
-                                float value1D = extractor1D.ExtractFeature(futurePose, futurePoseIndex, poseSet.Skeleton, characterOrigin, characterForward);
+                                float value1D = extractor1D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                                 Features[predictionOffset + 0] = value1D;
                             }
                             break;
@@ -439,7 +439,7 @@ namespace MotionMatching
                                     extractor2D = (IFeatureExtractor2D)Activator.CreateInstance(type);
                                     extractor2D.StartExtracting(poseSet.Skeleton);
                                 }
-                                float2 value2D = extractor2D.ExtractFeature(futurePose, futurePoseIndex, poseSet.Skeleton, characterOrigin, characterForward);
+                                float2 value2D = extractor2D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                                 Features[predictionOffset + 0] = value2D.x;
                                 Features[predictionOffset + 1] = value2D.y;
                             }
@@ -452,7 +452,7 @@ namespace MotionMatching
                                     extractor3D = (IFeatureExtractor3D)Activator.CreateInstance(type);
                                     extractor3D.StartExtracting(poseSet.Skeleton);
                                 }
-                                float3 value3D = extractor3D.ExtractFeature(futurePose, futurePoseIndex, poseSet.Skeleton, characterOrigin, characterForward);
+                                float3 value3D = extractor3D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                                 Features[predictionOffset + 0] = value3D.x;
                                 Features[predictionOffset + 1] = value3D.y;
                                 Features[predictionOffset + 2] = value3D.z;
@@ -466,7 +466,7 @@ namespace MotionMatching
                                     extractor4D = (IFeatureExtractor4D)Activator.CreateInstance(type);
                                     extractor4D.StartExtracting(poseSet.Skeleton);
                                 }
-                                float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, poseSet.Skeleton, characterOrigin, characterForward);
+                                float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                                 Features[predictionOffset + 0] = value4D.x;
                                 Features[predictionOffset + 1] = value4D.y;
                                 Features[predictionOffset + 2] = value4D.z;
