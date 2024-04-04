@@ -48,6 +48,8 @@ namespace MotionMatching
         private Quaternion HipsCorrection;
         // Toes-Floor Penetration
         private float ToesPenetrationMovingCorrection;
+        // Height
+        private float FloorHeight;
 
         // Inertialization
         private bool[] PreviousJointMask;
@@ -80,6 +82,11 @@ namespace MotionMatching
         private void Start()
         {
             InitRetargeting();
+        }
+
+        public void SetFloorHeight(float floorY)
+        {
+            FloorHeight = floorY;
         }
 
         private void InitRetargeting()
@@ -182,12 +189,12 @@ namespace MotionMatching
             // Motion
             if (RootPositionsMask)
             {
-                transform.position = MotionMatching.transform.position;
+                // Motion Matching Root Motion + Floor Height
+                Vector3 simulationBone = MotionMatching.transform.position;
+                simulationBone.y = FloorHeight;
+                transform.position = simulationBone;
             }
-            else
-            {
-                MotionMatching.SetPosAdjustment(transform.position - MotionMatching.transform.position);
-            }
+            MotionMatching.SetPosAdjustment(transform.position - MotionMatching.transform.position);
             // Retargeting
             for (int i = 0; i < BodyJoints.Length; i++)
             {
@@ -277,12 +284,12 @@ namespace MotionMatching
             {
                 const int leftToesIndex = 17;
                 const int rightToesIndex = 21;
-                float height = Mathf.Min(TargetBones[leftToesIndex].TransformPoint(ToesSoleOffset).y,
-                                         TargetBones[rightToesIndex].TransformPoint(ToesSoleOffset).y);
-                height = height < 0.0f ? -height : 0.0f;
+                float soleHeightOffset = Mathf.Min(TargetBones[leftToesIndex].TransformPoint(ToesSoleOffset).y,
+                                                   TargetBones[rightToesIndex].TransformPoint(ToesSoleOffset).y);
+                soleHeightOffset = soleHeightOffset < FloorHeight ? -soleHeightOffset : 0.0f;
 
                 const float movingAverangeFactor = 0.99f;
-                ToesPenetrationMovingCorrection = ToesPenetrationMovingCorrection * movingAverangeFactor + height * (1.0f - movingAverangeFactor);
+                ToesPenetrationMovingCorrection = ToesPenetrationMovingCorrection * movingAverangeFactor + (soleHeightOffset + FloorHeight) * (1.0f - movingAverangeFactor);
 
                 Vector3 hipsPos = TargetBones[0].position;
                 hipsPos.y += ToesPenetrationMovingCorrection;
