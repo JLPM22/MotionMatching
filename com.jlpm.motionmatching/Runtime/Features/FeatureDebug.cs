@@ -235,25 +235,25 @@ public class FeatureDebug : MonoBehaviour
                     }
                     else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom1D)
                     {
-                        IFeatureExtractor1D featureExtractor = (IFeatureExtractor1D)Activator.CreateInstance(System.Type.GetType(trajectoryFeature.FeatureExtractor));
+                        Feature1DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature1DExtractor;
                         float value = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
                         featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
                     }
                     else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom2D)
                     {
-                        IFeatureExtractor2D featureExtractor = (IFeatureExtractor2D)Activator.CreateInstance(System.Type.GetType(trajectoryFeature.FeatureExtractor));
+                        Feature2DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature2DExtractor;
                         float2 value = set.Get2DTrajectoryFeature(currentFrame, t, p, true);
                         featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
                     }
                     else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom3D)
                     {
-                        IFeatureExtractor3D featureExtractor = (IFeatureExtractor3D)Activator.CreateInstance(System.Type.GetType(trajectoryFeature.FeatureExtractor));
+                        Feature3DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature3DExtractor;
                         float3 value = set.Get3DTrajectoryFeature(currentFrame, t, p, true);
                         featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
                     }
                     else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom4D)
                     {
-                        IFeatureExtractor4D featureExtractor = (IFeatureExtractor4D)Activator.CreateInstance(System.Type.GetType(trajectoryFeature.FeatureExtractor));
+                        Feature4DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature4DExtractor;
                         float4 value = set.Get4DTrajectoryFeature(currentFrame, t, p, true);
                         featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
                     }

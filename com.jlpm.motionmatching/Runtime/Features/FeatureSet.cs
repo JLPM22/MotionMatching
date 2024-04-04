@@ -385,16 +385,12 @@ namespace MotionMatching
             // Compute local features based on the Simulation Bone
             // so hips and feet are local to a stable position with respect to the character
             GetWorldOriginCharacter(pose, out float3 characterOrigin, out float3 characterForward);
-            // Custom extractors
-            IFeatureExtractor1D extractor1D = null;
-            IFeatureExtractor2D extractor2D = null;
-            IFeatureExtractor3D extractor3D = null;
-            IFeatureExtractor4D extractor4D = null;
             // Trajectory
             for (int i = 0; i < NumberTrajectoryFeatures; i++)
             {
                 MotionMatchingData.TrajectoryFeature trajectoryFeature = mmData.TrajectoryFeatures[i];
                 int featureOffset = featureIndex + TrajectoryOffset[i];
+                bool startTrajectory = true;
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; ++p)
                 {
                     int predictionOffset = featureOffset + p * NumberFloatsTrajectory[i];
@@ -421,10 +417,10 @@ namespace MotionMatching
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Custom1D:
                             {
-                                if (extractor1D == null)
+                                Feature1DExtractor extractor1D = trajectoryFeature.FeatureExtractor as Feature1DExtractor;
+                                if (startTrajectory)
                                 {
-                                    System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
-                                    extractor1D = (IFeatureExtractor1D)Activator.CreateInstance(type);
+                                    startTrajectory = false;
                                     extractor1D.StartExtracting(poseSet.Skeleton);
                                 }
                                 float value1D = extractor1D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
@@ -433,10 +429,10 @@ namespace MotionMatching
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Custom2D:
                             {
-                                if (extractor2D == null)
+                                Feature2DExtractor extractor2D = trajectoryFeature.FeatureExtractor as Feature2DExtractor;
+                                if (startTrajectory)
                                 {
-                                    System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
-                                    extractor2D = (IFeatureExtractor2D)Activator.CreateInstance(type);
+                                    startTrajectory = false;
                                     extractor2D.StartExtracting(poseSet.Skeleton);
                                 }
                                 float2 value2D = extractor2D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
@@ -446,10 +442,10 @@ namespace MotionMatching
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Custom3D:
                             {
-                                if (extractor3D == null)
+                                Feature3DExtractor extractor3D = trajectoryFeature.FeatureExtractor as Feature3DExtractor;
+                                if (startTrajectory)
                                 {
-                                    System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
-                                    extractor3D = (IFeatureExtractor3D)Activator.CreateInstance(type);
+                                    startTrajectory = false;
                                     extractor3D.StartExtracting(poseSet.Skeleton);
                                 }
                                 float3 value3D = extractor3D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
@@ -460,10 +456,10 @@ namespace MotionMatching
                             break;
                         case MotionMatchingData.TrajectoryFeature.Type.Custom4D:
                             {
-                                if (extractor4D == null)
+                                Feature4DExtractor extractor4D = trajectoryFeature.FeatureExtractor as Feature4DExtractor;
+                                if (startTrajectory)
                                 {
-                                    System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
-                                    extractor4D = (IFeatureExtractor4D)Activator.CreateInstance(type);
+                                    startTrajectory = false;
                                     extractor4D.StartExtracting(poseSet.Skeleton);
                                 }
                                 float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
