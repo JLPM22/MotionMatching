@@ -4,24 +4,25 @@ using UnityEngine;
 using MotionMatching;
 using Unity.Mathematics;
 
-public class Custom2DFeatureExtractor : IFeatureExtractor2D
+[CreateAssetMenu(fileName = "NewCustom2DFeatureExtractor", menuName = "Custom/Custom2DFeatureExtractor")]
+public class Custom2DFeatureExtractor : Feature2DExtractor
 {
     private Skeleton.Joint HeadJoint;
 
-    public void StartExtracting(Skeleton skeleton)
+    public override void StartExtracting(Skeleton skeleton)
     {
         bool found = skeleton.Find(HumanBodyBones.Head, out HeadJoint);
         Debug.Assert(found, "Head Joint could not be found");
     }
 
-    public float2 ExtractFeature(PoseVector pose, int poseIndex, Skeleton skeleton, float3 characterOrigin, float3 characterForward)
+    public override float2 ExtractFeature(PoseVector pose, int poseIndex, int animationClip, Skeleton skeleton, float3 characterOrigin, float3 characterForward)
     {
         float3 worldPos = FeatureSet.GetWorldPosition(skeleton, pose, HeadJoint);
         float3 localPos = FeatureSet.GetLocalPositionFromCharacter(worldPos, characterOrigin, characterForward);
         return localPos.xz;
     }
     
-    public void DrawGizmos(float2 feature, float radius, float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton)
+    public override void DrawGizmos(float2 feature, float radius, float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton)
     {
         bool found = skeleton.Find(HumanBodyBones.Head, out HeadJoint);
         Debug.Assert(found, "Head Joint could not be found");
