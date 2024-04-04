@@ -61,6 +61,15 @@ namespace MotionMatching
                     animation.AddEndSite(endSite);
                     if (!ReadRightBracket(words, ref w)) Debug.LogError("[BVHImporter] End Site right bracket not found");
                 }
+                while (words[w] == "End")
+                {
+                    Debug.LogWarning("[BVHImporter] Some joints have multiple End Sites. Skipping the additional ones.");
+                    w += 1;
+                    if (words[w++] != "Site") Debug.LogError("[BVHImporter] End Site not found");
+                    ReadLeftBracket(words, ref w);
+                    ReadOffset(words, ref w);
+                    if (!ReadRightBracket(words, ref w)) Debug.LogError("[BVHImporter] End Site right bracket not found");
+                }
                 while (ReadRightBracket(words, ref w))
                 {
                     brackets -= 1;
