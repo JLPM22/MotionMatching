@@ -21,7 +21,7 @@ namespace MotionMatching
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
         public bool LockFPS = true;
-        public float SearchTime = 10.0f/60.0f; // Motion Matching search every SearchTime seconds
+        public float SearchTime = 10.0f / 60.0f; // Motion Matching search every SearchTime seconds
         public bool UseBVHSearch = true; // Use Bounding Volume Hierarchy acceleration structure for the search.
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         public bool FootLock = true; // Should lock the feet to the ground when contact information is true

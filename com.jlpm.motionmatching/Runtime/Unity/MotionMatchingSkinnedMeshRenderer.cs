@@ -13,6 +13,8 @@ namespace MotionMatching
     [RequireComponent(typeof(Animator))]
     public class MotionMatchingSkinnedMeshRenderer : MonoBehaviour
     {
+        public event Action OnSkeletonUpdated;
+
         [Header("General")]
         public MotionMatchingController MotionMatching;
 
@@ -29,9 +31,9 @@ namespace MotionMatching
         [Range(0.0f, 1.0f)] public float BlendHalfLife = 0.05f;
 
         [Header("Toes Floor Penetration")]
-        [Tooltip("Enable to avoid the toes joint (+ ToesSoleOffset) to penetrate the floor (assuming floor at y=0). The root joint will be adjusted to compensate the height difference.")] 
+        [Tooltip("Enable to avoid the toes joint (+ ToesSoleOffset) to penetrate the floor (assuming floor at y=0). The root joint will be adjusted to compensate the height difference.")]
         public bool AvoidToesFloorPenetration;
-        [Tooltip("Offset added to the toes joint to determine the sole position to avoid toes-floor penetration.")] 
+        [Tooltip("Offset added to the toes joint to determine the sole position to avoid toes-floor penetration.")]
         public Vector3 ToesSoleOffset;
 
         // References
@@ -58,7 +60,7 @@ namespace MotionMatching
         private quaternion[] OffsetJointRotations;
         private float3 PreviousHipsPosition;
         private float3 OffsetHipsPosition;
-        
+
         private void Awake()
         {
             Animator = GetComponent<Animator>();
@@ -298,6 +300,9 @@ namespace MotionMatching
 
             // Update State
             UpdatePreviousInertialization();
+
+            // Event
+            OnSkeletonUpdated?.Invoke();
         }
 
         private void UpdatePreviousInertialization()
