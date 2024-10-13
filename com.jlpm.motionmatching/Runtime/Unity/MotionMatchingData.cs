@@ -253,7 +253,7 @@ namespace MotionMatching
             public bool SimulationBone; // Use the simulation bone (articial root added during pose extraction) instead of a bone
             public HumanBodyBones Bone; // Bone used to compute the trajectory in the feature set
             public bool ZeroX, ZeroY, ZeroZ; // Zero the X, Y and/or Z component of the trajectory feature
-            public string FeatureExtractor; // Custom feature extractor for user-defined types
+            public ScriptableObject FeatureExtractor; // Custom feature extractor for user-defined types
 
             public int GetSize()
             {
@@ -539,52 +539,40 @@ namespace MotionMatching
                     {
                         if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom1D)
                         {
-                            trajectoryFeature.FeatureExtractor = EditorGUILayout.TextField(new GUIContent("Feature Extractor", "Class implementing the 'IFeatureExtractor1D' interface"), trajectoryFeature.FeatureExtractor);
-                            if (trajectoryFeature.FeatureExtractor == null) trajectoryFeature.FeatureExtractor = "";
-                            System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
-                            if (type == null || type.GetInterface(nameof(IFeatureExtractor1D)) == null)
+                            trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature1DExtractor", "ScriptableObject inheriting from the 'Feature1DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature1DExtractor), false) as ScriptableObject;
+                            if (trajectoryFeature.FeatureExtractor == null)
                             {
-                                EditorGUILayout.HelpBox(trajectoryFeature.FeatureExtractor == "" ? "Please enter the name of a class implementing the 'IFeatureExtractor1D' interface" :
-                                                        trajectoryFeature.FeatureExtractor + " type does not exists or does not implement the 'IFeatureExtractor1D' interface",
+                                EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature1DExtractor' class",
                                                         MessageType.Error);
                                 generateButtonError = true;
                             }
                         }
                         else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom2D)
                         {
-                            trajectoryFeature.FeatureExtractor = EditorGUILayout.TextField(new GUIContent("Feature Extractor", "Class implementing the 'IFeatureExtractor2D' interface"), trajectoryFeature.FeatureExtractor);
-                            if (trajectoryFeature.FeatureExtractor == null) trajectoryFeature.FeatureExtractor = "";
-                            System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
-                            if (type == null || type.GetInterface(nameof(IFeatureExtractor2D)) == null)
+                            trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature2DExtractor", "ScriptableObject inheriting from the 'Feature2DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature2DExtractor), false) as ScriptableObject;
+                            if (trajectoryFeature.FeatureExtractor == null)
                             {
-                                EditorGUILayout.HelpBox(trajectoryFeature.FeatureExtractor == "" ? "Please enter the name of a class implementing the 'IFeatureExtractor2D' interface" :
-                                                        trajectoryFeature.FeatureExtractor + " type does not exists or does not implement the 'IFeatureExtractor2D' interface",
+                                EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature2DExtractor' class",
                                                         MessageType.Error);
                                 generateButtonError = true;
                             }
                         }
                         else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom3D)
                         {
-                            trajectoryFeature.FeatureExtractor = EditorGUILayout.TextField(new GUIContent("Feature Extractor", "Class implementing the 'IFeatureExtractor3D' interface"), trajectoryFeature.FeatureExtractor);
-                            if (trajectoryFeature.FeatureExtractor == null) trajectoryFeature.FeatureExtractor = "";
-                            System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
-                            if (type == null || type.GetInterface(nameof(IFeatureExtractor3D)) == null)
+                            trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature3DExtractor", "ScriptableObject inheriting from the 'Feature3DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature3DExtractor), false) as ScriptableObject;
+                            if (trajectoryFeature.FeatureExtractor == null)
                             {
-                                EditorGUILayout.HelpBox(trajectoryFeature.FeatureExtractor == "" ? "Please enter the name of a class implementing the 'IFeatureExtractor3D' interface" :
-                                                        trajectoryFeature.FeatureExtractor + " type does not exists or does not implement the 'IFeatureExtractor3D' interface",
+                                EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature3DExtractor' class",
                                                         MessageType.Error);
                                 generateButtonError = true;
                             }
                         }
                         else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom4D)
                         {
-                            trajectoryFeature.FeatureExtractor = EditorGUILayout.TextField(new GUIContent("Feature Extractor", "Class implementing the 'IFeatureExtractor4D' interface"), trajectoryFeature.FeatureExtractor);
-                            if (trajectoryFeature.FeatureExtractor == null) trajectoryFeature.FeatureExtractor = "";
-                            System.Type type = Type.GetType(trajectoryFeature.FeatureExtractor);
-                            if (type == null || type.GetInterface(nameof(IFeatureExtractor4D)) == null)
+                            trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature4DExtractor", "ScriptableObject inheriting from the 'Feature4DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature4DExtractor), false) as ScriptableObject;
+                            if (trajectoryFeature.FeatureExtractor == null)
                             {
-                                EditorGUILayout.HelpBox(trajectoryFeature.FeatureExtractor == "" ? "Please enter the name of a class implementing the 'IFeatureExtractor4D' interface" :
-                                                        trajectoryFeature.FeatureExtractor + " type does not exists or does not implement the 'IFeatureExtractor4D' interface",
+                                EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature4DExtractor' class",
                                                         MessageType.Error);
                                 generateButtonError = true;
                             }

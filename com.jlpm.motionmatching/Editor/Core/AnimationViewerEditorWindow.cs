@@ -1,18 +1,12 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
-using UnityEditor.PackageManager.UI;
-using System.Runtime.CompilerServices;
 using System;
-using System.Diagnostics;
 using System.Linq;
-using System.Net;
 
 namespace MotionMatching
 {
@@ -62,8 +56,8 @@ namespace MotionMatching
         private static readonly Color HighlightColor = new Color(0.25f, 0.42f, 0.68f, 1.0f);
         private static readonly Color TagColor = new Color(0.68f, 0.42f, 0.25f, 1.0f);
         private static readonly Color QueryColor = new Color(0.42f, 0.68f, 0.25f, 1.0f);
-        private static readonly Color LightGray = new Color(0.4f, 0.4f, 0.4f,  1.0f);
-        private static readonly Color DarkGray = new Color(0.3f, 0.3f, 0.3f,  1.0f);
+        private static readonly Color LightGray = new Color(0.4f, 0.4f, 0.4f, 1.0f);
+        private static readonly Color DarkGray = new Color(0.3f, 0.3f, 0.3f, 1.0f);
 
         private int NumberFrames { get { return AnimationData.GetAnimation().Frames.Length; } }
 
@@ -77,7 +71,7 @@ namespace MotionMatching
             string currentScene = EditorSceneManager.GetActiveScene().path;
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             GameObject.CreatePrimitive(PrimitiveType.Plane);
-            
+
             Window.ReturnButton = new SceneGUI(currentScene);
             SceneView.duringSceneGui += Window.UpdateGUI;
         }
@@ -778,7 +772,7 @@ namespace MotionMatching
                 rangeEnd.style.right = rightEnd;
             }
 
-            if (CurrentQueryTag != null) CurrentQueryTag.ComputeRanges(null, AnimationData.Tags, force:true);
+            if (CurrentQueryTag != null) CurrentQueryTag.ComputeRanges(null, AnimationData.Tags, force: true);
 
             CreateQueryRangesVisual();
         }
@@ -834,7 +828,7 @@ namespace MotionMatching
                     }
                 }
                 // Process query tag
-                queryTag.ComputeRanges(null, AnimationData.Tags, force:true);
+                queryTag.ComputeRanges(null, AnimationData.Tags, force: true);
                 CurrentQueryTag = queryTag;
             }
             CreateQueryRangesVisual();
@@ -874,7 +868,7 @@ namespace MotionMatching
 
                 int frame = GetFrameFromPointer(e.position, RangesContainer[tagIndex]);
                 int rangeIndex = GetRangeIndex(tagIndex, frame - frameRadius * 2, frame + frameRadius);
-                
+
                 if (rangeIndex == -1)
                 {
                     // Add range
@@ -888,7 +882,7 @@ namespace MotionMatching
                     // Remove range
                     dropdownMenu.AddItem("Remove range", false, () => RemoveRange(tagIndex, rangeIndex));
                 }
-                
+
                 // Show the context menu
                 dropdownMenu.DropDown(new Rect(e.position, Vector2.zero), element);
             }
@@ -1117,7 +1111,7 @@ namespace MotionMatching
             for (int rangeIndex = 0; rangeIndex < tag.Start.Length; ++rangeIndex)
             {
                 if (rangeIndex == SelectedEndRange) continue;
-                
+
                 if (tag.Start[rangeIndex] > tag.End[SelectedEndRange])
                 {
                     max = Math.Min(max, tag.Start[rangeIndex] - 1);
@@ -1213,7 +1207,7 @@ namespace MotionMatching
                 }
             }
             if (CurrentQueryTag != null)
-            { 
+            {
                 for (int rangeIndex = 0; rangeIndex < CurrentQueryTag.GetStartRanges().Length; ++rangeIndex)
                 {
                     QueryTagRangesLine[rangeIndex].style.backgroundColor = QueryColor;
@@ -1337,7 +1331,7 @@ namespace MotionMatching
             UpdateCurrentFrameIndicator();
             UpdateTagRangeFrameIndicator();
         }
-        
+
         private void RemoveSkeleton()
         {
             if (Skeleton != null)
@@ -1354,7 +1348,7 @@ namespace MotionMatching
             }
         }
 
-        private void UpdatePose(bool forward=true, int tagIndex=-1, bool queryTag=false)
+        private void UpdatePose(bool forward = true, int tagIndex = -1, bool queryTag = false)
         {
             BVHAnimation animation = AnimationData.GetAnimation();
             if (animation != null && LastUpdateTime + (1.0 / TargetFramerate) < EditorApplication.timeSinceStartup)

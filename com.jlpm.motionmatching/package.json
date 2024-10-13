@@ -1,10 +1,10 @@
 {
   "name": "com.jlpm.motionmatching",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "displayName": "Motion Matching",
   "description": "Motion Matching implementation for Unity",
   "unity": "2020.1",
-  "documentationUrl": "https://github.com/JLPM22/MotionMatching",
+  "documentationUrl": "https://jlpm22.github.io/motionmatching-docs/",
   "changelogUrl": "https://github.com/JLPM22/MotionMatching",
   "licensesUrl": "https://github.com/JLPM22/MotionMatching#license",
   "keywords": [

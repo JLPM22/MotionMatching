@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEditor.SceneManagement;
 using static UnityEngine.GraphicsBuffer;
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
 #endif
 
 namespace MotionMatching
@@ -50,9 +50,11 @@ namespace MotionMatching
                 Name = name
             };
             Tags.Add(newTag);
+#if UNITY_EDITOR
             SaveEditor();
+#endif
         }
-        
+
         public void RemoveTag(int index)
         {
             for (int i = index + 1; i < Tags.Count; ++i)
@@ -60,7 +62,9 @@ namespace MotionMatching
                 Tags[i - 1] = Tags[i];
             }
             Tags.RemoveAt(Tags.Count - 1);
+#if UNITY_EDITOR
             SaveEditor();
+#endif
         }
 
         public void UpdateMecanimInformation(MotionMatchingData mmData)

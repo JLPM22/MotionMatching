@@ -2,139 +2,97 @@
 
 ![](.github/media/path_mm.jpg)
 
-**Motion Matching** implementation for the **Unity** game engine. This project is part of my master thesis, which you can download [here](https://www.researchgate.net/publication/363377742_Motion_Matching_for_Character_Animation_and_Virtual_Reality_Avatars_in_Unity) to obtain a detailed description of both Motion Matching and this project. I intend to update this project in my spare time, adding more features until it is a complete Motion Matching solution for Unity. For now, it may be useful for those wanting to learn/implement their own Motion Matching solution or extend this project. 
+------
 
-## Contents
+📚 **[Documentation](https://jlpm22.github.io/motionmatching-docs/)**
 
-1. [Structure](#structure)
-2. [Quick Start](#quick-start)
-3. [How to Use](#how-to-use)
-4. [Roadmap](#roadmap)
-5. [Citation](#citation)
-6. [License](#license)
-
-## Structure
-
-This section defines the project's structure and where to find data, scripts, etc. For practical instructions on using the project, go to [How to Use](#how-to-use).
-
-The Unity package can be found in the ``com.jlpm.motionmatching`` directory, and the ``com.jlpm.motionmatching/Runtime`` folder contains all scripts and data.
-
-Please, refer to my [master thesis](https://www.researchgate.net/publication/363377742_Motion_Matching_for_Character_Animation_and_Virtual_Reality_Avatars_in_Unity) for a comprehensive explanation of some Motion Matching concepts. In the ``Runtime`` directory, you will find all the code needed to import *.bvh* files, the pose and feature databases, the motion matching search, character controllers, inertialization, etc.  The following image shows an overview of the code's architecture (dashed nodes are not implemented; and for the Virtual Reality controllers of Motion Matching visit [this paper](https://upc-virvig.github.io/MMVR/)):
+Welcome to the **Motion Matching** implementation designed for the **Unity** game engine. This project originated from the author's master thesis, providing a deep dive into both the Motion Matching technique and the workings of this specific Unity package. Download the complete thesis [here](https://www.researchgate.net/publication/363377742_Motion_Matching_for_Character_Animation_and_Virtual_Reality_Avatars_in_Unity) for an extensive overview. The project is a work-in-progress, aiming to offer a comprehensive Motion Matching solution for Unity. It can serve as a useful resource for those keen to learn or implement their own Motion Matching solution or even extend this existing package.
 
 ![](.github/media/architecture_diagram.PNG)
 
-## Quick Start
+# Quick Start Guide
 
-1. Install **Unity 2021.2+** (other versions may work but are not tested).
+Follow these steps to get started with the Motion Matching package for Unity. Visit the 📚 **[Documentation](https://jlpm22.github.io/motionmatching-docs/)** for an in-depth description of the project.
 
-2. From the Unity Editor, open **Window > Package Manager**.
+## Installation Steps
 
-3. From the Package Manager, select **Add (+) > Add package by git URL...**
+1. Ensure you have **Unity 2021.2+** installed (untested on other versions).
 
-4. Type (or copy and paste) ``https://github.com/JLPM22/MotionMatching.git?path=/com.jlpm.motionmatching`` into the git URL field, then select **Add**.
+2. Open the Unity Editor and navigate to **Window > Package Manager**.
 
-5. *[Optional]* From the Package Manager, select the package **Motion Matching**, and in the right window, import the examples: **Samples > Examples** select **Import**.
-   
-   > All samples are created using the Universal Render Pipeline (URP). You may need to convert the materials if you are using other render pipelines.
+3. In the Package Manager, click **Add (+) > Add package by git URL...**.
 
-6. *[Optional]* From the Project Window, navigate to the `Assets/Scenes` folder and choose either `JLSceneTest` or ``JLScenePathTest``.
+4. Insert the following URL into the git URL field and click **Add**:
+	```
+	https://github.com/JLPM22/MotionMatching.git?path=/com.jlpm.motionmatching
+	```
 
-From the Samples folder, the ``Animations`` folder contains the motion capture (MoCap) files (*.bvh* files with the extension changed to *.txt* ) and the *MMData* files, which define an animation database to be used by the Motion Matching System.
+	> Note: All sample scenes use the Universal Render Pipeline (URP). Conversion may be necessary if you are using a different render pipeline.
 
-Finally, ``StreamingAssets/MMDatabases`` contains the processed pose and feature database and some skeletal information. This folder is automatically created when generating the databases from a *MMData* file.
+5. *[Optional]* In the Package Manager, click on **Motion Matching**, then import the example scenes by selecting **Samples > Examples > Import**.
 
-Demo scenes consist of two major GameObjects: a Character Controller and the MotionMatchingController:
+6. *[Optional]* Go to ``Examples/Scenes/JLTest`` in the Project Window to explore the sample scenes.
 
-Character Controllers are responsible for creating the trajectories and enforcing some positional constraints, such as the maximum distance between the simulated and animated character positions.
+## Project Overview
 
-MotionMatchingController executes all Motion Matching-related code. It exposes some parameters allowing enabling/disabling some features such as inertialize blending or foot lock.
+### Directories
 
-## How to Use
+- `Samples/Animations`: Contains motion capture (MoCap) files (with *.txt* extensions but originally *.bvh* files) and *MMData* files to define the animation database for the Motion Matching System.
+  
+- `StreamingAssets/MMDatabases`: Contains the processed pose and feature databases, as well as skeletal information. This directory is automatically created when generating databases from an *MMData* file.
 
-#### How to create an animation database (*MMData*)
+### Key Components
 
-Animation databases contain all motion that Motion Matching will use to animate the character. They are defined through the MotionMatchingData (*MMData*) scriptable object. You can find an example of an *MMData* at ``Animations/MMData/JLData.asset``.
+Demo scenes consist of two primary GameObjects:
 
-![](.github/media/MMData.png)
+1. **Character Controller**: Creates trajectories and imposes positional constraints, like limiting the maximum distance between the simulated and animated character positions.
 
-1. Add one or several *.bvh* files to the project. Change their extension to *.txt* so Unity recognizes them as *Text Assets*.
+2. **MotionMatchingController**: Handles all Motion Matching operations. It provides adjustable parameters for enabling/disabling features like inertialize blending or foot locking.
 
-2. Right-click onto the Project window and select ``Create/MotionMatching/MotionMatchingData``. 
-   
-   > You can also duplicate the *MMData* at ``Animations/MMData/JLData.asset`` and use it as a template.
+Feel free to tweak and explore these components to get a better understanding of the system.
 
-3. Press *Add BVH* and reference the *.bvh* (I will refer to them as *.bvh* files although we changed their extension to *.txt*) file. In the following field *BVH with TPose* reference a *.bvh* file in which the first frame the character is in T-Pose. The skeleton should be the same in all *.bvh*, and you can use the same *.bvh* as before if it contains in the first frame a T-Pose.
+# Roadmap
 
-4. Select the scale of the *.bvh* file and the local vector pointing forward and up of the hips/root joint. For example, in the following image, the forward local vector is the Z-axis (0, 0, 1) and the up local vector is Y-axis (0, 1, 0):
-   
-   > Make sure you have the *Gizmo handle position toggle* in local space. [More Info](https://docs.unity3d.com/Manual/PositioningGameObjects.html).
-   > 
-   > The skeleton in your *.bvh* may be different from the one in your virtual character. You must introduce the forward vector of the *.bvh* root joint.
-   
-   ![](.github/media/local_forward_hips.PNG)
+Here's a list of upcoming features and improvements to enhance the capabilities and usability of the Motion Matching package for Unity:
 
-5. The contact velocity threshold is used to determine the foot contact labels for the foot lock. You can ignore it for now.
+## Planned Features
 
-6. Press *Read Skeleton from BVH* and unfold the *Skeleton to Mecanim* field. This is a mapping of the bones found in the *.bvh* skeletal information to Unity's animation system. Some bones may be mapped based on their names; however, please review carefully (automatic assignment is only based on name) and assign all bones that have a corresponding mapping in Unity. If any bone is not represented in Unity's animation system, you can map it as *Last Bone* and it will be ignored. An example of a Unity skeleton:
-   
-   ![](.github/media/avatar_joints.png)
+- [ ] **Enhanced Documentation**: Work on a more comprehensive guide explaining the intricacies of Motion Matching. For now, you can refer to the author's [master thesis](https://www.researchgate.net/publication/363377742_Motion_Matching_for_Character_Animation_and_Virtual_Reality_Avatars_in_Unity).
 
-7. Unfold the *Feature Selector* menu and select trajectory and pose features. This project provides a fully customizable pose and trajectory features for Motion Matching. However, at its current state, modifications on the trajectory features require some coding, such as changing the character controller. Feel free to read the code and experiment with this, but for a first test, simply copy the trajectory features found in ``Animations/MMData/JLData.asset``. 
+- [ ] **Trajectory and Pose Feature Customization**: Implement a more user-friendly system for modifying trajectory features, and expand the types of pose features available.
 
-8. Press *Generate Databases* and done! This will create the processed pose and features databases in the ``StreamingAssets/MMDatabases`` directory.
+- [ ] **Motion Capture Library**: Record additional motion capture data and create default avatars for immediate use in projects.
 
-#### How to animate a character with Motion Matching
+- [ ] **PathCharacterController Upgrades**: Revise the current hardcoded path tools in favor of a more flexible system, possibly using splines or other advanced techniques.
 
-Motion Matching is defined by the character controller and the motion matching controller. The former gets input from the user and creates trajectories and features. The latter handles all databases, the motion matching search and some pose postprocessing. Finally, since this project does not use Unity's animation system for Motion Matching, there is a last step that retargets the resulting skeleton to Unity's system for rendering.
+- [ ] **Visual Debugging Tools**: Develop a suite of visual debugging tools for easier inspection and adjustment during development.
 
-1. Create an animation database (*MMData*) following the previous steps.
+- [ ] **Memory Optimization with Deep Learning**: Investigate the use of deep learning algorithms to reduce memory usage in the system.
 
-> Use the demo scene ``Scenes/JLTest/JLSceneTest.unity`` as template.
+## Completed Features
 
-2. Add a Character Controller component (currently, SpringCharacterController or PathCharacterController) to an empty GameObject. Reference (Simulation Bone) the component created in Step 3. Please do not change the names of the features unless you modify them when creating a new *MMData*.
+- [x] **BVH Editor with Tagging**: Introduced a BVH editor that supports real-time complex tag queries.
+  
+- [x] **Unity Animation System Integration**: Added tools and methods for seamless integration with Unity's native animation system. This allows, for example, the use of Unity's animation system for the upper body while utilizing Motion Matching for the lower body.
 
-3. Add a Motion Matching Controller component to an empty GameObject. Reference the Character Controller and an *MMData* file.
+- [x] **Unity Package Structure**: Successfully restructured the project into a Unity package for easier distribution and integration.
 
-4. Add an avatar to the scene (use ``Graphics/Models/Joe/Joe.prefab``as reference). It should be imported as humanoid. Add a Motion Matching Skinned Mesh Renderer component, reference the motion matching controller and specify the forward and up local vector of the character's root joint (as Step 4 of the previous instructions on creating *MMData*). 
-
-5. Press Play!
-
-## Roadmap
-
-Here, I write some of the features I want to add/improve in the future. This is a side project, so dates are not specified.
-
-- Improve documentation explaining Motion Matching concepts (you can read my [master thesis](.github/pdfs/Master_Thesis_JoseLuis.pdf) for now).
-
-- User-friendly trajectory feature modification and more types of pose features.
-
-- BVH editor with tagging system (with real-time complex tag queries).
-
-- Record more motion capture data and default avatars to use right away.
-
-- Upgrade PathCharacterController (right now, the path tools are too hardcoded... use splines and more interesting approaches).
-
-- Integrations tools/methods with Unity's animation system. (Allow seamless integration between systems. For example, use Unity's animation system for the upper body and motion matching for the lower body).
-
-- ~~Restructure the project into a Unity package for easy distribution and integration.~~
-
-- Visual debugging tools.
-
-- Include deep learning to reduce memory usage.
+Your contributions and suggestions are always welcome as we continue to develop this project into a comprehensive Motion Matching solution for Unity.
 
 ## Citation
 
-If you find this project useful, please include attribution to this repository or cite my master thesis:
+If you find this package beneficial, kindly attribute it to this repository or cite the author's master thesis using the following citation:
 
-```
+```plaintext
 @mastersthesis{ponton2022mm,
   author  = {Ponton, Jose Luis},
   title   = {Motion Matching for Character Animation and Virtual Reality Avatars in Unity},
   school  = {Universitat Politecnica de Catalunya},
   year    = {2022},
-  doi     = {10.13140/RG.2.2.31741.23528}
+  doi     = {10.13140/RG.2.2.31741.23528/1}
 }
 ```
 
 ## License
 
-This work is licensed under the MIT License; see [LICENSE](LICENSE) for more details.
+This project is distributed under the MIT License. For complete license details, refer to the [LICENSE](https://github.com/JLPM22/MotionMatching/blob/main/LICENSE) file.

@@ -1,8 +1,10 @@
-using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
+#if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine;
+#endif
+
 
 namespace MotionMatching
 {
@@ -71,6 +73,7 @@ namespace MotionMatching
             if (GUI.changed)
             {
                 EditorUtility.SetDirty(target);
+                EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             }
         }
     }
