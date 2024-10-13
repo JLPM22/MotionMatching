@@ -1,11 +1,8 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
-using System.Diagnostics;
 
 namespace MotionMatching
 {
@@ -21,7 +18,7 @@ namespace MotionMatching
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
         public bool LockFPS = true;
-        public float SearchTime = 10.0f/60.0f; // Motion Matching search every SearchTime seconds
+        public float SearchTime = 10.0f / 60.0f; // Motion Matching search every SearchTime seconds
         public bool UseBVHSearch = true; // Use Bounding Volume Hierarchy acceleration structure for the search.
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         public bool FootLock = true; // Should lock the feet to the ground when contact information is true
@@ -81,6 +78,10 @@ namespace MotionMatching
 
             // FeatureSet
             FeatureSet = MMData.GetOrImportFeatureSet();
+            FeatureSet.GetBVHBuffers(out LargeBoundingBoxMin,
+                                     out LargeBoundingBoxMax,
+                                     out SmallBoundingBoxMin,
+                                     out SmallBoundingBoxMax);
 
             // Skeleton
             SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
@@ -89,7 +90,7 @@ namespace MotionMatching
             {
                 // Joints
                 Skeleton.Joint joint = PoseSet.Skeleton.Joints[j];
-                Transform t = (new GameObject()).transform;
+                Transform t = new GameObject().transform;
                 t.name = joint.Name;
                 t.SetParent(SkeletonTransforms[joint.ParentIndex], false);
                 t.localPosition = joint.LocalOffset;
@@ -115,7 +116,7 @@ namespace MotionMatching
 
             // Other initialization
             SearchResult = new NativeArray<int>(1, Allocator.Persistent);
-            int numberFeatures = (MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count);
+            int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count;
             if (FeatureWeights == null || FeatureWeights.Length != numberFeatures)
             {
                 float[] newWeights = new float[numberFeatures];
@@ -125,26 +126,7 @@ namespace MotionMatching
             }
             FeaturesWeightsNativeArray = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
             QueryFeature = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
-            // Build BVH Acceleration Structure
-            int nFrames = (FeatureSet.GetFeatures().Length / FeatureSet.FeatureSize);
-            int numberBoundingBoxLarge = (nFrames + BVHConsts.LargeBVHSize - 1) / BVHConsts.LargeBVHSize;
-            int numberBoundingBoxSmall = (nFrames + BVHConsts.SmallBVHSize - 1) / BVHConsts.SmallBVHSize;
-            LargeBoundingBoxMin = new NativeArray<float>(numberBoundingBoxLarge * FeatureSet.FeatureSize, Allocator.Persistent);
-            LargeBoundingBoxMax = new NativeArray<float>(numberBoundingBoxLarge * FeatureSet.FeatureSize, Allocator.Persistent);
-            SmallBoundingBoxMin = new NativeArray<float>(numberBoundingBoxSmall * FeatureSet.FeatureSize, Allocator.Persistent);
-            SmallBoundingBoxMax = new NativeArray<float>(numberBoundingBoxSmall * FeatureSet.FeatureSize, Allocator.Persistent);
-            var job = new BVHMotionMatchingComputeBounds
-            {
-                Features = FeatureSet.GetFeatures(),
-                FeatureSize = FeatureSet.FeatureSize,
-                NumberBoundingBoxLarge = numberBoundingBoxLarge,
-                NumberBoundingBoxSmall = numberBoundingBoxSmall,
-                LargeBoundingBoxMin = LargeBoundingBoxMin,
-                LargeBoundingBoxMax = LargeBoundingBoxMax,
-                SmallBoundingBoxMin = SmallBoundingBoxMin,
-                SmallBoundingBoxMax = SmallBoundingBoxMax,
-            };
-            job.Schedule().Complete();
+
             // Search first Frame valid (to start with a valid pose)
             for (int i = 0; i < FeatureSet.NumberFeatureVectors; i++)
             {
@@ -156,9 +138,11 @@ namespace MotionMatching
                     break;
                 }
             }
+
             // Tags
             TagMask = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
             DisableQueryTag();
+
             // Foot Lock
             if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.LogError("[Motion Matching] LeftToes not found");
             LeftToesIndex = leftToesJoint.Index;
@@ -178,6 +162,7 @@ namespace MotionMatching
             RightUpperLegIndex = rightUpperLegJoint.Index;
             LeftLowerLegLocalForward = MMData.GetLocalForward(LeftLowerLegIndex);
             RightLowerLegLocalForward = MMData.GetLocalForward(RightLowerLegIndex);
+
             // Init Pose
             SkeletonTransforms[0].position = CharacterController.GetWorldInitPosition();
             SkeletonTransforms[0].rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
@@ -637,10 +622,6 @@ namespace MotionMatching
             if (QueryFeature != null && QueryFeature.IsCreated) QueryFeature.Dispose();
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
-            if (LargeBoundingBoxMin != null && LargeBoundingBoxMin.IsCreated) LargeBoundingBoxMin.Dispose();
-            if (LargeBoundingBoxMax != null && LargeBoundingBoxMax.IsCreated) LargeBoundingBoxMax.Dispose();
-            if (SmallBoundingBoxMin != null && SmallBoundingBoxMin.IsCreated) SmallBoundingBoxMin.Dispose();
-            if (SmallBoundingBoxMax != null && SmallBoundingBoxMax.IsCreated) SmallBoundingBoxMax.Dispose();
             if (TagMask != null && TagMask.IsCreated) TagMask.Dispose();
         }
 

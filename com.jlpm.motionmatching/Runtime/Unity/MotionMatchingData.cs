@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
@@ -21,7 +20,7 @@ namespace MotionMatching
     {
         // TODO: DefaultHipsForward... detect/suggest automatically? try to fix automatically at BVHAnimation level? 
         // (if it is fixed some code can be deleted... all code related to DefaultHipsForward and in the UpdateTransform() when correcting the hips forward)
-        
+
         public List<AnimationData> AnimationDatas;
         public AnimationData AnimationDataTPose; // Animation with a TPose in the first frame, used for retargeting
         public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
@@ -35,6 +34,8 @@ namespace MotionMatching
 
         private PoseSet PoseSet;
         private FeatureSet FeatureSet;
+        private int PoseSetUserCount = 0;
+        private int FeatureSetUserCount = 0;
 
         // Information extracted form T-Pose
         [SerializeField] private float3[] JointsLocalForward; // Local forward vector of each joint 
@@ -71,6 +72,7 @@ namespace MotionMatching
                 }
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Import");
             }
+            PoseSetUserCount += 1;
             return PoseSet;
         }
 
@@ -116,6 +118,7 @@ namespace MotionMatching
                 }
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Import");
             }
+            FeatureSetUserCount += 1;
             return FeatureSet;
         }
 
@@ -315,17 +318,7 @@ namespace MotionMatching
             featureSerializer.Serialize(FeatureSet, this, GetAssetPath(), this.name);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize");
 
-            // Dispose
-            if (PoseSet != null)
-            {
-                PoseSet.Dispose();
-                PoseSet = null;
-            }
-            if (FeatureSet != null)
-            {
-                FeatureSet.Dispose();
-                FeatureSet = null;
-            }
+            Dispose();
 
             AssetDatabase.Refresh();
         }
@@ -333,12 +326,14 @@ namespace MotionMatching
 
         public void Dispose()
         {
-            if (PoseSet != null)
+            PoseSetUserCount = math.max(0, PoseSetUserCount - 1);
+            FeatureSetUserCount = math.max(0, FeatureSetUserCount - 1);
+            if (PoseSet != null && PoseSetUserCount == 0)
             {
                 PoseSet.Dispose();
                 PoseSet = null;
             }
-            if (FeatureSet != null)
+            if (FeatureSet != null && FeatureSetUserCount == 0)
             {
                 FeatureSet.Dispose();
                 FeatureSet = null;

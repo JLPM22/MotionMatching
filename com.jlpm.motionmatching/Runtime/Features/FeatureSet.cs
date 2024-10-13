@@ -1,9 +1,8 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Jobs;
 
 namespace MotionMatching
 {
@@ -28,6 +27,12 @@ namespace MotionMatching
         private NativeArray<float> Features; // Each feature: Trajectory + Pose
         private float[] Mean;
         private float[] StandardDeviation;
+
+        // BVH acceleration structures
+        private NativeArray<float> LargeBoundingBoxMin;
+        private NativeArray<float> LargeBoundingBoxMax;
+        private NativeArray<float> SmallBoundingBoxMin;
+        private NativeArray<float> SmallBoundingBoxMax;
 
         public FeatureSet(MotionMatchingData mmData, int numberFeatureVectors)
         {
@@ -64,7 +69,7 @@ namespace MotionMatching
                 feature[i] = Features[featureIndex * FeatureSize + i];
             }
         }
-        
+
         public float Get1DTrajectoryFeature(int featureIndex, int trajectoryFeatureIndex, int predictionIndex, bool denormalize = false)
         {
             int featureOffset = TrajectoryOffset[trajectoryFeatureIndex] + predictionIndex * NumberFloatsTrajectory[trajectoryFeatureIndex];
@@ -153,6 +158,40 @@ namespace MotionMatching
         public float GetStandardDeviation(int dimension)
         {
             return StandardDeviation[dimension];
+        }
+
+        public void GetBVHBuffers(out NativeArray<float> largeBoundingBoxMin,
+                                  out NativeArray<float> largeBoundingBoxMax,
+                                  out NativeArray<float> smallBoundingBoxMin,
+                                  out NativeArray<float> smallBoundingBoxMax)
+        {
+            if (LargeBoundingBoxMax == null || !LargeBoundingBoxMax.IsCreated)
+            {
+                // Build BVH Acceleration Structure
+                int nFrames = GetFeatures().Length / FeatureSize;
+                int numberBoundingBoxLarge = (nFrames + BVHConsts.LargeBVHSize - 1) / BVHConsts.LargeBVHSize;
+                int numberBoundingBoxSmall = (nFrames + BVHConsts.SmallBVHSize - 1) / BVHConsts.SmallBVHSize;
+                LargeBoundingBoxMin = new NativeArray<float>(numberBoundingBoxLarge * FeatureSize, Allocator.Persistent);
+                LargeBoundingBoxMax = new NativeArray<float>(numberBoundingBoxLarge * FeatureSize, Allocator.Persistent);
+                SmallBoundingBoxMin = new NativeArray<float>(numberBoundingBoxSmall * FeatureSize, Allocator.Persistent);
+                SmallBoundingBoxMax = new NativeArray<float>(numberBoundingBoxSmall * FeatureSize, Allocator.Persistent);
+                var job = new BVHMotionMatchingComputeBounds
+                {
+                    Features = GetFeatures(),
+                    FeatureSize = FeatureSize,
+                    NumberBoundingBoxLarge = numberBoundingBoxLarge,
+                    NumberBoundingBoxSmall = numberBoundingBoxSmall,
+                    LargeBoundingBoxMin = LargeBoundingBoxMin,
+                    LargeBoundingBoxMax = LargeBoundingBoxMax,
+                    SmallBoundingBoxMin = SmallBoundingBoxMin,
+                    SmallBoundingBoxMax = SmallBoundingBoxMax,
+                };
+                job.Schedule().Complete();
+            }
+            largeBoundingBoxMin = LargeBoundingBoxMin;
+            largeBoundingBoxMax = LargeBoundingBoxMax;
+            smallBoundingBoxMin = SmallBoundingBoxMin;
+            smallBoundingBoxMax = SmallBoundingBoxMax;
         }
 
         // Deserialize ---------------------------------------
@@ -624,6 +663,10 @@ namespace MotionMatching
         {
             if (Valid != null && Valid.IsCreated) Valid.Dispose();
             if (Features != null && Features.IsCreated) Features.Dispose();
+            if (LargeBoundingBoxMin != null && LargeBoundingBoxMin.IsCreated) LargeBoundingBoxMin.Dispose();
+            if (LargeBoundingBoxMax != null && LargeBoundingBoxMax.IsCreated) LargeBoundingBoxMax.Dispose();
+            if (SmallBoundingBoxMin != null && SmallBoundingBoxMin.IsCreated) SmallBoundingBoxMin.Dispose();
+            if (SmallBoundingBoxMax != null && SmallBoundingBoxMax.IsCreated) SmallBoundingBoxMax.Dispose();
         }
     }
 }
