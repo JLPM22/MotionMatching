@@ -1,3 +1,10 @@
+# Motion Matching
+Samples/
+Samples.meta
+StreamingAssets/
+StreamingAssets.meta
+
+# Unity
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
