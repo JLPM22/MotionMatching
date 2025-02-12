@@ -6,7 +6,6 @@ using UnityEditor.UIElements;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 using System;
-using System.Linq;
 
 namespace MotionMatching
 {
@@ -884,7 +883,7 @@ namespace MotionMatching
                 }
 
                 // Show the context menu
-                dropdownMenu.DropDown(new Rect(e.position, Vector2.zero), element);
+                dropdownMenu.DropDown(new Rect(e.position, Vector2.zero), element, anchored: false);
             }
         }
 
@@ -1457,6 +1456,7 @@ namespace MotionMatching
             {
                 ReturnScene();
                 if (AnimationViewerEditorWindow.Window != null) AnimationViewerEditorWindow.Window.Close();
+                if (HipsLocalVectorsHelperEditorWindow.Window != null) HipsLocalVectorsHelperEditorWindow.Window.Close();
             }
 
             EditorGUILayout.EndVertical();

@@ -19,7 +19,7 @@ namespace MotionMatching
     {
         public TextAsset BVH;
         public float UnitScale = 1.0f;
-        public List<Tag> Tags;
+        public List<Tag> Tags = new();
 
         private BVHAnimation Animation;
 

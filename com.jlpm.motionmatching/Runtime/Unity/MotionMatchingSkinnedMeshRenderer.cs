@@ -197,6 +197,7 @@ namespace MotionMatching
                 transform.position = simulationBone;
             }
             MotionMatching.SetPosAdjustment(transform.position - MotionMatching.transform.position);
+
             // Retargeting
             for (int i = 0; i < BodyJoints.Length; i++)
             {
@@ -253,6 +254,7 @@ namespace MotionMatching
                     TargetBones[i].rotation = targetRotation;
                 }
             }
+
             // Hips
             float3 targetHipsPosition = TargetBones[0].position;
             if (RootPositionsMask)
