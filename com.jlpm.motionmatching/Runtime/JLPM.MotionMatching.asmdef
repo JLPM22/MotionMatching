@@ -1,9 +1,19 @@
 {
     "name": "JLPM.MotionMatching",
+    "rootNamespace": "",
     "references": [
         "Unity.Burst",
-		"Unity.Mathematics",
-		"Unity.InputSystem"
+        "Unity.Mathematics",
+        "Unity.InputSystem",
+        "Unity.Splines"
     ],
-    "allowUnsafeCode": true
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }
