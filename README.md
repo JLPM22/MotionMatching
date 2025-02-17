@@ -65,7 +65,7 @@ Your contributions and suggestions are always welcome as we continue to develop 
 
 - [Motion Matching for VR](https://upc-virvig.github.io/MMVR/)
 - [XR4ED](https://xr4ed.eu/)
-- [Exploring the Role of Expected Collision Feedback in Crowded Virtual Environments](10.1109/VR58804.2024.00068)
+- [Exploring the Role of Expected Collision Feedback in Crowded Virtual Environments](https://doi.org/10.1109/VR58804.2024.00068)
 - [Ragdoll Matching](https://webthesis.biblio.polito.it/30986/)
 - [Social Crowd Simulation](https://dl.acm.org/doi/10.1145/3677388.3696337)
 - [Improving Motion matching for VR](https://purehost.bath.ac.uk/ws/portalfiles/portal/303538262/poster_9.pdf)
