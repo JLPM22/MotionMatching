@@ -1,5 +1,5 @@
 // Uncomment this line to enable profiling for Motion Matching
-#define PROFILE_MOTION_MATCHING
+//#define PROFILE_MOTION_MATCHING
 
 using System.Collections;
 using System.Collections.Generic;
@@ -61,8 +61,8 @@ namespace MotionMatching
             {
                 return ProfileDatas[tag];
             }
-            return null;
 #endif
+            return null;
         }
 
         /// <summary>
@@ -77,7 +77,6 @@ namespace MotionMatching
             return false;
         }
 
-#if PROFILE_MOTION_MATCHING
         public class DATA
         {
             private static readonly int NumberSamplesToAverage = 60;
@@ -137,6 +136,5 @@ namespace MotionMatching
                 return AverageMs;
             }
         }
-#endif
     }
 }

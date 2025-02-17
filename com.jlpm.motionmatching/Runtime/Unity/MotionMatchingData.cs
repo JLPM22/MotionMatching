@@ -64,7 +64,10 @@ namespace MotionMatching
                     PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize");
 #endif
                 }
-                PoseSet = poseSet;
+                else
+                {
+                    PoseSet = poseSet;
+                }
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Import");
             }
             PoseSetUserCount += 1;
@@ -111,7 +114,10 @@ namespace MotionMatching
                     PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize");
 #endif
                 }
-                FeatureSet = featureSet;
+                else
+                {
+                    FeatureSet = featureSet;
+                }
                 PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Import");
             }
             FeatureSetUserCount += 1;
