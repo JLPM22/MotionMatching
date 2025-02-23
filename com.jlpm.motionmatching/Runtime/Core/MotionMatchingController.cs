@@ -70,9 +70,13 @@ namespace MotionMatching
         private float3 LeftLowerLegLocalForward, RightLowerLegLocalForward;
         private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
+        // Crowds
+        private (float2, float) Obstacle; // (projected position, circle radius)
 
         private void Awake()
         {
+            Debug.Assert(!UseBVHSearch, "Do not use BVH Search for this project yet.");
+
             // PoseSet
             PoseSet = MMData.GetOrImportPoseSet();
 
@@ -243,6 +247,9 @@ namespace MotionMatching
             // Init Query Vector
             FeatureSet.GetFeature(QueryFeature, CurrentFrame);
             FillTrajectory(QueryFeature);
+            // HARDCODED
+            NativeArray<float> means = new(FeatureSet.GetMeans(), Allocator.TempJob);
+            NativeArray<float> stds = new(FeatureSet.GetMeans(), Allocator.TempJob);
 
             // Get next feature vector (when doing motion matching search, they need less error than this)
             float currentDistance = float.MaxValue;
@@ -282,13 +289,17 @@ namespace MotionMatching
             }
             else
             {
-                var job = new LinearMotionMatchingSearchBurst
+                var job = new CrowdLinearMotionMatchingSearchBurst
                 {
                     Valid = FeatureSet.GetValid(),
                     TagMask = TagMask,
                     Features = FeatureSet.GetFeatures(),
                     QueryFeature = QueryFeature,
                     FeatureWeights = FeaturesWeightsNativeArray,
+                    Mean=means,
+                    Std=stds,
+                    ObstaclePos = Obstacle.Item1,
+                    ObstacleRadius = Obstacle.Item2,
                     FeatureSize = FeatureSet.FeatureSize,
                     PoseOffset = FeatureSet.PoseOffset,
                     CurrentDistance = currentDistance,
@@ -296,6 +307,9 @@ namespace MotionMatching
                 };
                 job.Schedule().Complete();
             }
+
+            means.Dispose();
+            stds.Dispose();
 
             // Check if use current or best
             int best = SearchResult[0];
@@ -562,6 +576,10 @@ namespace MotionMatching
         public void SetCurrentFrame(int frame)
         {
             CurrentFrame = frame;
+        }
+        public void SetObstacle(float2 projPosition, float radius)
+        {
+            Obstacle = (projPosition, radius);
         }
         public FeatureSet GetFeatureSet()
         {

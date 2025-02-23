@@ -3,6 +3,7 @@ using Unity.Collections;
 using UnityEngine;
 using Unity.Mathematics;
 using Unity.Jobs;
+using NUnit.Framework;
 
 namespace MotionMatching
 {
@@ -155,9 +156,17 @@ namespace MotionMatching
         {
             return Mean[dimension];
         }
+        public float[] GetMeans()
+        {
+            return Mean;
+        }
         public float GetStandardDeviation(int dimension)
         {
             return StandardDeviation[dimension];
+        }
+        public float[] GetStandardDeviations()
+        {
+            return StandardDeviation;
         }
 
         public void GetBVHBuffers(out NativeArray<float> largeBoundingBoxMin,
@@ -277,6 +286,14 @@ namespace MotionMatching
         {
             // Compute Mean and Standard Deviation
             ComputeMeanAndStandardDeviation();
+            // HARDCODED:
+            Debug.Assert(PoseOffset == 15, "Feature trajectories have changed");
+            Mean[12] = 0.0f;
+            Mean[13] = 0.0f;
+            Mean[14] = 0.0f;
+            StandardDeviation[12] = 1.0f;
+            StandardDeviation[13] = 1.0f;
+            StandardDeviation[14] = 1.0f;
 
             // Normalize all feature vectors
             for (int i = 0; i < NumberFeatureVectors; i++)

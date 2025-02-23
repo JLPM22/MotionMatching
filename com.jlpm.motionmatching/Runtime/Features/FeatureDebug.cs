@@ -14,6 +14,8 @@ public class FeatureDebug : MonoBehaviour
     public bool Play;
     public float SpheresRadius = 0.1f;
     public bool LockFPS = true;
+    public bool DebugPose = true;
+    public bool DebugContacts = true;
 
     private PoseSet PoseSet;
     private FeatureSet FeatureSet;
@@ -131,27 +133,31 @@ public class FeatureDebug : MonoBehaviour
         }
 
         // Contacts
-        if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.Assert(false, "Bone not found");
-        if (!PoseSet.Skeleton.Find(HumanBodyBones.RightToes, out Skeleton.Joint rightToesJoint)) Debug.Assert(false, "Bone not found");
-        int leftToesIndex = leftToesJoint.Index;
-        int rightToesIndex = rightToesJoint.Index;
-        Gizmos.color = Color.green;
-        if (pose.LeftFootContact)
+        if (DebugContacts)
         {
-            Gizmos.DrawSphere(SkeletonTransforms[leftToesIndex].position, SpheresRadius);
-        }
-        if (pose.RightFootContact)
-        {
-            Gizmos.DrawSphere(SkeletonTransforms[rightToesIndex].position, SpheresRadius);
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.Assert(false, "Bone not found");
+            if (!PoseSet.Skeleton.Find(HumanBodyBones.RightToes, out Skeleton.Joint rightToesJoint)) Debug.Assert(false, "Bone not found");
+            int leftToesIndex = leftToesJoint.Index;
+            int rightToesIndex = rightToesJoint.Index;
+            Gizmos.color = Color.green;
+            if (pose.LeftFootContact)
+            {
+                Gizmos.DrawSphere(SkeletonTransforms[leftToesIndex].position, SpheresRadius);
+            }
+            if (pose.RightFootContact)
+            {
+                Gizmos.DrawSphere(SkeletonTransforms[rightToesIndex].position, SpheresRadius);
+            }
         }
 
         // Feature Set
         if (FeatureSet == null) return;
 
         DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
-                          SkeletonTransforms, PoseSet.Skeleton);
+                          SkeletonTransforms, PoseSet.Skeleton, debugPose: DebugPose);
     }
 
+    private static List<float3> PositionFeatures = new();
     public static void DrawFeatureGizmos(FeatureSet set, MotionMatchingData mmData, float spheresRadius, int currentFrame,
                                          float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton,
                                          bool debugPose = true, bool debugTrajectory = true)
@@ -160,6 +166,9 @@ public class FeatureDebug : MonoBehaviour
 
         quaternion characterRot = quaternion.LookRotation(characterForward, new float3(0, 1, 0));
         // Trajectory
+        // TODO: actually check visualization toggle
+        // TODO: do this section (now I am assuming the position is only one and it's the first trajectory feature
+        PositionFeatures.Clear();
         if (debugTrajectory)
         {
             for (int t = 0; t < mmData.TrajectoryFeatures.Count; t++)
@@ -215,13 +224,14 @@ public class FeatureDebug : MonoBehaviour
                         {
                             case MotionMatchingData.TrajectoryFeature.Type.Position:
                                 value = characterOrigin + math.mul(characterRot, value);
+                                PositionFeatures.Add(value);
                                 Gizmos.DrawSphere(value, spheresRadius);
                                 break;
                             case MotionMatchingData.TrajectoryFeature.Type.Direction:
                                 float3 jointPos;
                                 if (trajectoryFeature.SimulationBone)
                                 {
-                                    jointPos = characterOrigin;
+                                    jointPos = PositionFeatures[p];
                                 }
                                 else
                                 {
@@ -237,7 +247,7 @@ public class FeatureDebug : MonoBehaviour
                     {
                         Feature1DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature1DExtractor;
                         float value = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
-                        featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
+                        featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p]);
                     }
                     else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom2D)
                     {

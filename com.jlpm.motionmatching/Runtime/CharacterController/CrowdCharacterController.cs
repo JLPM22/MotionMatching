@@ -7,11 +7,10 @@ namespace MotionMatching
 {
     using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
 
-    // Adjustment between Character Controller and Motion Matching Character Entity
-    /* https://theorangeduck.com/page/code-vs-data-driven-displacement */
 
-    public class SpringCharacterController : MotionMatchingCharacterController
+    public class CrowdCharacterController : MotionMatchingCharacterController
     {
+        public Transform Obstacle;
         // Features ----------------------------------------------------------
         [Header("Features")]
         public string TrajectoryPositionFeatureName = "FuturePosition";
@@ -268,6 +267,10 @@ namespace MotionMatching
             if (feature.Name == "FutureSphere")
             {
                 output[0] = 0.0f;
+                float3 world = new(Obstacle.position.x, 0.0f, Obstacle.position.z);
+                float3 localPos = character.InverseTransformPoint(world);
+                // HARDCODED: circle radius
+                MotionMatching.SetObstacle(new float2(localPos.x, localPos.z), Obstacle.localScale.x / 2.0f);
             }
             else
             {

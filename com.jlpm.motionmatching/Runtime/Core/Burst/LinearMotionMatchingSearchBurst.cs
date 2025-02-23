@@ -94,4 +94,91 @@ namespace MotionMatching
             BestIndex[0] = _bestIndex;
         }
     }
+
+    [BurstCompile]
+    public struct CrowdLinearMotionMatchingSearchBurst : IJob
+    {
+        [ReadOnly] public NativeArray<bool> Valid;
+        [ReadOnly] public NativeArray<bool> TagMask;
+        [ReadOnly] public NativeArray<float> Features;
+        [ReadOnly] public NativeArray<float> QueryFeature;
+        [ReadOnly] public NativeArray<float> FeatureWeights;
+        [ReadOnly] public NativeArray<float> Mean;
+        [ReadOnly] public NativeArray<float> Std;
+        [ReadOnly] public float2 ObstaclePos;
+        [ReadOnly] public float ObstacleRadius;
+        [ReadOnly] public int FeatureSize;
+        [ReadOnly] public int PoseOffset;
+        [ReadOnly] public float CurrentDistance;
+
+        [WriteOnly] public NativeArray<int> BestIndex;
+
+        // Features
+        // 0, 1 -> Position 0
+        // 2, 3 -> Position 1
+        // 4, 5 -> Position 2
+        // --
+        // 6, 7 -> Direction 0
+        // 8, 9 -> Direction 1
+        // 10, 11 -> Direction 2
+        // --
+        // 12 -> Circle 0
+        // 13 -> Circle 1
+        // 14 -> Circle 2
+        // --
+        // ... Pose Features
+        public void Execute()
+        {
+            float minDistance = CurrentDistance;
+            int bestIndex = -1;
+
+            for (int i = 0; i < Valid.Length; ++i)
+            {
+                if (Valid[i] && TagMask[i])
+                {
+                    float sqrDistance = 0.0f;
+                    int featureIndex = i * FeatureSize;
+
+                    for (int j = 0; j < FeatureSize; ++j)
+                    {
+                        if (j >= 12 && j <= 14) continue;
+                        float diff = Features[featureIndex + j] - QueryFeature[j];
+                        sqrDistance += diff * diff * FeatureWeights[j];
+                    }
+                    // crowd forces
+                    float2 pos1 = new(Features[featureIndex + 0] * Std[0] + Mean[0],
+                                      Features[featureIndex + 1] * Std[1] + Mean[1]);
+                    float2 pos2 = new(Features[featureIndex + 2] * Std[2] + Mean[2],
+                                      Features[featureIndex + 3] * Std[3] + Mean[3]);
+                    float2 pos3 = new(Features[featureIndex + 4] * Std[4] + Mean[4],
+                                      Features[featureIndex + 5] * Std[5] + Mean[5]);
+                    float circle1 = Features[featureIndex + 12];
+                    float circle2 = Features[featureIndex + 13];
+                    float circle3 = Features[featureIndex + 14];
+                    float distance1 = math.distance(ObstaclePos, pos1) - circle1 - ObstacleRadius;
+                    float distance2 = math.distance(ObstaclePos, pos2) - circle2 - ObstacleRadius;
+                    float distance3 = math.distance(ObstaclePos, pos3) - circle3 - ObstacleRadius;
+                    const float threshold = 4.0f;
+                    float crowdDistance = 0.0f;
+                    if (distance1 < threshold)
+                    {
+                        crowdDistance = (threshold - distance1) / distance1;
+                        crowdDistance = (threshold - distance2) / distance2;
+                        crowdDistance = (threshold - distance3) / distance3;
+                    }
+
+                    const float crowdWeight = 10.0f;
+                    sqrDistance += (crowdDistance * crowdDistance) * crowdWeight;
+
+                    if (sqrDistance < minDistance)
+                    {
+                        minDistance = sqrDistance;
+                        bestIndex = i;
+                    }
+                }
+            }
+
+            BestIndex[0] = bestIndex;
+        }
+    }
 }

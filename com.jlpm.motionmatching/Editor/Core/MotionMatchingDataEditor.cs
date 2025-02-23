@@ -243,6 +243,10 @@ namespace MotionMatching
                             trajectoryFeature.ZeroY = true; // project simulation bone to the ground
                             trajectoryFeature.ZeroZ = false;
                         }
+                        if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position)
+                        {
+                            // TODO: incorporate visualization position here
+                        }
                     }
                     else
                     {
