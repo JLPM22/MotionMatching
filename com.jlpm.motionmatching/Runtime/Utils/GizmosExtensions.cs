@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 
@@ -204,6 +205,42 @@ namespace MotionMatching
 
         }
 
+        /// <summary>
+        /// Draws a flat wire ellipse with a primary and secondary axis
+        /// </summary>
+        /// <param name="center">Center of the ellipse</param>
+        /// <param name="primaryAxis">Primary axis (direction and magnitude in float2)</param>
+        /// <param name="secondaryAxis">Secondary axis (direction and magnitude in float2)</param>
+        /// <param name="rotation">Rotation of the ellipse</param>
+        /// <param name="segments">Number of segments to draw the ellipse</param>
+        public static void DrawWireEllipse(float3 center, float2 primaryAxis, float2 secondaryAxis, Quaternion rotation, int segments = 20)
+        {
+            var old = Gizmos.matrix;
+            Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
+
+            Vector3 from = CalculateEllipsePoint(primaryAxis, secondaryAxis, 0);
+            var step = Mathf.Max(Mathf.RoundToInt(360f / segments), 1);
+
+            for (int i = step; i <= 360; i += step)
+            {
+                Vector3 to = CalculateEllipsePoint(primaryAxis, secondaryAxis, i);
+                Gizmos.DrawLine(from, to);
+                from = to;
+            }
+            // Close the ellipse loop
+            Gizmos.DrawLine(from, CalculateEllipsePoint(primaryAxis, secondaryAxis, 0));
+
+
+            Gizmos.matrix = old;
+        }
+
+        private static Vector3 CalculateEllipsePoint(float2 primaryAxis, float2 secondaryAxis, float angleDegrees)
+        {
+            float angleRad = angleDegrees * Mathf.Deg2Rad;
+            float x = primaryAxis.x * Mathf.Cos(angleRad) + secondaryAxis.x * Mathf.Sin(angleRad);
+            float y = primaryAxis.y * Mathf.Cos(angleRad) + secondaryAxis.y * Mathf.Sin(angleRad);
+            return new Vector3(x, 0, y);
+        }
     }
 }
 #endif

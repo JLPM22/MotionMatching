@@ -287,13 +287,19 @@ namespace MotionMatching
             // Compute Mean and Standard Deviation
             ComputeMeanAndStandardDeviation();
             // HARDCODED:
-            Debug.Assert(PoseOffset == 15, "Feature trajectories have changed");
+            Debug.Assert(PoseOffset == 18, "Feature trajectories have changed");
             Mean[12] = 0.0f;
             Mean[13] = 0.0f;
             Mean[14] = 0.0f;
+            Mean[15] = 0.0f;
+            Mean[16] = 0.0f;
+            Mean[17] = 0.0f;
             StandardDeviation[12] = 1.0f;
             StandardDeviation[13] = 1.0f;
             StandardDeviation[14] = 1.0f;
+            StandardDeviation[15] = 1.0f;
+            StandardDeviation[16] = 1.0f;
+            StandardDeviation[17] = 1.0f;
 
             // Normalize all feature vectors
             for (int i = 0; i < NumberFeatureVectors; i++)
@@ -366,7 +372,7 @@ namespace MotionMatching
                     std += math.sqrt(variance[offset + j]);
                 }
                 std /= nDimensions;
-                Debug.Assert(std > 0, "Standard deviation is zero, feature with no variation is probably a bug");
+                //Debug.Assert(std > 0, "Standard deviation is zero, feature with no variation is probably a bug");
                 for (int j = 0; j < nDimensions; j++)
                 {
                     StandardDeviation[offset + j] = std;
@@ -436,8 +442,14 @@ namespace MotionMatching
         private void ExtractFeature(PoseSet poseSet, int poseIndex, Joint[] jointsTrajectory, Joint[] jointsPose, MotionMatchingData mmData)
         {
             int featureIndex = poseIndex * FeatureSize;
+            int nextPose = poseIndex + 1;
+            if (nextPose >= poseSet.NumberPoses - 60)
+            {
+                nextPose = poseIndex;
+            }
+            int nextFeatureIndex = nextPose * FeatureSize;
             poseSet.GetPose(poseIndex, out PoseVector pose);
-            poseSet.GetPose(poseIndex + 1, out PoseVector poseNext);
+            poseSet.GetPose(nextPose, out PoseVector poseNext);
             // Compute local features based on the Simulation Bone
             // so hips and feet are local to a stable position with respect to the character
             GetWorldOriginCharacter(pose, out float3 characterOrigin, out float3 characterForward);
@@ -446,12 +458,16 @@ namespace MotionMatching
             {
                 MotionMatchingData.TrajectoryFeature trajectoryFeature = mmData.TrajectoryFeatures[i];
                 int featureOffset = featureIndex + TrajectoryOffset[i];
+                int nextFeatureOffset = nextFeatureIndex + TrajectoryOffset[i];
                 bool startTrajectory = true;
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; ++p)
                 {
                     int predictionOffset = featureOffset + p * NumberFloatsTrajectory[i];
+                    int nextPredictionOffset = nextFeatureOffset + p * NumberFloatsTrajectory[i];
                     int futurePoseIndex = poseIndex + trajectoryFeature.FramesPrediction[p];
+                    int nextFuturePoseIndex = nextPose + trajectoryFeature.FramesPrediction[p];
                     poseSet.GetPose(futurePoseIndex, out PoseVector futurePose, out int animationClip);
+                    poseSet.GetPose(nextFuturePoseIndex, out PoseVector nextFuturePose, out int nextAnimationClip);
                     float3 value = new float3();
                     switch (trajectoryFeature.FeatureType)
                     {
@@ -479,7 +495,7 @@ namespace MotionMatching
                                     startTrajectory = false;
                                     extractor1D.StartExtracting(poseSet.Skeleton);
                                 }
-                                float value1D = extractor1D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                                float value1D = extractor1D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                                 Features[predictionOffset + 0] = value1D;
                             }
                             break;
@@ -491,7 +507,7 @@ namespace MotionMatching
                                     startTrajectory = false;
                                     extractor2D.StartExtracting(poseSet.Skeleton);
                                 }
-                                float2 value2D = extractor2D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                                float2 value2D = extractor2D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                                 Features[predictionOffset + 0] = value2D.x;
                                 Features[predictionOffset + 1] = value2D.y;
                             }

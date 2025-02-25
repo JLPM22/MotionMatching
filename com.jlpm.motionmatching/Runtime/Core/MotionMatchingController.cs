@@ -15,6 +15,8 @@ namespace MotionMatching
     {
         public event Action OnSkeletonTransformUpdated;
 
+        public float CrowdWeight = 1.0f; // DEBUG
+
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
         public bool LockFPS = true;
@@ -53,6 +55,7 @@ namespace MotionMatching
         private float SearchTimeLeft;
         private NativeArray<float> QueryFeature;
         private NativeArray<int> SearchResult;
+        private NativeArray<float> DebugCrowdDistance; // DEBUG
         private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
         // BVH Acceleration Structure
@@ -120,6 +123,7 @@ namespace MotionMatching
 
             // Other initialization
             SearchResult = new NativeArray<int>(1, Allocator.Persistent);
+            DebugCrowdDistance = new NativeArray<float>(3, Allocator.Persistent);
             int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count;
             if (FeatureWeights == null || FeatureWeights.Length != numberFeatures)
             {
@@ -303,7 +307,9 @@ namespace MotionMatching
                     FeatureSize = FeatureSet.FeatureSize,
                     PoseOffset = FeatureSet.PoseOffset,
                     CurrentDistance = currentDistance,
-                    BestIndex = SearchResult
+                    BestIndex = SearchResult,
+                    DebugCrowdDistance = DebugCrowdDistance,
+                    CrowdWeight=CrowdWeight,
                 };
                 job.Schedule().Complete();
             }
@@ -634,6 +640,17 @@ namespace MotionMatching
             return SkeletonTransforms;
         }
 
+        private void OnGUI()
+        {
+            GUIStyle headStyle = new()
+            {
+                fontSize = 40,
+            };
+            GUI.Label(new Rect(10.0f, 10.0f, 190.0f, 20.0f), "Crowd: " + DebugCrowdDistance[0].ToString("0.0000"), headStyle);
+            GUI.Label(new Rect(10.0f, 60.0f, 190.0f, 20.0f), "Crowd Weight: " + DebugCrowdDistance[2].ToString("0.0000"), headStyle);
+            GUI.Label(new Rect(10.0f, 110.0f, 190.0f, 20.0f), "Trajectory: " + DebugCrowdDistance[1].ToString("0.0000"), headStyle);
+        }
+
         private void OnDestroy()
         {
             MMData.Dispose();
@@ -660,7 +677,7 @@ namespace MotionMatching
                 for (int i = 2; i < SkeletonTransforms.Length; i++) // skip Simulation Bone
                 {
                     Transform t = SkeletonTransforms[i];
-                    GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
+                    GizmosExtensions.DrawLine(t.parent.position, t.position, 6);
                 }
             }
 
