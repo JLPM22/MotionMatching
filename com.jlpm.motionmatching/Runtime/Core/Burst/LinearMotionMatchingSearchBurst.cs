@@ -106,7 +106,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<float> FeatureWeights;
         [ReadOnly] public NativeArray<float> Mean;
         [ReadOnly] public NativeArray<float> Std;
-        [ReadOnly] public float2 ObstaclePos;
+        [ReadOnly] public NativeArray<(float2, float)> Obstacles;
         [ReadOnly] public float ObstacleRadius;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int PoseOffset;
@@ -115,6 +115,11 @@ namespace MotionMatching
 
         [WriteOnly] public NativeArray<int> BestIndex;
         public NativeArray<float> DebugCrowdDistance;
+
+        private float DistanceFunction(float distance)
+        {
+            return -math.pow((1.0f - distance), 4.0f) * math.log(math.max(distance, 1e-3f));
+        }
 
         // Features
         // 0, 1 -> Position 0
@@ -132,7 +137,7 @@ namespace MotionMatching
         // ... Pose Features
         public void Execute()
         {
-            float minDistance = CurrentDistance;
+            float minDistance = float.MaxValue;
             float debugCrowd = DebugCrowdDistance[0]; // DEBUG
             float debugTrajectory = DebugCrowdDistance[1]; // DEBUG
             int bestIndex = -1;
@@ -150,6 +155,8 @@ namespace MotionMatching
                         float diff = Features[featureIndex + j] - QueryFeature[j];
                         sqrDistance += diff * diff * FeatureWeights[j];
                     }
+                    float auxDebugTrajectory = sqrDistance;
+
                     // crowd forces
                     float2 pos1 = new(Features[featureIndex + 0] * Std[0] + Mean[0],
                                       Features[featureIndex + 1] * Std[1] + Mean[1]);
@@ -164,27 +171,31 @@ namespace MotionMatching
                     float2 primaryAxisUnit2 = math.normalize(pos3 - pos2);
                     float2 secondaryAxisUnit1 = new(-primaryAxisUnit1.y, primaryAxisUnit1.x);
                     float2 secondaryAxisUnit2 = new(-primaryAxisUnit2.y, primaryAxisUnit2.x);
-                    // TODO: subtract circle radius, but first, check distance value when query point is inside the ellipse
-                    float distance1 = UtilitiesBurst.DistanceToEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, ObstaclePos, out _);
-                    float distance2 = UtilitiesBurst.DistanceToEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, ObstaclePos, out _);
-                    float distance3 = UtilitiesBurst.DistanceToEllipse(pos3, primaryAxisUnit2, secondaryAxisUnit2, ellipse3, ObstaclePos, out _);
-                    const float threshold = 4.0f;
-                    float crowdDistance = 0.0f;
-                    if (distance1 < threshold)
-                    {
-                        crowdDistance = math.pow((threshold - distance1) / threshold, 5);
-                    }
-                    if (distance2 < threshold)
-                    {
-                        crowdDistance += math.pow((threshold - distance2) / threshold, 5);
-                    }
-                    if (distance3 < threshold)
-                    {
-                        crowdDistance += math.pow((threshold - distance3) / threshold, 5);
-                    }
 
-                    float auxDebugTrajectory = sqrDistance;
-                    sqrDistance += crowdDistance * CrowdWeight;
+                    float debugTotalCrowdDistance = 0.0f;
+                    const float threshold = 1.0f;
+                    for (int obstacle = 0; obstacle < Obstacles.Length; obstacle++)
+                    {
+                        float distance1 = UtilitiesBurst.DistanceToEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, Obstacles[obstacle].Item1, out _) - Obstacles[obstacle].Item2;
+                        float distance2 = UtilitiesBurst.DistanceToEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, Obstacles[obstacle].Item1, out _) - Obstacles[obstacle].Item2;
+                        float distance3 = UtilitiesBurst.DistanceToEllipse(pos3, primaryAxisUnit2, secondaryAxisUnit2, ellipse3, Obstacles[obstacle].Item1, out _) - Obstacles[obstacle].Item2;
+                        float crowdDistance = 0.0f;
+                        if (distance1 < threshold)
+                        {
+                            crowdDistance += DistanceFunction(1.0f - ((threshold - distance1) / threshold));
+                        }
+                        if (distance2 < threshold)
+                        {
+                            crowdDistance += DistanceFunction(1.0f - ((threshold - distance2) / threshold));
+                        }
+                        if (distance3 < threshold)
+                        {
+                            crowdDistance += DistanceFunction(1.0f - ((threshold - distance3) / threshold));
+                        }
+
+                        debugTotalCrowdDistance += crowdDistance;
+                        sqrDistance += crowdDistance * CrowdWeight;
+                    }
 
                     if (sqrDistance < minDistance)
                     {
@@ -193,7 +204,7 @@ namespace MotionMatching
                     }
                     if (bestIndex == i)
                     {
-                        debugCrowd = crowdDistance;
+                        debugCrowd = debugTotalCrowdDistance;
                         debugTrajectory = auxDebugTrajectory;
                     }
                 }

@@ -74,7 +74,7 @@ namespace MotionMatching
         private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
         // Crowds
-        private (float2, float) Obstacle; // (projected position, circle radius)
+        private NativeArray<(float2, float)> Obstacles; // (projected position, circle radius)
 
         private void Awake()
         {
@@ -300,16 +300,15 @@ namespace MotionMatching
                     Features = FeatureSet.GetFeatures(),
                     QueryFeature = QueryFeature,
                     FeatureWeights = FeaturesWeightsNativeArray,
-                    Mean=means,
-                    Std=stds,
-                    ObstaclePos = Obstacle.Item1,
-                    ObstacleRadius = Obstacle.Item2,
+                    Mean = means,
+                    Std = stds,
+                    Obstacles = Obstacles,
                     FeatureSize = FeatureSet.FeatureSize,
                     PoseOffset = FeatureSet.PoseOffset,
                     CurrentDistance = currentDistance,
                     BestIndex = SearchResult,
                     DebugCrowdDistance = DebugCrowdDistance,
-                    CrowdWeight=CrowdWeight,
+                    CrowdWeight = CrowdWeight,
                 };
                 job.Schedule().Complete();
             }
@@ -583,9 +582,9 @@ namespace MotionMatching
         {
             CurrentFrame = frame;
         }
-        public void SetObstacle(float2 projPosition, float radius)
+        public void SetObstacle(NativeArray<(float2, float)> obstacles)
         {
-            Obstacle = (projPosition, radius);
+            Obstacles = obstacles;
         }
         public FeatureSet GetFeatureSet()
         {

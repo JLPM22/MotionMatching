@@ -10,7 +10,7 @@ namespace MotionMatching
 
     public class CrowdCharacterController : MotionMatchingCharacterController
     {
-        public Transform Obstacle;
+        public Transform[] Obstacles;
         // Features ----------------------------------------------------------
         [Header("Features")]
         public string TrajectoryPositionFeatureName = "FuturePosition";
@@ -60,6 +60,8 @@ namespace MotionMatching
         private int[] TrajectoryRotPredictionFrames;
         private int NumberPredictionPos { get { return TrajectoryPosPredictionFrames.Length; } }
         private int NumberPredictionRot { get { return TrajectoryRotPredictionFrames.Length; } }
+        // Crowds ------------------------------------------------------------------
+        private NativeArray<(float2, float)> ObstaclesArray;
         // --------------------------------------------------------------------------
 
         // FUNCTIONS ---------------------------------------------------------------
@@ -91,6 +93,8 @@ namespace MotionMatching
             DesiredRotation = quaternion.LookRotation(transform.forward, transform.up);
             PredictedRotations = new quaternion[NumberPredictionRot];
             PredictedAngularVelocities = new float3[NumberPredictionRot];
+            // Crowds
+            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length, Allocator.Persistent);
         }
 
         // Input a change in the movement direction
@@ -267,10 +271,15 @@ namespace MotionMatching
             if (feature.Name == "FutureSphere")
             {
                 output[0] = 0.0f;
-                float3 world = new(Obstacle.position.x, 0.0f, Obstacle.position.z);
-                float3 localPos = character.InverseTransformPoint(world);
-                // HARDCODED: circle radius
-                MotionMatching.SetObstacle(new float2(localPos.x, localPos.z), Obstacle.localScale.x / 2.0f);
+                output[1] = 0.0f;
+                for (int i = 0; i < Obstacles.Length; i++)
+                {
+                    float3 world = new(Obstacles[i].position.x, 0.0f, Obstacles[i].position.z);
+                    float3 localPos = character.InverseTransformPoint(world);
+                    // HARDCODED: circle radius
+                    ObstaclesArray[i] = (new float2(localPos.x, localPos.z), Obstacles[i].localScale.x / 2.0f);
+                }
+                MotionMatching.SetObstacle(ObstaclesArray);
             }
             else
             {
