@@ -9,7 +9,7 @@ public static class UtilitiesBurst
     [BurstCompile]
     private static float GetRoot(in float r0, in float z0, in float z1, in float g)
     {
-        const int maxIterations = 149; // for float (32-bit)
+        const int maxIterations = 5; // for float (32-bit) ideally 149
         float gi = g;
         float n0 = r0 * z0;
         float s0 = z1 - 1.0f;

@@ -154,14 +154,14 @@ public class FeatureDebug : MonoBehaviour
         if (FeatureSet == null) return;
 
         DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
-                          SkeletonTransforms, PoseSet.Skeleton, debugPose: DebugPose);
+                          SkeletonTransforms, PoseSet.Skeleton, Color.blue, debugPose: DebugPose);
     }
 
     private static List<float3> PositionFeatures = new();
     private static List<float3> NextPositionFeatures = new();
     public static void DrawFeatureGizmos(FeatureSet set, MotionMatchingData mmData, float spheresRadius, int currentFrame,
                                          float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton,
-                                         bool debugPose = true, bool debugTrajectory = true)
+                                         Color trajectoryColor, bool debugPose = true, bool debugTrajectory = true)
     {
         if (!set.IsValidFeature(currentFrame)) return;
 
@@ -178,7 +178,7 @@ public class FeatureDebug : MonoBehaviour
                 var trajectoryFeature = mmData.TrajectoryFeatures[t];
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
                 {
-                    Gizmos.color = Color.blue * (1.25f - (float)p / trajectoryFeature.FramesPrediction.Length);
+                    Gizmos.color = trajectoryColor * (1.25f - (float)p / trajectoryFeature.FramesPrediction.Length);
                     if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position ||
                         trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction)
                     {

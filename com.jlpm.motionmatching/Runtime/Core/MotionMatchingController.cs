@@ -3,6 +3,7 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
+using NUnit.Framework.Internal;
 
 namespace MotionMatching
 {
@@ -13,9 +14,19 @@ namespace MotionMatching
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
+        [System.Serializable]
+        public struct DebugTraj // DEBUG
+        {
+            public bool Enable;
+            public float Distance;
+        }
+
         public event Action OnSkeletonTransformUpdated;
 
         public float CrowdWeight = 1.0f; // DEBUG
+        public int NumberDebugTrajectories = 0; // DEBUG
+        public float BestTrajectoryDistance;
+        public DebugTraj[] DebugTrajectories; // DEBUG
 
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
@@ -75,6 +86,8 @@ namespace MotionMatching
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
         // Crowds
         private NativeArray<(float2, float)> Obstacles; // (projected position, circle radius)
+        private NativeArray<float> DistanceFeatures; // DEBUG
+        private NativeArray<bool> ValidDistanceFeatures; // DEBUG
 
         private void Awake()
         {
@@ -174,6 +187,15 @@ namespace MotionMatching
             // Init Pose
             SkeletonTransforms[0].position = CharacterController.GetWorldInitPosition();
             SkeletonTransforms[0].rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
+
+            // Crowds
+            DistanceFeatures = new NativeArray<float>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
+            ValidDistanceFeatures = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
+            DebugTrajectories = new DebugTraj[NumberDebugTrajectories];
+            for (int i = 0; i < NumberDebugTrajectories; i++)
+            {
+                DebugTrajectories[i].Enable = true;
+            }
         }
 
         private void OnEnable()
@@ -293,24 +315,49 @@ namespace MotionMatching
             }
             else
             {
-                var job = new CrowdLinearMotionMatchingSearchBurst
+                if (NumberDebugTrajectories > 0)
                 {
-                    Valid = FeatureSet.GetValid(),
-                    TagMask = TagMask,
-                    Features = FeatureSet.GetFeatures(),
-                    QueryFeature = QueryFeature,
-                    FeatureWeights = FeaturesWeightsNativeArray,
-                    Mean = means,
-                    Std = stds,
-                    Obstacles = Obstacles,
-                    FeatureSize = FeatureSet.FeatureSize,
-                    PoseOffset = FeatureSet.PoseOffset,
-                    CurrentDistance = currentDistance,
-                    BestIndex = SearchResult,
-                    DebugCrowdDistance = DebugCrowdDistance,
-                    CrowdWeight = CrowdWeight,
-                };
-                job.Schedule().Complete();
+                    var job = new VisCrowdLinearMotionMatchingSearchBurst
+                    {
+                        Valid = FeatureSet.GetValid(),
+                        TagMask = TagMask,
+                        Features = FeatureSet.GetFeatures(),
+                        QueryFeature = QueryFeature,
+                        FeatureWeights = FeaturesWeightsNativeArray,
+                        Mean = means,
+                        Std = stds,
+                        Obstacles = Obstacles,
+                        FeatureSize = FeatureSet.FeatureSize,
+                        PoseOffset = FeatureSet.PoseOffset,
+                        CurrentDistance = currentDistance,
+                        BestIndex = SearchResult,
+                        DebugCrowdDistance = DebugCrowdDistance,
+                        CrowdWeight = CrowdWeight,
+                        Distances = DistanceFeatures
+                    };
+                    job.Schedule().Complete();
+                }
+                else
+                {
+                    var job = new CrowdLinearMotionMatchingSearchBurst
+                    {
+                        Valid = FeatureSet.GetValid(),
+                        TagMask = TagMask,
+                        Features = FeatureSet.GetFeatures(),
+                        QueryFeature = QueryFeature,
+                        FeatureWeights = FeaturesWeightsNativeArray,
+                        Mean = means,
+                        Std = stds,
+                        Obstacles = Obstacles,
+                        FeatureSize = FeatureSet.FeatureSize,
+                        PoseOffset = FeatureSet.PoseOffset,
+                        CurrentDistance = currentDistance,
+                        BestIndex = SearchResult,
+                        DebugCrowdDistance = DebugCrowdDistance,
+                        CrowdWeight = CrowdWeight,
+                    };
+                    job.Schedule().Complete();
+                }
             }
 
             means.Dispose();
@@ -710,7 +757,48 @@ namespace MotionMatching
             if (FeatureSet == null) return;
 
             FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
-                                           SkeletonTransforms, PoseSet.Skeleton, DebugPose, DebugTrajectory);
+                                           SkeletonTransforms, PoseSet.Skeleton, Color.blue, DebugPose, DebugTrajectory);
+
+            // Visualization DEBUG
+            const int window = 200;
+            if (NumberDebugTrajectories > 0)
+            {
+                BestTrajectoryDistance = DistanceFeatures[SearchResult[0]];
+                for (int i = 0; i < ValidDistanceFeatures.Length; i++)
+                {
+                    ValidDistanceFeatures[i] = true;
+                }
+                ValidDistanceFeatures[SearchResult[0]] = false;
+                for (int i = SearchResult[0] - window; i < SearchResult[0] + window; i++)
+                {
+                    if (i < 0 || i >= DistanceFeatures.Length) continue;
+                    ValidDistanceFeatures[i] = false;
+                }
+                for (int t = 0; t < NumberDebugTrajectories; t++)
+                {
+                    float minDistance = float.MaxValue;
+                    int best = 0;
+                    for (int i = 0; i < DistanceFeatures.Length; i++)
+                    {
+                        if (DistanceFeatures[i] != 0.0f && DistanceFeatures[i] < minDistance && ValidDistanceFeatures[i])
+                        {
+                            minDistance = DistanceFeatures[i];
+                            best = i;
+                        }
+                    }
+                    DebugTrajectories[t].Distance = minDistance;
+                    for (int i = best - window; i < best + window; i++)
+                    {
+                        if (i < 0 || i >= DistanceFeatures.Length) continue;
+                        ValidDistanceFeatures[i] = false;
+                    }
+                    if (DebugTrajectories[t].Enable)
+                    {
+                        FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, best, characterOrigin, characterForward,
+                                                       SkeletonTransforms, PoseSet.Skeleton, debugPose: false, debugTrajectory: DebugTrajectory, trajectoryColor: Color.red);
+                    }
+                }
+            }
         }
 #endif
     }
