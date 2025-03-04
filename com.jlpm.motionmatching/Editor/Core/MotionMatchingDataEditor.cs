@@ -23,7 +23,7 @@ namespace MotionMatching
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Pose Serialize");
             PoseSerializer poseSerializer = new();
-            poseSerializer.Serialize(mmData.PoseSet, mmData.GetAssetPath(), this.name);
+            poseSerializer.Serialize(mmData.PoseSet, mmData.GetAssetPath(), mmData.name);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize");
 
             mmData.ComputeJointsLocalForward();
@@ -34,7 +34,7 @@ namespace MotionMatching
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize");
             FeatureSerializer featureSerializer = new();
-            featureSerializer.Serialize(mmData.FeatureSet, mmData, mmData.GetAssetPath(), this.name);
+            featureSerializer.Serialize(mmData.FeatureSet, mmData, mmData.GetAssetPath(), mmData.name);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize");
 
             mmData.Dispose();
@@ -184,6 +184,7 @@ namespace MotionMatching
             {
                 EditorGUI.indentLevel++;
                 EditorGUILayout.LabelField("Trajectory Features", EditorStyles.boldLabel);
+                bool hasAMainPositionFeature = false;
                 for (int i = 0; i < data.TrajectoryFeatures.Count; i++)
                 {
                     MotionMatchingData.TrajectoryFeature trajectoryFeature = data.TrajectoryFeatures[i];
@@ -201,6 +202,20 @@ namespace MotionMatching
                     trajectoryFeature.Name = EditorGUILayout.TextField("Name", trajectoryFeature.Name);
                     // Feature Type
                     trajectoryFeature.FeatureType = (MotionMatchingData.TrajectoryFeature.Type)EditorGUILayout.EnumPopup("Type", trajectoryFeature.FeatureType);
+                    if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position)
+                    {
+                        trajectoryFeature.IsMainPositionFeature = EditorGUILayout.Toggle("Main Position Feature", trajectoryFeature.IsMainPositionFeature);
+                        if (trajectoryFeature.IsMainPositionFeature)
+                        {
+                            if (hasAMainPositionFeature)
+                            {
+                                EditorGUILayout.HelpBox("Only one main position feature is allowed", MessageType.Error);
+                                generateButtonError = true;
+                            }
+                            hasAMainPositionFeature = true;
+                        }
+                    }
+                    trajectoryFeature.DoNotIncludeInSearch = EditorGUILayout.Toggle("Do not include in the MM search", trajectoryFeature.DoNotIncludeInSearch);
                     // Frames
                     EditorGUILayout.LabelField("Frames Prediction");
                     EditorGUILayout.BeginHorizontal();
@@ -242,10 +257,6 @@ namespace MotionMatching
                             trajectoryFeature.ZeroX = false;
                             trajectoryFeature.ZeroY = true; // project simulation bone to the ground
                             trajectoryFeature.ZeroZ = false;
-                        }
-                        if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position)
-                        {
-                            // TODO: incorporate visualization position here
                         }
                     }
                     else

@@ -3,7 +3,6 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
-using NUnit.Framework.Internal;
 
 namespace MotionMatching
 {
@@ -14,7 +13,7 @@ namespace MotionMatching
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
-        [System.Serializable]
+        [Serializable]
         public struct DebugTraj // DEBUG
         {
             public bool Enable;
@@ -315,49 +314,25 @@ namespace MotionMatching
             }
             else
             {
-                if (NumberDebugTrajectories > 0)
+                var job = new VisCrowdLinearMotionMatchingSearchBurst
                 {
-                    var job = new VisCrowdLinearMotionMatchingSearchBurst
-                    {
-                        Valid = FeatureSet.GetValid(),
-                        TagMask = TagMask,
-                        Features = FeatureSet.GetFeatures(),
-                        QueryFeature = QueryFeature,
-                        FeatureWeights = FeaturesWeightsNativeArray,
-                        Mean = means,
-                        Std = stds,
-                        Obstacles = Obstacles,
-                        FeatureSize = FeatureSet.FeatureSize,
-                        PoseOffset = FeatureSet.PoseOffset,
-                        CurrentDistance = currentDistance,
-                        BestIndex = SearchResult,
-                        DebugCrowdDistance = DebugCrowdDistance,
-                        CrowdWeight = CrowdWeight,
-                        Distances = DistanceFeatures
-                    };
-                    job.Schedule().Complete();
-                }
-                else
-                {
-                    var job = new CrowdLinearMotionMatchingSearchBurst
-                    {
-                        Valid = FeatureSet.GetValid(),
-                        TagMask = TagMask,
-                        Features = FeatureSet.GetFeatures(),
-                        QueryFeature = QueryFeature,
-                        FeatureWeights = FeaturesWeightsNativeArray,
-                        Mean = means,
-                        Std = stds,
-                        Obstacles = Obstacles,
-                        FeatureSize = FeatureSet.FeatureSize,
-                        PoseOffset = FeatureSet.PoseOffset,
-                        CurrentDistance = currentDistance,
-                        BestIndex = SearchResult,
-                        DebugCrowdDistance = DebugCrowdDistance,
-                        CrowdWeight = CrowdWeight,
-                    };
-                    job.Schedule().Complete();
-                }
+                    Valid = FeatureSet.GetValid(),
+                    TagMask = TagMask,
+                    Features = FeatureSet.GetFeatures(),
+                    QueryFeature = QueryFeature,
+                    FeatureWeights = FeaturesWeightsNativeArray,
+                    Mean = means,
+                    Std = stds,
+                    Obstacles = Obstacles,
+                    FeatureSize = FeatureSet.FeatureSize,
+                    PoseOffset = FeatureSet.PoseOffset,
+                    CurrentDistance = currentDistance,
+                    BestIndex = SearchResult,
+                    DebugCrowdDistance = DebugCrowdDistance,
+                    CrowdWeight = CrowdWeight,
+                    Distances = DistanceFeatures
+                };
+                job.Schedule().Complete();
             }
 
             means.Dispose();

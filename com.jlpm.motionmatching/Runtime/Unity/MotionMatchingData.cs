@@ -253,10 +253,11 @@ namespace MotionMatching
             public Type FeatureType;
             public int[] FramesPrediction = new int[0]; // Number of frames in the future for each point of the trajectory
             public bool SimulationBone; // Use the simulation bone (articial root added during pose extraction) instead of a bone
-            public bool Visualization; // Only for position feature type. Used for visualizing the gizmos.
             public HumanBodyBones Bone; // Bone used to compute the trajectory in the feature set
             public bool ZeroX, ZeroY, ZeroZ; // Zero the X, Y and/or Z component of the trajectory feature
             public ScriptableObject FeatureExtractor; // Custom feature extractor for user-defined types
+            public bool DoNotIncludeInSearch; // Do not use this feature when computing distances between feature vectors
+            public bool IsMainPositionFeature; // Only for position feature type. Used for visualizing gizmos of other trajectory features colocated with this position feature.
 
             public int GetSize()
             {

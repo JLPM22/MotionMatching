@@ -7,9 +7,9 @@ public static class UtilitiesBurst
 {
     // Source: https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
     [BurstCompile]
-    private static float GetRoot(in float r0, in float z0, in float z1, in float g)
+    private static float GetRoot(in float r0, in float z0, in float z1, in float g, in int maxIterations = 149)
     {
-        const int maxIterations = 5; // for float (32-bit) ideally 149
+        // maxIterations for float (32-bit) ideally should be 149
         float gi = g;
         float n0 = r0 * z0;
         float s0 = z1 - 1.0f;
@@ -46,7 +46,7 @@ public static class UtilitiesBurst
     // 'closest' is the ellipse point closest to the point 'p'
     // Source: https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
     [BurstCompile]
-    private static float PositiveQuarterDistanceToEllipse(in float2 ellipse, in float2 p, out float2 closest)
+    private static float PositiveQuarterDistanceToEllipse(in float2 ellipse, in float2 p, out float2 closest, in int maxIterations = 149)
     {
         Debug.Assert(ellipse.x >= ellipse.y);
 
@@ -60,7 +60,7 @@ public static class UtilitiesBurst
                 if (math.abs(g) > 1e-9) // != 0
                 {
                     float r0 = (ellipse.x / ellipse.y) * (ellipse.x / ellipse.y);
-                    float sbar = GetRoot(r0, z.x, z.y, g);
+                    float sbar = GetRoot(r0, z.x, z.y, g, maxIterations);
                     closest.x = r0 * p.x / (sbar + r0);
                     closest.y = p.y / (sbar + 1.0f);
                     distance = math.sqrt((closest.x - p.x) * (closest.x - p.x) + (closest.y - p.y) * (closest.y - p.y));
@@ -105,7 +105,9 @@ public static class UtilitiesBurst
     // 'closest' is the ellipse point (in world space) closest to the point 'p'
     // Returns distance to the circumference of the ellipse, 0 when inside
     [BurstCompile]
-    public static float DistanceToEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit, in float2 ellipse, in float2 query, out float2 closest)
+    public static float DistanceToEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit,
+                                          in float2 ellipse, in float2 query, out float2 closest,
+                                          in int maxIterations = 149)
     {
         Debug.Assert(ellipse.x > 0.0 && ellipse.y > 0.0);
 
@@ -131,24 +133,24 @@ public static class UtilitiesBurst
         if (p.x < 0.0f && p.y < 0.0f)
         {
             p = -p;
-            distance = PositiveQuarterDistanceToEllipse(e, p, out closest);
+            distance = PositiveQuarterDistanceToEllipse(e, p, out closest, maxIterations);
             closest = -closest;
         }
         else if (p.x < 0.0f)
         {
             p.x = -p.x;
-            distance = PositiveQuarterDistanceToEllipse(e, p, out closest);
+            distance = PositiveQuarterDistanceToEllipse(e, p, out closest, maxIterations);
             closest.x = -closest.x;
         }
         else if (p.y < 0.0f)
         {
             p.y = -p.y;
-            distance = PositiveQuarterDistanceToEllipse(e, p, out closest);
+            distance = PositiveQuarterDistanceToEllipse(e, p, out closest, maxIterations);
             closest.y = -closest.y;
         }
         else
         {
-            distance = PositiveQuarterDistanceToEllipse(e, p, out closest);
+            distance = PositiveQuarterDistanceToEllipse(e, p, out closest, maxIterations);
         }
         closest = centerEllipse + primary * closest.x + secondary * closest.y;
 

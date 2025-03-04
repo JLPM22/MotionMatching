@@ -268,7 +268,7 @@ namespace MotionMatching
 
         public override void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
-            if (feature.Name == "FutureSphere")
+            if (feature.Name == "FutureEllipse")
             {
                 output[0] = 0.0f;
                 output[1] = 0.0f;
