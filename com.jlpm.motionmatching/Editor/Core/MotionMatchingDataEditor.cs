@@ -23,7 +23,7 @@ namespace MotionMatching
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Pose Serialize");
             PoseSerializer poseSerializer = new();
-            poseSerializer.Serialize(mmData.PoseSet, mmData.GetAssetPath(), this.name);
+            poseSerializer.Serialize(mmData.PoseSet, mmData.GetAssetPath(), mmData.name);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Pose Serialize");
 
             mmData.ComputeJointsLocalForward();
@@ -34,7 +34,7 @@ namespace MotionMatching
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Feature Serialize");
             FeatureSerializer featureSerializer = new();
-            featureSerializer.Serialize(mmData.FeatureSet, mmData, mmData.GetAssetPath(), this.name);
+            featureSerializer.Serialize(mmData.FeatureSet, mmData, mmData.GetAssetPath(), mmData.name);
             PROFILE.END_AND_PRINT_SAMPLE_PROFILING("Feature Serialize");
 
             mmData.Dispose();
