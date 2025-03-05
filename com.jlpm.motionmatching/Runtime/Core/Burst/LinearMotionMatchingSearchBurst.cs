@@ -141,12 +141,15 @@ namespace MotionMatching
         // ... Pose Features
         public void Execute()
         {
-            const int maxIterationsRootFinder = 5;
+            const int maxIterationsRootFinder = 149;
 
             float minDistance = float.MaxValue;
             float debugCrowd = DebugCrowdDistance[0]; // DEBUG
             float debugTrajectory = DebugCrowdDistance[1]; // DEBUG
             int bestIndex = -1;
+            float bestDebugDistanceProv = -1.0f;
+            float2 bestDebugDistanceProv2 = -1.0f;
+            float2 bestDebugDistanceProv3 = -1.0f;
 
             for (int i = 0; i < Valid.Length; ++i)
             {
@@ -179,12 +182,24 @@ namespace MotionMatching
                     float2 secondaryAxisUnit2 = new(-primaryAxisUnit2.y, primaryAxisUnit2.x);
 
                     float debugTotalCrowdDistance = 0.0f;
-                    const float threshold = 0.6f;
+                    const float threshold = 0.4f;
+                    float debugDistanceProv = -1.0f;
+                    float2 debugDistanceProv2 = -1.0f;
+                    float2 debugDistanceProv3 = -1.0f;
                     for (int obstacle = 0; obstacle < Obstacles.Length; obstacle++)
                     {
-                        float distance1 = UtilitiesBurst.DistanceToEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, Obstacles[obstacle].Item1, out _, maxIterationsRootFinder) - Obstacles[obstacle].Item2;
-                        float distance2 = UtilitiesBurst.DistanceToEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, Obstacles[obstacle].Item1, out _, maxIterationsRootFinder) - Obstacles[obstacle].Item2;
-                        float distance3 = UtilitiesBurst.DistanceToEllipse(pos3, primaryAxisUnit2, secondaryAxisUnit2, ellipse3, Obstacles[obstacle].Item1, out _, maxIterationsRootFinder) - Obstacles[obstacle].Item2;
+                        float distance1 = UtilitiesBurst.DistanceToEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, Obstacles[obstacle].Item1, out _, maxIterationsRootFinder);
+                        distance1 = math.max(distance1 - Obstacles[obstacle].Item2, 1e-9f);
+                        if (obstacle == 0)
+                        {
+                            debugDistanceProv = distance1;
+                            debugDistanceProv2 = primaryAxisUnit1;
+                            debugDistanceProv3 = secondaryAxisUnit1;
+                        }
+                        float distance2 = UtilitiesBurst.DistanceToEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, Obstacles[obstacle].Item1, out _, maxIterationsRootFinder);
+                        distance2 = math.max(distance2 - Obstacles[obstacle].Item2, 1e-9f);
+                        float distance3 = UtilitiesBurst.DistanceToEllipse(pos3, primaryAxisUnit2, secondaryAxisUnit2, ellipse3, Obstacles[obstacle].Item1, out _, maxIterationsRootFinder);
+                        distance3 = math.max(distance3 - Obstacles[obstacle].Item2, 1e-9f);
                         float crowdDistance = 0.0f;
                         crowdDistance += DistanceFunction(distance1, threshold);
                         crowdDistance += DistanceFunction(distance2, threshold);
@@ -199,6 +214,9 @@ namespace MotionMatching
                     {
                         minDistance = sqrDistance;
                         bestIndex = i;
+                        bestDebugDistanceProv = debugDistanceProv;
+                        bestDebugDistanceProv2 = debugDistanceProv2;
+                        bestDebugDistanceProv3 = debugDistanceProv3;
                     }
                     if (bestIndex == i)
                     {
@@ -208,6 +226,9 @@ namespace MotionMatching
                 }
             }
 
+            Debug.Log(bestDebugDistanceProv);
+            Debug.Log("p " + bestDebugDistanceProv2);
+            Debug.Log("s " + bestDebugDistanceProv3);
             BestIndex[0] = bestIndex;
             DebugCrowdDistance[0] = debugCrowd;
             DebugCrowdDistance[1] = debugTrajectory;

@@ -274,7 +274,7 @@ namespace MotionMatching
             FillTrajectory(QueryFeature);
             // HARDCODED
             NativeArray<float> means = new(FeatureSet.GetMeans(), Allocator.TempJob);
-            NativeArray<float> stds = new(FeatureSet.GetMeans(), Allocator.TempJob);
+            NativeArray<float> stds = new(FeatureSet.GetStandardDeviations(), Allocator.TempJob);
 
             // Get next feature vector (when doing motion matching search, they need less error than this)
             float currentDistance = float.MaxValue;
