@@ -350,6 +350,10 @@ namespace MotionMatching
                 }
                 std /= nDimensions;
                 Debug.Assert(std > 0, "Standard deviation is zero, feature with no variation is probably a bug");
+                if (std <= 0)
+                {
+                    std = 1.0f;
+                }
                 for (int j = 0; j < nDimensions; j++)
                 {
                     StandardDeviation[offset + j] = std;
@@ -365,6 +369,10 @@ namespace MotionMatching
                 }
                 std /= NumberFloatsPose;
                 Debug.Assert(std > 0, "Standard deviation is zero, feature with no variation is probably a bug");
+                if (std <= 0)
+                {
+                    std = 1.0f;
+                }
                 for (int j = 0; j < NumberFloatsPose; j++)
                 {
                     StandardDeviation[offset + j] = std;
