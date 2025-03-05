@@ -1,9 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using MotionMatching;
 using Unity.Mathematics;
-using System;
+using static MotionMatching.MotionMatchingData;
 
 /// <summary>
 /// Import a BVH, create PoseSet and FeatureSet and visualize it using Gizmos.
@@ -14,7 +15,9 @@ public class FeatureDebug : MonoBehaviour
     public bool Play;
     public float SpheresRadius = 0.1f;
     public bool LockFPS = true;
+    public bool DebugTrajectory = true;
     public bool DebugPose = true;
+    public bool DebugDynamic = true;
     public bool DebugContacts = true;
 
     private PoseSet PoseSet;
@@ -110,7 +113,7 @@ public class FeatureDebug : MonoBehaviour
 
         if (!Play) return;
         // Character
-        int currentFrame = CurrentFrame - 1; // FeatureDebug increments CurrentFrame after update... OnDrawGizmos is called after update
+        int currentFrame = math.max(0, CurrentFrame - 1); // FeatureDebug increments CurrentFrame after update... OnDrawGizmos is called after update
         PoseSet.GetPose(currentFrame, out PoseVector pose);
         FeatureSet.GetWorldOriginCharacter(pose, out float3 characterOrigin, out float3 characterForward);
         Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
@@ -122,7 +125,7 @@ public class FeatureDebug : MonoBehaviour
         for (int t = 0; t < MMData.TrajectoryFeatures.Count; t++)
         {
             var trajectoryFeature = MMData.TrajectoryFeatures[t];
-            if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction &&
+            if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Direction &&
                 !trajectoryFeature.SimulationBone)
             {
                 if (!PoseSet.Skeleton.Find(trajectoryFeature.Bone, out Skeleton.Joint joint)) Debug.Assert(false, "Bone not found");
@@ -154,23 +157,43 @@ public class FeatureDebug : MonoBehaviour
         if (FeatureSet == null) return;
 
         DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
-                          SkeletonTransforms, PoseSet.Skeleton, Color.blue, debugPose: DebugPose);
+                          SkeletonTransforms, PoseSet.Skeleton, Color.blue, debugPose: DebugPose, debugTrajectory: DebugTrajectory, debugDynamic: DebugDynamic);
     }
 
     private static List<float3> PositionFeatures = new();
     private static List<float3> NextPositionFeatures = new();
     public static void DrawFeatureGizmos(FeatureSet set, MotionMatchingData mmData, float spheresRadius, int currentFrame,
                                          float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton,
-                                         Color trajectoryColor, bool debugPose = true, bool debugTrajectory = true)
+                                         Color trajectoryColor, bool debugPose = true, bool debugTrajectory = true, bool debugDynamic = true)
     {
         if (!set.IsValidFeature(currentFrame)) return;
 
         quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
-        // Trajectory
         // TODO: actually check visualization toggle
         // TODO: do this section (now I am assuming the position is only one and it's the first trajectory feature
         PositionFeatures.Clear();
         NextPositionFeatures.Clear();
+
+        // Trajectory Features ---------------------------------------------------------------------------
+        // Find the Main Position Feature (if exists)
+        for (int t = 0; t < mmData.TrajectoryFeatures.Count; t++)
+        {
+            var trajectoryFeature = mmData.TrajectoryFeatures[t];
+            if (trajectoryFeature.IsMainPositionFeature)
+            {
+                Debug.Assert(trajectoryFeature.FeatureType == TrajectoryFeature.Type.Position, "The main position feature should be of type Position");
+                for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
+                {
+                    float3 value = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, p, isDynamic: false);
+                    float3 nextValue = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, math.clamp((p + 1), 0, trajectoryFeature.FramesPrediction.Length - 1), isDynamic: false);
+                    value = characterOrigin + math.mul(characterRot, value);
+                    nextValue = characterOrigin + math.mul(characterRot, nextValue);
+                    PositionFeatures.Add(value);
+                    NextPositionFeatures.Add(nextValue);
+                }
+            }
+        }
+        // Draw Trajectory Features
         if (debugTrajectory)
         {
             for (int t = 0; t < mmData.TrajectoryFeatures.Count; t++)
@@ -178,118 +201,12 @@ public class FeatureDebug : MonoBehaviour
                 var trajectoryFeature = mmData.TrajectoryFeatures[t];
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
                 {
-                    Gizmos.color = trajectoryColor * (1.25f - (float)p / trajectoryFeature.FramesPrediction.Length);
-                    if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position ||
-                        trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction)
-                    {
-                        float3 value;
-                        float3 nextValue = float3.zero;
-                        if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
-                        {
-                            value = set.Get3DTrajectoryFeature(currentFrame, t, p, true);
-                        }
-                        else if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY)
-                        {
-                            float2 value2D = set.Get2DTrajectoryFeature(currentFrame, t, p, true);
-                            value = new float3(value2D.x, value2D.y, 0);
-                        }
-                        else if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroZ)
-                        {
-                            float2 value2D = set.Get2DTrajectoryFeature(currentFrame, t, p, true);
-                            value = new float3(value2D.x, 0.0f, value2D.y);
-                            int nextP = math.clamp((p + 1), 0, trajectoryFeature.FramesPrediction.Length - 1);
-                            float2 nextValue2D = set.Get2DTrajectoryFeature(currentFrame, t, nextP, true);
-                            nextValue = new float3(nextValue2D.x, 0.0f, nextValue2D.y);
-                        }
-                        else if (!trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
-                        {
-                            float2 value2D = set.Get2DTrajectoryFeature(currentFrame, t, p, true);
-                            value = new float3(0.0f, value2D.x, value2D.y);
-                        }
-                        else if (!trajectoryFeature.ZeroX)
-                        {
-                            float value1D = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
-                            value = new float3(value1D, 0.0f, 0.0f);
-                        }
-                        else if (!trajectoryFeature.ZeroY)
-                        {
-                            float value1D = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
-                            value = new float3(0.0f, value1D, 0.0f);
-                        }
-                        else if (!trajectoryFeature.ZeroZ)
-                        {
-                            float value1D = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
-                            value = new float3(0.0f, 0.0f, value1D);
-                        }
-                        else
-                        {
-                            Debug.Assert(false, "Invalid trajectory feature");
-                            value = float3.zero;
-                        }
-                        switch (trajectoryFeature.FeatureType)
-                        {
-                            case MotionMatchingData.TrajectoryFeature.Type.Position:
-                                value = characterOrigin + math.mul(characterRot, value);
-                                nextValue = characterOrigin + math.mul(characterRot, nextValue);
-                                PositionFeatures.Add(value);
-                                NextPositionFeatures.Add(nextValue);
-                                Gizmos.DrawSphere(value, spheresRadius);
-                                break;
-                            case MotionMatchingData.TrajectoryFeature.Type.Direction:
-                                float3 jointPos;
-                                if (trajectoryFeature.SimulationBone)
-                                {
-                                    jointPos = PositionFeatures[p];
-                                }
-                                else
-                                {
-                                    if (!skeleton.Find(trajectoryFeature.Bone, out Skeleton.Joint joint)) Debug.Assert(false, "Bone not found");
-                                    jointPos = joints[joint.Index].position;
-                                }
-                                value = math.mul(characterRot, value);
-                                GizmosExtensions.DrawArrow(jointPos, jointPos + value, 0.1f, thickness: 3);
-                                break;
-                        }
-                    }
-                    else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom1D)
-                    {
-                        Feature1DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature1DExtractor;
-                        float value = set.Get1DTrajectoryFeature(currentFrame, t, p, true);
-                        featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p]);
-                    }
-                    else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom2D)
-                    {
-                        Feature2DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature2DExtractor;
-                        float2 value = set.Get2DTrajectoryFeature(currentFrame, t, p, true);
-                        float3 nextPos = NextPositionFeatures[p];
-                        // HARDCODED
-                        if (p == trajectoryFeature.FramesPrediction.Length - 1)
-                        {
-                            float3 displVec = nextPos - NextPositionFeatures[p - 2];
-                            if (math.length(displVec) < 1e-2)
-                            {
-                                displVec = float3.zero;
-                            }
-                            nextPos = PositionFeatures[p] + math.normalize(displVec) * 0.1f;
-                        }
-                        featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p], nextPos);
-                    }
-                    else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom3D)
-                    {
-                        Feature3DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature3DExtractor;
-                        float3 value = set.Get3DTrajectoryFeature(currentFrame, t, p, true);
-                        featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
-                    }
-                    else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom4D)
-                    {
-                        Feature4DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature4DExtractor;
-                        float4 value = set.Get4DTrajectoryFeature(currentFrame, t, p, true);
-                        featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
-                    }
+                    DrawTrajectoryPoint(trajectoryFeature, set, currentFrame, t, p, trajectoryColor, characterOrigin, characterForward, 
+                                        characterRot, spheresRadius, joints, skeleton, isDynamic: false);
                 }
             }
         }
-        // Pose
+        // Pose Features ---------------------------------------------------------------------------
         if (debugPose)
         {
             Gizmos.color = Color.cyan;
@@ -299,11 +216,11 @@ public class FeatureDebug : MonoBehaviour
                 float3 value = set.GetPoseFeature(currentFrame, p, true);
                 switch (poseFeature.FeatureType)
                 {
-                    case MotionMatchingData.PoseFeature.Type.Position:
+                    case PoseFeature.Type.Position:
                         value = characterOrigin + math.mul(characterRot, value);
                         Gizmos.DrawSphere(value, spheresRadius);
                         break;
-                    case MotionMatchingData.PoseFeature.Type.Velocity:
+                    case PoseFeature.Type.Velocity:
                         value = math.mul(characterRot, value);
                         if (math.length(value) > 0.001f)
                         {
@@ -314,6 +231,138 @@ public class FeatureDebug : MonoBehaviour
                         break;
                 }
             }
+        }
+
+        // Dynamic Features ---------------------------------------------------------------------------
+        if (debugDynamic)
+        {
+            for (int t = 0; t < mmData.DynamicFeatures.Count; t++)
+            {
+                var dynamicFeature = mmData.DynamicFeatures[t];
+                for (int p = 0; p < dynamicFeature.FramesPrediction.Length; p++)
+                {
+                    DrawTrajectoryPoint(dynamicFeature, set, currentFrame, t, p, trajectoryColor, characterOrigin, characterForward,
+                                        characterRot, spheresRadius, joints, skeleton, isDynamic: true);
+                }
+            }
+        }
+    }
+
+    private static float3 Get3DValuePositionOrDirectionFeature(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex, int predictionIndex, bool isDynamic)
+    {
+        int t = trajectoryFeatureIndex;
+        int p = predictionIndex;
+        
+        float3 value;
+        if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
+        {
+            value = isDynamic ? set.Get3DDynamicFeature(currentFrame, t, p) : set.Get3DTrajectoryFeature(currentFrame, t, p, true);
+        }
+        else if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY)
+        {
+            float2 value2D = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+            value = new float3(value2D.x, value2D.y, 0);
+        }
+        else if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroZ)
+        {
+            float2 value2D = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+            value = new float3(value2D.x, 0.0f, value2D.y);
+        }
+        else if (!trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
+        {
+            float2 value2D = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+            value = new float3(0.0f, value2D.x, value2D.y);
+        }
+        else if (!trajectoryFeature.ZeroX)
+        {
+            float value1D = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+            value = new float3(value1D, 0.0f, 0.0f);
+        }
+        else if (!trajectoryFeature.ZeroY)
+        {
+            float value1D = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+            value = new float3(0.0f, value1D, 0.0f);
+        }
+        else if (!trajectoryFeature.ZeroZ)
+        {
+            float value1D = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+            value = new float3(0.0f, 0.0f, value1D);
+        }
+        else
+        {
+            Debug.Assert(false, "Invalid trajectory feature");
+            value = float3.zero;
+        }
+        return value;
+    }
+
+    private static void DrawTrajectoryPoint(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex, 
+                                            int predictionIndex, Color trajectoryColor, float3 characterOrigin, float3 characterForward,
+                                            quaternion characterRot, float spheresRadius, Transform[] joints, Skeleton skeleton, bool isDynamic)
+    {
+        int t = trajectoryFeatureIndex;
+        int p = predictionIndex;
+        Gizmos.color = trajectoryColor * (1.25f - (float)p / trajectoryFeature.FramesPrediction.Length);
+        if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Position ||
+            trajectoryFeature.FeatureType == TrajectoryFeature.Type.Direction)
+        {
+            float3 value = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, p, isDynamic);
+            switch (trajectoryFeature.FeatureType)
+            {
+                case TrajectoryFeature.Type.Position:
+                    value = characterOrigin + math.mul(characterRot, value);
+                    Gizmos.DrawSphere(value, spheresRadius);
+                    break;
+                case TrajectoryFeature.Type.Direction:
+                    float3 jointPos;
+                    if (trajectoryFeature.SimulationBone)
+                    {
+                        jointPos = PositionFeatures[p];
+                    }
+                    else
+                    {
+                        if (!skeleton.Find(trajectoryFeature.Bone, out Skeleton.Joint joint)) Debug.Assert(false, "Bone not found");
+                        jointPos = joints[joint.Index].position;
+                    }
+                    value = math.mul(characterRot, value);
+                    GizmosExtensions.DrawArrow(jointPos, jointPos + value, 0.1f, thickness: 3);
+                    break;
+            }
+        }
+        else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom1D)
+        {
+            Feature1DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature1DExtractor;
+            float value = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p]);
+        }
+        else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom2D)
+        {
+            Feature2DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature2DExtractor;
+            float2 value = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+            float3 nextPos = NextPositionFeatures[p];
+            // HARDCODED
+            if (p == trajectoryFeature.FramesPrediction.Length - 1)
+            {
+                float3 displVec = nextPos - NextPositionFeatures[p - 2];
+                if (math.length(displVec) < 1e-2)
+                {
+                    displVec = float3.zero;
+                }
+                nextPos = PositionFeatures[p] + math.normalize(displVec) * 0.1f;
+            }
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p], nextPos);
+        }
+        else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom3D)
+        {
+            Feature3DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature3DExtractor;
+            float3 value = isDynamic ? set.Get3DDynamicFeature(currentFrame, t, p) : set.Get3DTrajectoryFeature(currentFrame, t, p, true);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
+        }
+        else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom4D)
+        {
+            Feature4DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature4DExtractor;
+            float4 value = isDynamic ? set.Get4DDynamicFeature(currentFrame, t, p) : set.Get4DTrajectoryFeature(currentFrame, t, p, true);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
         }
     }
 #endif

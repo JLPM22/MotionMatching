@@ -60,5 +60,11 @@ namespace MotionMatching
         ///       e.g., when index==1, it should return the position of the character at frame 40.
         /// </summary>
         public abstract void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output);
+
+        /// <summary>
+        /// Get the prediction in character space of a dynamic feature.
+        /// Similarly to GetTrajectoryFeature, the output should be filled with the predicted values of the feature.
+        /// </summary>
+        public virtual void GetDynamicFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output) { }
     }
 }

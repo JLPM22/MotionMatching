@@ -268,6 +268,30 @@ namespace MotionMatching
 
         public override void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
+            if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
+            switch (feature.FeatureType)
+            {
+                case TrajectoryFeature.Type.Position:
+                    float2 world = PredictedPosition[index];
+                    float3 local = character.InverseTransformPoint(new float3(world.x, 0.0f, world.y));
+                    output[0] = local.x;
+                    output[1] = local.z;
+                    break;
+                case TrajectoryFeature.Type.Direction:
+                    float2 dirProjected = GetWorldSpaceDirectionPrediction(index);
+                    float3 localDir = character.InverseTransformDirection(new Vector3(dirProjected.x, 0.0f, dirProjected.y));
+                    output[0] = localDir.x;
+                    output[1] = localDir.z;
+                    break;
+                default:
+                    Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
+                    break;
+            }
+        }
+
+        // TODO: maybe get dynamic feature could return something more generic that allows to send custom data like the obstacle arrays
+        public override void GetDynamicFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
+        {
             if (feature.Name == "FutureEllipse")
             {
                 output[0] = 0.0f;
@@ -283,25 +307,7 @@ namespace MotionMatching
             }
             else
             {
-                if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
-                switch (feature.FeatureType)
-                {
-                    case TrajectoryFeature.Type.Position:
-                        float2 world = PredictedPosition[index];
-                        float3 local = character.InverseTransformPoint(new float3(world.x, 0.0f, world.y));
-                        output[0] = local.x;
-                        output[1] = local.z;
-                        break;
-                    case TrajectoryFeature.Type.Direction:
-                        float2 dirProjected = GetWorldSpaceDirectionPrediction(index);
-                        float3 localDir = character.InverseTransformDirection(new Vector3(dirProjected.x, 0.0f, dirProjected.y));
-                        output[0] = localDir.x;
-                        output[1] = localDir.z;
-                        break;
-                    default:
-                        Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
-                        break;
-                }
+                Debug.Assert(false, "Unknown feature name: " + feature.Name);
             }
         }
 

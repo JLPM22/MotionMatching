@@ -13,7 +13,9 @@ namespace MotionMatching
     public class MotionMatchingDataEditor : Editor
     {
         private bool SkeletonToMecanimFoldout;
-        private bool FeatureSelectorFoldout;
+        private bool TrajectoryFeaturesSelectorFoldout;
+        private bool PoseFeaturesSelectorFoldout;
+        private bool DynamicFeaturesSelectorFoldout;
 
         public void GenerateDatabases(MotionMatchingData mmData)
         {
@@ -178,12 +180,11 @@ namespace MotionMatching
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 
-            // Display Feature Selector
-            FeatureSelectorFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(FeatureSelectorFoldout, "Feature Selector");
-            if (FeatureSelectorFoldout)
+            // Trajectory Features ------------------------------------------------------------------------------------
+            TrajectoryFeaturesSelectorFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(TrajectoryFeaturesSelectorFoldout, "Trajectory Features");
+            if (TrajectoryFeaturesSelectorFoldout)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.LabelField("Trajectory Features", EditorStyles.boldLabel);
                 bool hasAMainPositionFeature = false;
                 for (int i = 0; i < data.TrajectoryFeatures.Count; i++)
                 {
@@ -215,100 +216,23 @@ namespace MotionMatching
                             hasAMainPositionFeature = true;
                         }
                     }
-                    trajectoryFeature.DoNotIncludeInSearch = EditorGUILayout.Toggle("Do not include in the MM search", trajectoryFeature.DoNotIncludeInSearch);
-                    // Frames
-                    EditorGUILayout.LabelField("Frames Prediction");
-                    EditorGUILayout.BeginHorizontal();
-                    for (int j = 0; j < trajectoryFeature.FramesPrediction.Length; j++)
-                    {
-                        trajectoryFeature.FramesPrediction[j] = EditorGUILayout.IntField(trajectoryFeature.FramesPrediction[j]);
-                    }
-                    if (GUILayout.Button("Add"))
-                    {
-                        int[] newFrames = new int[trajectoryFeature.FramesPrediction.Length + 1];
-                        for (int j = 0; j < trajectoryFeature.FramesPrediction.Length; j++) newFrames[j] = trajectoryFeature.FramesPrediction[j];
-                        trajectoryFeature.FramesPrediction = newFrames;
-                    }
-                    if (trajectoryFeature.FramesPrediction.Length > 0 && GUILayout.Button("Remove"))
-                    {
-                        int[] newFrames = new int[trajectoryFeature.FramesPrediction.Length - 1];
-                        for (int j = 0; j < trajectoryFeature.FramesPrediction.Length - 1; j++) newFrames[j] = trajectoryFeature.FramesPrediction[j];
-                        trajectoryFeature.FramesPrediction = newFrames;
-                    }
-                    EditorGUILayout.EndHorizontal();
-                    if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position ||
-                        trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction)
-                    {
-                        // Bone
-                        trajectoryFeature.SimulationBone = EditorGUILayout.Toggle("Simulation Bone", trajectoryFeature.SimulationBone);
-                        if (!trajectoryFeature.SimulationBone)
-                        {
-                            trajectoryFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Bone", trajectoryFeature.Bone);
-                            GUI.enabled = !trajectoryFeature.ZeroY || !trajectoryFeature.ZeroZ;
-                            trajectoryFeature.ZeroX = EditorGUILayout.Toggle("Zero X", trajectoryFeature.ZeroX);
-                            GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroZ;
-                            trajectoryFeature.ZeroY = EditorGUILayout.Toggle("Zero Y", trajectoryFeature.ZeroY);
-                            GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroY;
-                            trajectoryFeature.ZeroZ = EditorGUILayout.Toggle("Zero Z", trajectoryFeature.ZeroZ);
-                            GUI.enabled = true;
-                        }
-                        else
-                        {
-                            trajectoryFeature.ZeroX = false;
-                            trajectoryFeature.ZeroY = true; // project simulation bone to the ground
-                            trajectoryFeature.ZeroZ = false;
-                        }
-                    }
-                    else
-                    {
-                        if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom1D)
-                        {
-                            trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature1DExtractor", "ScriptableObject inheriting from the 'Feature1DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature1DExtractor), false) as ScriptableObject;
-                            if (trajectoryFeature.FeatureExtractor == null)
-                            {
-                                EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature1DExtractor' class",
-                                                        MessageType.Error);
-                                generateButtonError = true;
-                            }
-                        }
-                        else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom2D)
-                        {
-                            trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature2DExtractor", "ScriptableObject inheriting from the 'Feature2DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature2DExtractor), false) as ScriptableObject;
-                            if (trajectoryFeature.FeatureExtractor == null)
-                            {
-                                EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature2DExtractor' class",
-                                                        MessageType.Error);
-                                generateButtonError = true;
-                            }
-                        }
-                        else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom3D)
-                        {
-                            trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature3DExtractor", "ScriptableObject inheriting from the 'Feature3DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature3DExtractor), false) as ScriptableObject;
-                            if (trajectoryFeature.FeatureExtractor == null)
-                            {
-                                EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature3DExtractor' class",
-                                                        MessageType.Error);
-                                generateButtonError = true;
-                            }
-                        }
-                        else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom4D)
-                        {
-                            trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature4DExtractor", "ScriptableObject inheriting from the 'Feature4DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature4DExtractor), false) as ScriptableObject;
-                            if (trajectoryFeature.FeatureExtractor == null)
-                            {
-                                EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature4DExtractor' class",
-                                                        MessageType.Error);
-                                generateButtonError = true;
-                            }
-                        }
-                    }
+                    generateButtonError = generateButtonError || TrajectoryFramesLayout(trajectoryFeature);
+                    generateButtonError = generateButtonError || TrajectoryTypeOptionsLayout(trajectoryFeature);
                     EditorGUILayout.EndVertical();
                 }
                 if (GUILayout.Button("Add Trajectory Feature"))
                 {
                     data.TrajectoryFeatures.Add(new MotionMatchingData.TrajectoryFeature());
                 }
-                EditorGUILayout.LabelField("Pose Features", EditorStyles.boldLabel);
+                EditorGUI.indentLevel--;
+            }
+            EditorGUILayout.EndFoldoutHeaderGroup();
+
+            // Pose Features ------------------------------------------------------------------------------------
+            PoseFeaturesSelectorFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(PoseFeaturesSelectorFoldout, "Pose Features");
+            if (PoseFeaturesSelectorFoldout)
+            {
+                EditorGUI.indentLevel++;
                 for (int i = 0; i < data.PoseFeatures.Count; i++)
                 {
                     MotionMatchingData.PoseFeature poseFeature = data.PoseFeatures[i];
@@ -331,6 +255,41 @@ namespace MotionMatching
                 if (GUILayout.Button("Add Pose Feature"))
                 {
                     data.PoseFeatures.Add(new MotionMatchingData.PoseFeature());
+                }
+                EditorGUI.indentLevel--;
+            }
+            EditorGUILayout.EndFoldoutHeaderGroup();
+
+            // Dynamic Features ------------------------------------------------------------------------------------
+            DynamicFeaturesSelectorFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(DynamicFeaturesSelectorFoldout, "Dynamic Features");
+            if (DynamicFeaturesSelectorFoldout)
+            {
+                EditorGUI.indentLevel++;
+                for (int i = 0; i < data.DynamicFeatures.Count; i++)
+                {
+                    MotionMatchingData.TrajectoryFeature dynamicFeature = data.DynamicFeatures[i];
+                    // Header
+                    EditorGUILayout.BeginVertical(GUI.skin.box);
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField((i + 1).ToString());
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("x"))
+                    {
+                        data.DynamicFeatures.RemoveAt(i--);
+                    }
+                    EditorGUILayout.EndHorizontal();
+                    // Name
+                    dynamicFeature.Name = EditorGUILayout.TextField("Name", dynamicFeature.Name);
+                    // Feature Type
+                    dynamicFeature.FeatureType = (MotionMatchingData.TrajectoryFeature.Type)EditorGUILayout.EnumPopup("Type", dynamicFeature.FeatureType);
+                    dynamicFeature.IsMainPositionFeature = false;
+                    generateButtonError = generateButtonError || TrajectoryFramesLayout(dynamicFeature);
+                    generateButtonError = generateButtonError || TrajectoryTypeOptionsLayout(dynamicFeature);
+                    EditorGUILayout.EndVertical();
+                }
+                if (GUILayout.Button("Add Dynamic Feature"))
+                {
+                    data.DynamicFeatures.Add(new MotionMatchingData.TrajectoryFeature());
                 }
                 EditorGUI.indentLevel--;
             }
@@ -361,6 +320,103 @@ namespace MotionMatching
                 EditorUtility.SetDirty(target);
                 EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             }
+        }
+
+        private bool TrajectoryFramesLayout(MotionMatchingData.TrajectoryFeature trajectoryFeature)
+        {
+            bool generateButtonError = false;
+            EditorGUILayout.LabelField("Frames Prediction");
+            EditorGUILayout.BeginHorizontal();
+            for (int j = 0; j < trajectoryFeature.FramesPrediction.Length; j++)
+            {
+                trajectoryFeature.FramesPrediction[j] = EditorGUILayout.IntField(trajectoryFeature.FramesPrediction[j]);
+            }
+            if (GUILayout.Button("Add"))
+            {
+                int[] newFrames = new int[trajectoryFeature.FramesPrediction.Length + 1];
+                for (int j = 0; j < trajectoryFeature.FramesPrediction.Length; j++) newFrames[j] = trajectoryFeature.FramesPrediction[j];
+                trajectoryFeature.FramesPrediction = newFrames;
+            }
+            if (trajectoryFeature.FramesPrediction.Length > 0 && GUILayout.Button("Remove"))
+            {
+                int[] newFrames = new int[trajectoryFeature.FramesPrediction.Length - 1];
+                for (int j = 0; j < trajectoryFeature.FramesPrediction.Length - 1; j++) newFrames[j] = trajectoryFeature.FramesPrediction[j];
+                trajectoryFeature.FramesPrediction = newFrames;
+            }
+            EditorGUILayout.EndHorizontal();
+            return generateButtonError;
+        }
+
+        private bool TrajectoryTypeOptionsLayout(MotionMatchingData.TrajectoryFeature trajectoryFeature)
+        {
+            bool generateButtonError = false;
+            if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position ||
+                trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction)
+            {
+                // Bone
+                trajectoryFeature.SimulationBone = EditorGUILayout.Toggle("Simulation Bone", trajectoryFeature.SimulationBone);
+                if (!trajectoryFeature.SimulationBone)
+                {
+                    trajectoryFeature.Bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Bone", trajectoryFeature.Bone);
+                    GUI.enabled = !trajectoryFeature.ZeroY || !trajectoryFeature.ZeroZ;
+                    trajectoryFeature.ZeroX = EditorGUILayout.Toggle("Zero X", trajectoryFeature.ZeroX);
+                    GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroZ;
+                    trajectoryFeature.ZeroY = EditorGUILayout.Toggle("Zero Y", trajectoryFeature.ZeroY);
+                    GUI.enabled = !trajectoryFeature.ZeroX || !trajectoryFeature.ZeroY;
+                    trajectoryFeature.ZeroZ = EditorGUILayout.Toggle("Zero Z", trajectoryFeature.ZeroZ);
+                    GUI.enabled = true;
+                }
+                else
+                {
+                    trajectoryFeature.ZeroX = false;
+                    trajectoryFeature.ZeroY = true; // project simulation bone to the ground
+                    trajectoryFeature.ZeroZ = false;
+                }
+            }
+            else
+            {
+                if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom1D)
+                {
+                    trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature1DExtractor", "ScriptableObject inheriting from the 'Feature1DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature1DExtractor), false) as ScriptableObject;
+                    if (trajectoryFeature.FeatureExtractor == null)
+                    {
+                        EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature1DExtractor' class",
+                                                MessageType.Error);
+                        generateButtonError = true;
+                    }
+                }
+                else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom2D)
+                {
+                    trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature2DExtractor", "ScriptableObject inheriting from the 'Feature2DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature2DExtractor), false) as ScriptableObject;
+                    if (trajectoryFeature.FeatureExtractor == null)
+                    {
+                        EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature2DExtractor' class",
+                                                MessageType.Error);
+                        generateButtonError = true;
+                    }
+                }
+                else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom3D)
+                {
+                    trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature3DExtractor", "ScriptableObject inheriting from the 'Feature3DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature3DExtractor), false) as ScriptableObject;
+                    if (trajectoryFeature.FeatureExtractor == null)
+                    {
+                        EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature3DExtractor' class",
+                                                MessageType.Error);
+                        generateButtonError = true;
+                    }
+                }
+                else if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Custom4D)
+                {
+                    trajectoryFeature.FeatureExtractor = EditorGUILayout.ObjectField(new GUIContent("Feature4DExtractor", "ScriptableObject inheriting from the 'Feature4DExtractor' class"), trajectoryFeature.FeatureExtractor, typeof(Feature4DExtractor), false) as ScriptableObject;
+                    if (trajectoryFeature.FeatureExtractor == null)
+                    {
+                        EditorGUILayout.HelpBox("Please enter an instance of a ScriptableObject inheriting from the 'Feature4DExtractor' class",
+                                                MessageType.Error);
+                        generateButtonError = true;
+                    }
+                }
+            }
+            return generateButtonError;
         }
     }
 }

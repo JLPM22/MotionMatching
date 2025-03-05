@@ -108,6 +108,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<(float2, float)> Obstacles;
         [ReadOnly] public float ObstacleRadius;
         [ReadOnly] public int FeatureSize;
+        [ReadOnly] public int FeatureStaticSize;
         [ReadOnly] public int PoseOffset;
         [ReadOnly] public float CurrentDistance;
         [ReadOnly] public float CrowdWeight;
@@ -155,24 +156,23 @@ namespace MotionMatching
                     float sqrDistance = 0.0f;
                     int featureIndex = i * FeatureSize;
 
-                    for (int j = 0; j < FeatureSize; ++j)
+                    for (int j = 0; j < FeatureStaticSize; ++j)
                     {
-                        if (j >= 12 && j <= 17) continue; // DEBUG
                         float diff = Features[featureIndex + j] - QueryFeature[j];
                         sqrDistance += diff * diff * FeatureWeights[j];
                     }
                     float auxDebugTrajectory = sqrDistance;
 
-                    // crowd forces
+                    // HARDCODED: crowd forces
                     float2 pos1 = new(Features[featureIndex + 0] * Std[0] + Mean[0],
                                       Features[featureIndex + 1] * Std[1] + Mean[1]);
                     float2 pos2 = new(Features[featureIndex + 2] * Std[2] + Mean[2],
                                       Features[featureIndex + 3] * Std[3] + Mean[3]);
                     float2 pos3 = new(Features[featureIndex + 4] * Std[4] + Mean[4],
                                       Features[featureIndex + 5] * Std[5] + Mean[5]);
-                    float2 ellipse1 = new(Features[featureIndex + 12], Features[featureIndex + 13]);
-                    float2 ellipse2 = new(Features[featureIndex + 14], Features[featureIndex + 15]);
-                    float2 ellipse3 = new(Features[featureIndex + 16], Features[featureIndex + 17]);
+                    float2 ellipse1 = new(Features[FeatureStaticSize + 0], Features[FeatureStaticSize + 1]);
+                    float2 ellipse2 = new(Features[FeatureStaticSize + 2], Features[FeatureStaticSize + 3]);
+                    float2 ellipse3 = new(Features[FeatureStaticSize + 4], Features[FeatureStaticSize + 5]);
                     float2 primaryAxisUnit1 = math.normalize(pos2 - pos1);
                     float2 primaryAxisUnit2 = math.normalize(pos3 - pos2);
                     float2 secondaryAxisUnit1 = new(-primaryAxisUnit1.y, primaryAxisUnit1.x);

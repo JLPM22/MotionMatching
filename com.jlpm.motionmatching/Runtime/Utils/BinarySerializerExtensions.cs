@@ -19,6 +19,13 @@ namespace MotionMatching
             writer.Write(value.y);
             writer.Write(value.z);
         }
+        public static void WriteFloat4(BinaryWriter writer, float4 value)
+        {
+            writer.Write(value.x);
+            writer.Write(value.y);
+            writer.Write(value.z);
+            writer.Write(value.w);
+        }
         public static void WriteQuaternion(BinaryWriter writer, quaternion value)
         {
             writer.Write(value.value.x);
@@ -48,6 +55,10 @@ namespace MotionMatching
         public static float3 ReadFloat3(BinaryReader reader)
         {
             return new float3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+        }
+        public static float4 ReadFloat4(BinaryReader reader)
+        {
+            return new float4(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
         }
         public static quaternion ReadQuaternion(BinaryReader reader)
         {
