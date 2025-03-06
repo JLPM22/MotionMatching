@@ -287,19 +287,36 @@ namespace MotionMatching
             // Compute Mean and Standard Deviation
             ComputeMeanAndStandardDeviation();
             // HARDCODED:
-            Debug.Assert(PoseOffset == 18, "Feature trajectories have changed");
+            Debug.Assert(PoseOffset == 24, "Feature trajectories have changed");
             Mean[12] = 0.0f;
             Mean[13] = 0.0f;
             Mean[14] = 0.0f;
             Mean[15] = 0.0f;
+
             Mean[16] = 0.0f;
             Mean[17] = 0.0f;
+            Mean[18] = 0.0f;
+            Mean[19] = 0.0f;
+
+            Mean[20] = 0.0f;
+            Mean[21] = 0.0f;
+            Mean[22] = 0.0f;
+            Mean[23] = 0.0f;
+
             StandardDeviation[12] = 1.0f;
             StandardDeviation[13] = 1.0f;
             StandardDeviation[14] = 1.0f;
             StandardDeviation[15] = 1.0f;
+
             StandardDeviation[16] = 1.0f;
             StandardDeviation[17] = 1.0f;
+            StandardDeviation[18] = 1.0f;
+            StandardDeviation[19] = 1.0f;
+
+            StandardDeviation[20] = 1.0f;
+            StandardDeviation[21] = 1.0f;
+            StandardDeviation[22] = 1.0f;
+            StandardDeviation[23] = 1.0f;
 
             // Normalize all feature vectors
             for (int i = 0; i < NumberFeatureVectors; i++)
@@ -534,7 +551,7 @@ namespace MotionMatching
                                     startTrajectory = false;
                                     extractor4D.StartExtracting(poseSet.Skeleton);
                                 }
-                                float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                                float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                                 Features[predictionOffset + 0] = value4D.x;
                                 Features[predictionOffset + 1] = value4D.y;
                                 Features[predictionOffset + 2] = value4D.z;
@@ -677,15 +694,23 @@ namespace MotionMatching
             forward = math.mul(poseVector.JointLocalRotations[0], math.forward()); // Simulation Bone World Rotation
         }
 
-        public static float3 GetLocalPositionFromCharacter(float3 worldPos, float3 centerCharacter, float3 forwardCharacter)
+        public static float3 GetLocalPositionFromCharacter(float3 worldPos, float3 characterOrigin, float3 characterForward)
         {
-            return math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, math.up())), worldPos - centerCharacter);
+            return math.mul(math.inverse(quaternion.LookRotation(characterForward, math.up())), worldPos - characterOrigin);
         }
 
-        public static float3 GetLocalDirectionFromCharacter(float3 worldDir, float3 forwardCharacter)
+        public static float3 GetLocalDirectionFromCharacter(float3 worldDir, float3 characterForward)
         {
-            float3 localDir = math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, math.up())), worldDir);
+            float3 localDir = math.mul(math.inverse(quaternion.LookRotation(characterForward, math.up())), worldDir);
             return localDir;
+        }
+        public static float3 GetWorldPositionFromCharacter(float3 localPos, float3 characterOrigin, float3 characterForward)
+        {
+            return characterOrigin + math.mul(quaternion.LookRotation(characterForward, math.up()), localPos);
+        }
+        public static float3 GetWorldDirectionFromCharacter(float3 localDir, float3 characterForward)
+        {
+            return math.mul(quaternion.LookRotation(characterForward, math.up()), localDir);
         }
 
         public void Dispose()

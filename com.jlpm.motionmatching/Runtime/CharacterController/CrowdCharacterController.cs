@@ -272,6 +272,8 @@ namespace MotionMatching
             {
                 output[0] = 0.0f;
                 output[1] = 0.0f;
+                output[2] = 0.0f;
+                output[3] = 0.0f;
                 for (int i = 0; i < Obstacles.Length; i++)
                 {
                     float3 world = new(Obstacles[i].position.x, 0.0f, Obstacles[i].position.z);

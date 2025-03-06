@@ -19,6 +19,13 @@ namespace MotionMatching
             writer.Write(value.y);
             writer.Write(value.z);
         }
+        public static void WriteFloat4(BinaryWriter writer, float4 value)
+        {
+            writer.Write(value.x);
+            writer.Write(value.y);
+            writer.Write(value.z);
+            writer.Write(value.w);
+        }
         public static void WriteQuaternion(BinaryWriter writer, quaternion value)
         {
             writer.Write(value.value.x);
