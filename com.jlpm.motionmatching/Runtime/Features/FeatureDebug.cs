@@ -312,7 +312,7 @@ public class FeatureDebug : MonoBehaviour
                     float3 jointPos;
                     if (trajectoryFeature.SimulationBone)
                     {
-                        jointPos = PositionFeatures[p];
+                        jointPos = PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero;
                     }
                     else
                     {
@@ -328,13 +328,13 @@ public class FeatureDebug : MonoBehaviour
         {
             Feature1DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature1DExtractor;
             float value = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
-            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p]);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero);
         }
         else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom2D)
         {
             Feature2DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature2DExtractor;
             float2 value = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
-            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p]);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero);
         }
         else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom3D)
         {
@@ -346,7 +346,7 @@ public class FeatureDebug : MonoBehaviour
         {
             Feature4DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature4DExtractor;
             float4 value = isDynamic ? set.Get4DDynamicFeature(currentFrame, t, p) : set.Get4DTrajectoryFeature(currentFrame, t, p, true);
-            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p]);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero);
         }
     }
 #endif

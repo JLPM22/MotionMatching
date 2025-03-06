@@ -9,6 +9,8 @@ namespace MotionMatching
     using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
     using PoseFeature = MotionMatchingData.PoseFeature;
     using Debug = UnityEngine.Debug;
+    using static MotionMatching.Skeleton;
+    using static MotionMatching.MotionMatchingData;
 
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
@@ -41,6 +43,7 @@ namespace MotionMatching
         [Header("Debug")]
         public float SpheresRadius = 0.1f;
         public bool DebugSkeleton = true;
+        public bool DebugFutureSkeleton = true;
         public bool DebugCurrent = true;
         public bool DebugPose = true;
         public bool DebugTrajectory = true;
@@ -755,12 +758,45 @@ namespace MotionMatching
             PoseSet.GetPose(currentFrame, out PoseVector pose);
             float3 characterOrigin = SkeletonTransforms[0].position;
             float3 characterForward = SkeletonTransforms[0].forward;
+
+            if (DebugFutureSkeleton)
+            {
+                // Find Main Position Trajectory
+                TrajectoryFeature feature = null;
+                for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
+                {
+                    if (MMData.TrajectoryFeatures[i].IsMainPositionFeature)
+                    {
+                        feature = MMData.TrajectoryFeatures[i];
+                    }
+                }
+                if (feature != null)
+                {
+                    NativeArray<float3> worldPos = new(PoseSet.Skeleton.Joints.Count, Allocator.Temp);
+                    for (int p = 0; p < feature.FramesPrediction.Length; p++)
+                    {
+                        Gizmos.color = Color.red * (1.25f - (float)p / feature.FramesPrediction.Length);
+                        int frame = currentFrame + feature.FramesPrediction[p];
+                        PoseSet.GetPose(frame, out PoseVector futurePose);
+                        PoseSet.GetWorldPositions(futurePose, worldPos, InverseAnimationSpaceOriginRot, AnimationSpaceOriginPos, MMTransformOriginRot, MMTransformOriginPose);
+                        for (int i = 2; i < PoseSet.Skeleton.Joints.Count; i++)
+                        {
+                            float3 child = worldPos[i];
+                            float3 parent = worldPos[PoseSet.Skeleton.Joints[i].ParentIndex];
+                            GizmosExtensions.DrawLine(parent, child, 3);
+                        }
+                    }
+                    worldPos.Dispose();
+                }
+            }
+
             if (DebugCurrent)
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
                 Gizmos.DrawSphere(characterOrigin, SpheresRadius);
                 GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 3);
             }
+
             if (DebugContacts)
             {
                 Gizmos.color = Color.green;
