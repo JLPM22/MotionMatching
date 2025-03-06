@@ -20,6 +20,6 @@ namespace MotionMatching
         /// </summary>
         public abstract void DrawGizmos(float2 feature, float radius,
                                         float3 characterOrigin, float3 characterForward,
-                                        Transform[] joints, Skeleton skeleton, float3 posOffset, float3 nextPosOffset);
+                                        Transform[] joints, Skeleton skeleton, float3 posOffset);
     }
 }

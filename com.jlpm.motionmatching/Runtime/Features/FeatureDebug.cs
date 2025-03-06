@@ -161,7 +161,6 @@ public class FeatureDebug : MonoBehaviour
     }
 
     private static List<float3> PositionFeatures = new();
-    private static List<float3> NextPositionFeatures = new();
     public static void DrawFeatureGizmos(FeatureSet set, MotionMatchingData mmData, float spheresRadius, int currentFrame,
                                          float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton,
                                          Color trajectoryColor, bool debugPose = true, bool debugTrajectory = true, bool debugDynamic = true)
@@ -169,10 +168,9 @@ public class FeatureDebug : MonoBehaviour
         if (!set.IsValidFeature(currentFrame)) return;
 
         quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
-        // TODO: actually check visualization toggle
-        // TODO: do this section (now I am assuming the position is only one and it's the first trajectory feature
+
+        // TODO: find a better way to store this information
         PositionFeatures.Clear();
-        NextPositionFeatures.Clear();
 
         // Trajectory Features ---------------------------------------------------------------------------
         // Find the Main Position Feature (if exists)
@@ -185,11 +183,8 @@ public class FeatureDebug : MonoBehaviour
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
                 {
                     float3 value = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, p, isDynamic: false);
-                    float3 nextValue = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, math.clamp((p + 1), 0, trajectoryFeature.FramesPrediction.Length - 1), isDynamic: false);
                     value = characterOrigin + math.mul(characterRot, value);
-                    nextValue = characterOrigin + math.mul(characterRot, nextValue);
                     PositionFeatures.Add(value);
-                    NextPositionFeatures.Add(nextValue);
                 }
             }
         }
@@ -339,18 +334,7 @@ public class FeatureDebug : MonoBehaviour
         {
             Feature2DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature2DExtractor;
             float2 value = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
-            float3 nextPos = NextPositionFeatures[p];
-            // HARDCODED
-            if (p == trajectoryFeature.FramesPrediction.Length - 1)
-            {
-                float3 displVec = nextPos - NextPositionFeatures[p - 2];
-                if (math.length(displVec) < 1e-2)
-                {
-                    displVec = float3.zero;
-                }
-                nextPos = PositionFeatures[p] + math.normalize(displVec) * 0.1f;
-            }
-            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p], nextPos);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p]);
         }
         else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom3D)
         {

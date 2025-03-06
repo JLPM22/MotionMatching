@@ -22,7 +22,6 @@ namespace MotionMatching
 
         public event Action OnSkeletonTransformUpdated;
 
-        public float CrowdWeight = 1.0f; // DEBUG
         public int NumberDebugTrajectories = 0; // DEBUG
         public float BestTrajectoryDistance;
         public DebugTraj[] DebugTrajectories; // DEBUG
@@ -137,7 +136,7 @@ namespace MotionMatching
             // Other initialization
             SearchResult = new NativeArray<int>(1, Allocator.Persistent);
             DebugCrowdDistance = new NativeArray<float>(3, Allocator.Persistent);
-            int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count;
+            int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count + MMData.DynamicFeatures.Count;
             if (FeatureWeights == null || FeatureWeights.Length != numberFeatures)
             {
                 float[] newWeights = new float[numberFeatures];
@@ -316,26 +315,36 @@ namespace MotionMatching
             }
             else
             {
-                var job = new VisCrowdLinearMotionMatchingSearchBurst
+                var job = new LinearMotionMatchingSearchBurst
                 {
                     Valid = FeatureSet.GetValid(),
                     TagMask = TagMask,
                     Features = FeatureSet.GetFeatures(),
                     QueryFeature = QueryFeature,
                     FeatureWeights = FeaturesWeightsNativeArray,
+                    FeatureSize = FeatureSet.FeatureSize,
+                    FeatureStaticSize = FeatureSet.FeatureStaticSize,
+                    CurrentDistance = currentDistance,
+                    BestIndex = SearchResult,
+                    Distances = DistanceFeatures
+                };
+                job.Schedule().Complete();
+                var jobCrowd = new CrowdMotionMatchingSearchBurst
+                {
+                    Valid = FeatureSet.GetValid(),
+                    TagMask = TagMask,
+                    Features = FeatureSet.GetFeatures(),
+                    FeatureWeights = FeaturesWeightsNativeArray,
                     Mean = means,
                     Std = stds,
                     Obstacles = Obstacles,
                     FeatureSize = FeatureSet.FeatureSize,
                     FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                    PoseOffset = FeatureSet.PoseOffset,
-                    CurrentDistance = currentDistance,
                     BestIndex = SearchResult,
                     DebugCrowdDistance = DebugCrowdDistance,
-                    CrowdWeight = CrowdWeight,
                     Distances = DistanceFeatures
                 };
-                job.Schedule().Complete();
+                jobCrowd.Schedule().Complete();
             }
 
             means.Dispose();
@@ -659,7 +668,6 @@ namespace MotionMatching
             }
             for (int i = 0; i < MMData.PoseFeatures.Count; i++)
             {
-                PoseFeature feature = MMData.PoseFeatures[i];
                 float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count] * Quality;
                 FeaturesWeightsNativeArray[offset + 0] = weight;
                 FeaturesWeightsNativeArray[offset + 1] = weight;
@@ -670,7 +678,7 @@ namespace MotionMatching
             {
                 TrajectoryFeature feature = MMData.DynamicFeatures[i];
                 int featureSize = feature.GetSize();
-                float weight = FeatureWeights[i];
+                float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count];
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
                     for (int f = 0; f < featureSize; f++)
