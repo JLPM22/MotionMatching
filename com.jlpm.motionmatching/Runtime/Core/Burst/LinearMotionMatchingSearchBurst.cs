@@ -142,7 +142,7 @@ namespace MotionMatching
         // ... Pose Features
         public void Execute()
         {
-            const int maxIterationsRootFinder = 149;
+            const int maxIterationsRootFinder = 5;
 
             float minDistance = float.MaxValue;
             float debugCrowd = DebugCrowdDistance[0]; // DEBUG

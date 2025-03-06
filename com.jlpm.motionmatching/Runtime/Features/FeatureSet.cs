@@ -666,7 +666,7 @@ namespace MotionMatching
                             isStartFeature = false;
                             extractor4D.StartExtracting(poseSet.Skeleton);
                         }
-                        float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                        float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                         Features[predictionOffset + 0] = value4D.x;
                         Features[predictionOffset + 1] = value4D.y;
                         Features[predictionOffset + 2] = value4D.z;

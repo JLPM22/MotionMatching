@@ -362,7 +362,7 @@ public class FeatureDebug : MonoBehaviour
         {
             Feature4DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature4DExtractor;
             float4 value = isDynamic ? set.Get4DDynamicFeature(currentFrame, t, p) : set.Get4DTrajectoryFeature(currentFrame, t, p, true);
-            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures[p]);
         }
     }
 #endif
