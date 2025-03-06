@@ -18,13 +18,14 @@ namespace MotionMatching
     {
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public int FeatureSize;
+        [ReadOnly] public int FeatureStaticSize;
         [ReadOnly] public int NumberBoundingBoxLarge;
         [ReadOnly] public int NumberBoundingBoxSmall;
 
-        public NativeArray<float> LargeBoundingBoxMin; // Size = NumberBoundingBoxLarge x FeatureSize
-        public NativeArray<float> LargeBoundingBoxMax; // Size = NumberBoundingBoxLarge x FeatureSize
-        public NativeArray<float> SmallBoundingBoxMin; // Size = NumberBoundingBoxSmall x FeatureSize
-        public NativeArray<float> SmallBoundingBoxMax; // Size = NumberBoundingBoxSmall x FeatureSize
+        public NativeArray<float> LargeBoundingBoxMin; // Size = NumberBoundingBoxLarge x FeatureStaticSize
+        public NativeArray<float> LargeBoundingBoxMax; // Size = NumberBoundingBoxLarge x FeatureStaticSize
+        public NativeArray<float> SmallBoundingBoxMin; // Size = NumberBoundingBoxSmall x FeatureStaticSize
+        public NativeArray<float> SmallBoundingBoxMax; // Size = NumberBoundingBoxSmall x FeatureStaticSize
 
         public void Execute()
         {
@@ -42,11 +43,11 @@ namespace MotionMatching
             for (int i = 0; i < numberFrames; ++i)
             {
                 int iSmall = i / SmallBoxSize;
-                int iSmallIndex = iSmall * FeatureSize;
+                int iSmallIndex = iSmall * FeatureStaticSize;
                 int iLarge = i / LargeBoxSize;
-                int iLargeIndex = iLarge * FeatureSize;
+                int iLargeIndex = iLarge * FeatureStaticSize;
 
-                for (int j = 0; j < FeatureSize; ++j)
+                for (int j = 0; j < FeatureStaticSize; ++j)
                 {
                     float feature = Features[i * FeatureSize + j];
                     LargeBoundingBoxMin[iLargeIndex + j] = math.min(LargeBoundingBoxMin[iLargeIndex + j], feature);

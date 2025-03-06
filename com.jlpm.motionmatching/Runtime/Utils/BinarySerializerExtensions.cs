@@ -56,6 +56,10 @@ namespace MotionMatching
         {
             return new float3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
         }
+        public static float4 ReadFloat4(BinaryReader reader)
+        {
+            return new float4(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+        }
         public static quaternion ReadQuaternion(BinaryReader reader)
         {
             return new quaternion(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());

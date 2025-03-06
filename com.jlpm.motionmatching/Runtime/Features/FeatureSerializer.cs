@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -26,13 +24,15 @@ namespace MotionMatching
                 {
                     // Serialize Number Feature Vectors
                     writer.Write((uint)featureSet.NumberFeatureVectors);
+                    // Serialize Number Features Static Dimension
+                    writer.Write((uint)featureSet.FeatureStaticSize);
                     // Serialize Number Features Dimension
                     writer.Write((uint)featureSet.FeatureSize);
                     // Serialize Number Features
-                    writer.Write((uint)(featureSet.NumberTrajectoryFeatures + featureSet.NumberPoseFeatures));
+                    writer.Write((uint)(featureSet.NumberTrajectoryFeatures + featureSet.NumberPoseFeatures + featureSet.NumberDynamicFeatures));
 
                     // Serialize Mean & StandardDeviation
-                    for (int i = 0; i < featureSet.FeatureSize; ++i)
+                    for (int i = 0; i < featureSet.FeatureStaticSize; ++i)
                     {
                         writer.Write(featureSet.GetMean(i));
                         writer.Write(featureSet.GetStandardDeviation(i));
@@ -52,6 +52,13 @@ namespace MotionMatching
                         writer.Write(poseFeature.Name);
                         writer.Write(3u);
                         writer.Write(1u);
+                    }
+                    for (int d = 0; d < mmData.DynamicFeatures.Count; ++d)
+                    {
+                        var dynamicFeature = mmData.DynamicFeatures[d];
+                        writer.Write(dynamicFeature.Name);
+                        writer.Write(dynamicFeature.GetSize());
+                        writer.Write((uint)dynamicFeature.FramesPrediction.Length);
                     }
 
                     // Serialize Feature Vectors
@@ -96,6 +103,39 @@ namespace MotionMatching
                         {
                             WriteFloat3(writer, featureSet.GetPoseFeature(i, p));
                         }
+                        // Dynamic
+                        for (int d = 0; d < mmData.DynamicFeatures.Count; ++d)
+                        {
+                            var dynamicFeature = mmData.DynamicFeatures[d];
+                            int featureSize = dynamicFeature.GetSize();
+                            for (int p = 0; p < dynamicFeature.FramesPrediction.Length; ++p)
+                            {
+                                if (featureSize == 4)
+                                {
+                                    float4 value4D = featureSet.Get4DDynamicFeature(i, d, p);
+                                    WriteFloat4(writer, value4D);
+                                }
+                                else if (featureSize == 3)
+                                {
+                                    float3 value3D = featureSet.Get3DDynamicFeature(i, d, p);
+                                    WriteFloat3(writer, value3D);
+                                }
+                                else if (featureSize == 2)
+                                {
+                                    float2 value2D = featureSet.Get2DDynamicFeature(i, d, p);
+                                    WriteFloat2(writer, value2D);
+                                }
+                                else if (featureSize == 1)
+                                {
+                                    float value1D = featureSet.Get1DDynamicFeature(i, d, p);
+                                    writer.Write(value1D);
+                                }
+                                else
+                                {
+                                    Debug.Assert(false, "Invalid dynamic feature");
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -120,22 +160,24 @@ namespace MotionMatching
                     {
                         // Deserialize Number Feature Vectors
                         uint numberFeatureVectors = reader.ReadUInt32();
+                        // Deserialize Number Features Static Dimension
+                        uint featuresStaticDimension = reader.ReadUInt32();
                         // Deserialize Number Features Dimension
                         uint featuresDimension = reader.ReadUInt32();
                         // Deserialize Number Features
                         uint numberFeatures = reader.ReadUInt32();
 
                         // Deserialize Mean & StandardDeviation
-                        float[] mean = new float[featuresDimension];
-                        float[] standardDeviation = new float[featuresDimension];
-                        for (int i = 0; i < featuresDimension; ++i)
+                        float[] mean = new float[featuresStaticDimension];
+                        float[] standardDeviation = new float[featuresStaticDimension];
+                        for (int i = 0; i < featuresStaticDimension; ++i)
                         {
                             mean[i] = reader.ReadSingle();
                             standardDeviation[i] = reader.ReadSingle();
                         }
 
                         // Deserialize Features (basically check that everything is correct)
-                        Debug.Assert(numberFeatures == (mmData.TrajectoryFeatures.Count + mmData.PoseFeatures.Count), "Number of features in file does not match number of features in Motion Matching Data");
+                        Debug.Assert(numberFeatures == (mmData.TrajectoryFeatures.Count + mmData.PoseFeatures.Count + mmData.DynamicFeatures.Count), "Number of features in file does not match number of features in Motion Matching Data");
                         for (int t = 0; t < mmData.TrajectoryFeatures.Count; ++t)
                         {
                             var trajectoryFeature = mmData.TrajectoryFeatures[t];
@@ -143,7 +185,7 @@ namespace MotionMatching
                             uint nFloatsType = reader.ReadUInt32();
                             uint nElements = reader.ReadUInt32();
                             Debug.Assert(name == trajectoryFeature.Name, "Name of trajectory feature does not match");
-                            Debug.Assert(nFloatsType == trajectoryFeature.GetSize(), "Projection type of trajectory feature does not match");
+                            Debug.Assert(nFloatsType == (uint)trajectoryFeature.GetSize(), "Projection type of trajectory feature does not match");
                             Debug.Assert(nElements == (uint)trajectoryFeature.FramesPrediction.Length, "Number of frames prediction of trajectory feature does not match");
                         }
                         for (int p = 0; p < mmData.PoseFeatures.Count; ++p)
@@ -155,6 +197,16 @@ namespace MotionMatching
                             Debug.Assert(name == poseFeature.Name, "Name of pose feature does not match");
                             Debug.Assert(nFloatsType == 3u, "Projection type of pose feature does not match");
                             Debug.Assert(nElements == 1u, "Number of frames prediction of pose feature does not match");
+                        }
+                        for (int t = 0; t < mmData.DynamicFeatures.Count; ++t)
+                        {
+                            var dynamicFeature = mmData.DynamicFeatures[t];
+                            string name = reader.ReadString();
+                            uint nFloatsType = reader.ReadUInt32();
+                            uint nElements = reader.ReadUInt32();
+                            Debug.Assert(name == dynamicFeature.Name, "Name of dynamic feature does not match");
+                            Debug.Assert(nFloatsType == (uint)dynamicFeature.GetSize(), "Projection type of dynamic feature does not match");
+                            Debug.Assert(nElements == (uint)dynamicFeature.FramesPrediction.Length, "Number of frames prediction of dynamic feature does not match");
                         }
 
                         // Deserialize Feature Vectors

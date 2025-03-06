@@ -45,6 +45,7 @@ namespace MotionMatching
         public bool DebugCurrent = true;
         public bool DebugPose = true;
         public bool DebugTrajectory = true;
+        public bool DebugDynamic = true;
         public bool DebugContacts = true;
 
         public float3 Velocity { get; private set; }
@@ -271,7 +272,7 @@ namespace MotionMatching
 
             // Init Query Vector
             FeatureSet.GetFeature(QueryFeature, CurrentFrame);
-            FillTrajectory(QueryFeature);
+            FillQueryVector(QueryFeature);
             // HARDCODED
             NativeArray<float> means = new(FeatureSet.GetMeans(), Allocator.TempJob);
             NativeArray<float> stds = new(FeatureSet.GetStandardDeviations(), Allocator.TempJob);
@@ -294,6 +295,7 @@ namespace MotionMatching
             // Search
             if (UseBVHSearch)
             {
+                Debug.Assert(false, "Not working for now with Dynamic Features");
                 var job = new BVHMotionMatchingSearchBurst
                 {
                     Valid = FeatureSet.GetValid(),
@@ -325,6 +327,7 @@ namespace MotionMatching
                     Std = stds,
                     Obstacles = Obstacles,
                     FeatureSize = FeatureSet.FeatureSize,
+                    FeatureStaticSize = FeatureSet.FeatureStaticSize,
                     PoseOffset = FeatureSet.PoseOffset,
                     CurrentDistance = currentDistance,
                     BestIndex = SearchResult,
@@ -347,7 +350,7 @@ namespace MotionMatching
             return best;
         }
 
-        private void FillTrajectory(NativeArray<float> vector)
+        private void FillQueryVector(NativeArray<float> vector)
         {
             int offset = 0;
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
@@ -356,8 +359,8 @@ namespace MotionMatching
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
                     int featureSize = feature.GetSize();
-                    Debug.Assert(featureSize > 0, "Trajectory feature size must be greater than 0");
-                    NativeArray<float> featureVector = new NativeArray<float>(featureSize, Allocator.Temp);
+                    Debug.Assert(featureSize > 0, "Trajectory feature size must be larger than 0");
+                    NativeArray<float> featureVector = new(featureSize, Allocator.Temp);
                     CharacterController.GetTrajectoryFeature(feature, p, SkeletonTransforms[0], featureVector);
                     for (int j = 0; j < featureSize; j++)
                     {
@@ -368,6 +371,27 @@ namespace MotionMatching
             }
             // Normalize (only trajectory... because current FeatureVector is already normalized)
             FeatureSet.NormalizeTrajectory(vector);
+
+            if (FeatureSet.DynamicOffset.Length > 0)
+            {
+                offset = FeatureSet.DynamicOffset[0];
+                for (int i = 0; i < MMData.DynamicFeatures.Count; i++)
+                {
+                    TrajectoryFeature feature = MMData.DynamicFeatures[i];
+                    for (int p = 0; p < feature.FramesPrediction.Length; p++)
+                    {
+                        int featureSize = feature.GetSize();
+                        Debug.Assert(featureSize > 0, "Dynamic feature size must be larger than 0");
+                        NativeArray<float> featureVector = new(featureSize, Allocator.Temp);
+                        CharacterController.GetDynamicFeature(feature, p, SkeletonTransforms[0], featureVector);
+                        for (int j = 0; j < featureSize; j++)
+                        {
+                            vector[offset + j] = featureVector[j];
+                        }
+                        offset += featureSize;
+                    }
+                }
+            }
         }
 
         private void UpdateTransformAndSkeleton(int frameIndex)
@@ -642,6 +666,20 @@ namespace MotionMatching
                 FeaturesWeightsNativeArray[offset + 2] = weight;
                 offset += 3;
             }
+            for (int i = 0; i < MMData.DynamicFeatures.Count; i++)
+            {
+                TrajectoryFeature feature = MMData.DynamicFeatures[i];
+                int featureSize = feature.GetSize();
+                float weight = FeatureWeights[i];
+                for (int p = 0; p < feature.FramesPrediction.Length; ++p)
+                {
+                    for (int f = 0; f < featureSize; f++)
+                    {
+                        FeaturesWeightsNativeArray[offset + f] = weight;
+                    }
+                    offset += featureSize;
+                }
+            }
             return FeaturesWeightsNativeArray;
         }
 
@@ -732,7 +770,7 @@ namespace MotionMatching
             if (FeatureSet == null) return;
 
             FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
-                                           SkeletonTransforms, PoseSet.Skeleton, Color.blue, DebugPose, DebugTrajectory);
+                                           SkeletonTransforms, PoseSet.Skeleton, Color.blue, DebugPose, DebugTrajectory, DebugDynamic);
 
             // Visualization DEBUG
             const int window = 200;
@@ -770,7 +808,8 @@ namespace MotionMatching
                     if (DebugTrajectories[t].Enable)
                     {
                         FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, best, characterOrigin, characterForward,
-                                                       SkeletonTransforms, PoseSet.Skeleton, debugPose: false, debugTrajectory: DebugTrajectory, trajectoryColor: Color.red);
+                                                       SkeletonTransforms, PoseSet.Skeleton, debugPose: false, debugTrajectory: DebugTrajectory, debugDynamic: DebugDynamic,
+                                                       trajectoryColor: Color.red);
                     }
                 }
             }

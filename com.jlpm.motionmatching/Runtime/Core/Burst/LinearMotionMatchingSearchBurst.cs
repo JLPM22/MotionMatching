@@ -108,6 +108,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<(float2, float)> Obstacles;
         [ReadOnly] public float ObstacleRadius;
         [ReadOnly] public int FeatureSize;
+        [ReadOnly] public int FeatureStaticSize;
         [ReadOnly] public int PoseOffset;
         [ReadOnly] public float CurrentDistance;
         [ReadOnly] public float CrowdWeight;
@@ -141,7 +142,7 @@ namespace MotionMatching
         // ... Pose Features
         public void Execute()
         {
-            const int maxIterationsRootFinder = 5;
+            const int maxIterationsRootFinder = 149;
 
             float minDistance = float.MaxValue;
             float debugCrowd = DebugCrowdDistance[0]; // DEBUG
@@ -155,24 +156,23 @@ namespace MotionMatching
                     float sqrDistance = 0.0f;
                     int featureIndex = i * FeatureSize;
 
-                    for (int j = 0; j < FeatureSize; ++j)
+                    for (int j = 0; j < FeatureStaticSize; ++j)
                     {
-                        if (j >= 12 && j <= 23) continue; // DEBUG
                         float diff = Features[featureIndex + j] - QueryFeature[j];
                         sqrDistance += diff * diff * FeatureWeights[j];
                     }
                     float auxDebugTrajectory = sqrDistance;
 
-                    // crowd forces
+                    // HARDCODED: crowd forces
                     float2 pos1 = new(Features[featureIndex + 0] * Std[0] + Mean[0],
                                       Features[featureIndex + 1] * Std[1] + Mean[1]);
                     float2 pos2 = new(Features[featureIndex + 2] * Std[2] + Mean[2],
                                       Features[featureIndex + 3] * Std[3] + Mean[3]);
                     float2 pos3 = new(Features[featureIndex + 4] * Std[4] + Mean[4],
                                       Features[featureIndex + 5] * Std[5] + Mean[5]);
-                    float4 ellipse1 = new(Features[featureIndex + 12], Features[featureIndex + 13], Features[featureIndex + 14], Features[featureIndex + 15]);
-                    float4 ellipse2 = new(Features[featureIndex + 16], Features[featureIndex + 17], Features[featureIndex + 18], Features[featureIndex + 19]);
-                    float4 ellipse3 = new(Features[featureIndex + 20], Features[featureIndex + 21], Features[featureIndex + 22], Features[featureIndex + 23]);
+                    float4 ellipse1 = new(Features[FeatureStaticSize + 0], Features[FeatureStaticSize + 1], Features[FeatureStaticSize + 2], Features[FeatureStaticSize + 3]);
+                    float4 ellipse2 = new(Features[FeatureStaticSize + 4], Features[FeatureStaticSize + 5], Features[FeatureStaticSize + 6], Features[FeatureStaticSize + 7]);
+                    float4 ellipse3 = new(Features[FeatureStaticSize + 8], Features[FeatureStaticSize + 9], Features[FeatureStaticSize + 10], Features[FeatureStaticSize + 11]);
                     float2 primaryAxisUnit1 = new(ellipse1.z, ellipse1.w);
                     float2 primaryAxisUnit2 = new(ellipse2.z, ellipse2.w);
                     float2 primaryAxisUnit3 = new(ellipse3.z, ellipse3.w);
