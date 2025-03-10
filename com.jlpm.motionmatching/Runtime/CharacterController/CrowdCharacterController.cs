@@ -130,19 +130,21 @@ namespace MotionMatching
 
             // Positions
             float2 desiredSpeed = InputMovement * MaxSpeed;
-            float2 currentPos = new float2(transform.position.x, transform.position.z);
+            float2 currentPos = new float2(MotionMatching.transform.position.x, MotionMatching.transform.position.z);
             // Predict
             PredictPositions(currentPos, desiredSpeed, DatabaseDeltaTime);
             // Update Current Position
             float2 newPos = ComputeNewPos(currentPos, desiredSpeed);
 
             // Update Character Controller
-            if (math.lengthsq(Velocity) > MinimumVelocityClamp * MinimumVelocityClamp)
-            {
-                // Update Transform
-                transform.position = new float3(newPos.x, transform.position.y, newPos.y);
-                transform.rotation = newRot;
-            }
+            //if (math.lengthsq(Velocity) > MinimumVelocityClamp * MinimumVelocityClamp)
+            //{
+            //    // Update Transform
+            //    transform.position = new float3(newPos.x, transform.position.y, newPos.y);
+            //    transform.rotation = newRot;
+            //}
+            transform.position = new float3(currentPos.x, transform.position.y, currentPos.y);
+            transform.rotation = newRot;
 
             // Adjust MotionMatching to pull the Character towards the Character Controller
             if (DoAdjustment) AdjustMotionMatching();

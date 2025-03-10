@@ -149,6 +149,9 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<bool> TagMask;
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> FeatureWeights;
+        [ReadOnly] public float CrowdThreshold;
+        [ReadOnly] public float CrowdSecondTrajectoryWeight;
+        [ReadOnly] public float CrowdThirdTrajectoryWeight;
         [ReadOnly] public NativeArray<float> Mean;
         [ReadOnly] public NativeArray<float> Std;
         [ReadOnly] public NativeArray<(float2, float)> Obstacles;
@@ -179,9 +182,6 @@ namespace MotionMatching
         private float FeatureCheck(int i, float minDistance, bool saveDebug)
         {
             const int maxIterationsRootFinder = 5;
-            const float threshold = 0.6f;
-            const float secondTrajectoryWeight = 0.4f;
-            const float thirdTrajectoryWeight = 0.1f;
 
             int featureIndex = i * FeatureSize;
             float sqrDistance = Distances[i];
@@ -220,9 +220,9 @@ namespace MotionMatching
                 float distance3 = UtilitiesBurst.DistanceToEllipse(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, Obstacles[obstacle].Item1, out float2 closest3, maxIterationsRootFinder);
                 distance3 = math.max(distance3 - Obstacles[obstacle].Item2, 1e-9f);
                 float crowdDistance = 0.0f;
-                float penalization1 = DistanceFunction(distance1, threshold);
+                float penalization1 = DistanceFunction(distance1, CrowdThreshold);
                 // DEBUG
-                if (saveDebug && distance1 < threshold)
+                if (saveDebug && distance1 < CrowdThreshold)
                 {
                     PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest1.x, 0.0f, closest1.y);
                     PointsOnObstacle[NumberDebugPoints[0]] = new float3(Obstacles[obstacle].Item1.x, 0.0f, Obstacles[obstacle].Item1.y);
@@ -231,9 +231,9 @@ namespace MotionMatching
                     NumberDebugPoints[0] += 1;
                 }
                 crowdDistance += penalization1;
-                float penalization2 = DistanceFunction(distance2, threshold) * secondTrajectoryWeight;
+                float penalization2 = DistanceFunction(distance2, CrowdThreshold) * CrowdSecondTrajectoryWeight;
                 // DEBUG
-                if (saveDebug && distance2 < threshold)
+                if (saveDebug && distance2 < CrowdThreshold)
                 {
                     PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest2.x, 0.0f, closest2.y);
                     PointsOnObstacle[NumberDebugPoints[0]] = new float3(Obstacles[obstacle].Item1.x, 0.0f, Obstacles[obstacle].Item1.y);
@@ -242,9 +242,9 @@ namespace MotionMatching
                     NumberDebugPoints[0] += 1;
                 }
                 crowdDistance += penalization2;
-                float penalization3 = DistanceFunction(distance3, threshold) * thirdTrajectoryWeight;
+                float penalization3 = DistanceFunction(distance3, CrowdThreshold) * CrowdThirdTrajectoryWeight;
                 // DEBUG
-                if (saveDebug && distance3 < threshold)
+                if (saveDebug && distance3 < CrowdThreshold)
                 {
                     PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest3.x, 0.0f, closest3.y);
                     PointsOnObstacle[NumberDebugPoints[0]] = new float3(Obstacles[obstacle].Item1.x, 0.0f, Obstacles[obstacle].Item1.y);

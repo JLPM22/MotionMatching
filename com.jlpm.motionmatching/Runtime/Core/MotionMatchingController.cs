@@ -18,8 +18,11 @@ namespace MotionMatching
     {
         public event Action OnSkeletonTransformUpdated;
 
-        public float BestTrajectoryDistance;
+        public float CrowdThreshold = 0.6f;
+        public float CrowdSecondTrajectoryWeight = 0.4f;
+        public float CrowdThirdTrajectoryWeight = 0.1f;
 
+        [Header("General")]
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
         public bool LockFPS = true;
@@ -261,6 +264,9 @@ namespace MotionMatching
                 TagMask = TagMask,
                 Features = FeatureSet.GetFeatures(),
                 FeatureWeights = FeaturesWeightsNativeArray,
+                CrowdThreshold = CrowdThreshold,
+                CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
+                CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
                 Mean = means,
                 Std = stds,
                 Obstacles = Obstacles,
@@ -369,6 +375,9 @@ namespace MotionMatching
                     TagMask = TagMask,
                     Features = FeatureSet.GetFeatures(),
                     FeatureWeights = FeaturesWeightsNativeArray,
+                    CrowdThreshold = CrowdThreshold,
+                    CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
+                    CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
                     Mean = means,
                     Std = stds,
                     Obstacles = Obstacles,
