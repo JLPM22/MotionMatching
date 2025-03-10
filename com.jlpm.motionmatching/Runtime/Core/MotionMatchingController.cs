@@ -3,6 +3,7 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
+using UnityEditor;
 
 namespace MotionMatching
 {
@@ -15,18 +16,9 @@ namespace MotionMatching
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
-        [Serializable]
-        public struct DebugTraj // DEBUG
-        {
-            public bool Enable;
-            public float Distance;
-        }
-
         public event Action OnSkeletonTransformUpdated;
 
-        public int NumberDebugTrajectories = 0; // DEBUG
         public float BestTrajectoryDistance;
-        public DebugTraj[] DebugTrajectories; // DEBUG
 
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
@@ -48,6 +40,7 @@ namespace MotionMatching
         public bool DebugPose = true;
         public bool DebugTrajectory = true;
         public bool DebugDynamic = true;
+        public bool DebugDistanceToObstacles = true;
         public bool DebugContacts = true;
 
         public float3 Velocity { get; private set; }
@@ -87,9 +80,16 @@ namespace MotionMatching
         private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
         // Crowds
-        private NativeArray<(float2, float)> Obstacles; // (projected position, circle radius)
+        private NativeArray<(float2, float)> Obstacles; // (projected position, disk radius)
         private NativeArray<float> DistanceFeatures; // DEBUG
-        private NativeArray<bool> ValidDistanceFeatures; // DEBUG
+        private NativeArray<float3> PointsOnEllipse; // DEBUG
+        private NativeArray<float3> PointsOnObstacle; // DEBUG
+        private NativeArray<float> ObstacleDistances; // DEBUG
+        private NativeArray<float> ObstaclePenalization; // DEBUG
+        private NativeArray<int> VisualDebugElements; // DEBUG
+        // HARDCODED
+        private NativeArray<float> means;
+        private NativeArray<float> stds;
 
         private void Awake()
         {
@@ -192,12 +192,13 @@ namespace MotionMatching
 
             // Crowds
             DistanceFeatures = new NativeArray<float>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
-            ValidDistanceFeatures = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
-            DebugTrajectories = new DebugTraj[NumberDebugTrajectories];
-            for (int i = 0; i < NumberDebugTrajectories; i++)
-            {
-                DebugTrajectories[i].Enable = true;
-            }
+            PointsOnEllipse = new NativeArray<float3>(1000, Allocator.Persistent); // some large number
+            PointsOnObstacle = new NativeArray<float3>(1000, Allocator.Persistent); // some large number
+            ObstacleDistances = new NativeArray<float>(1000, Allocator.Persistent); // some large number
+            ObstaclePenalization = new NativeArray<float>(1000, Allocator.Persistent); // some large number
+            VisualDebugElements = new NativeArray<int>(1, Allocator.Persistent);
+            means = new(FeatureSet.GetMeans(), Allocator.Persistent);
+            stds = new(FeatureSet.GetStandardDeviations(), Allocator.Persistent);
         }
 
         private void OnEnable()
@@ -223,7 +224,7 @@ namespace MotionMatching
                 int bestFrame = SearchMotionMatching();
                 PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
                 const int ignoreSurrounding = 20; // ignore near frames
-                if (bestFrame != CurrentFrame && math.abs(bestFrame - CurrentFrame) > ignoreSurrounding)
+                if (math.abs(bestFrame - CurrentFrame) > ignoreSurrounding)
                 {
                     // Inertialize
                     if (Inertialize)
@@ -251,6 +252,39 @@ namespace MotionMatching
 
             UpdateTransformAndSkeleton(CurrentFrame);
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
+
+            // DEBUG: at the end of the frame update, recompute features to display debug information
+            FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
+            var jobCrowd = new CrowdMotionMatchingSearchBurst
+            {
+                Valid = FeatureSet.GetValid(),
+                TagMask = TagMask,
+                Features = FeatureSet.GetFeatures(),
+                FeatureWeights = FeaturesWeightsNativeArray,
+                Mean = means,
+                Std = stds,
+                Obstacles = Obstacles,
+                FeatureSize = FeatureSet.FeatureSize,
+                FeatureStaticSize = FeatureSet.FeatureStaticSize,
+                BestIndex = SearchResult,
+                DebugCrowdDistance = DebugCrowdDistance,
+                Distances = DistanceFeatures,
+                PointsOnEllipse = PointsOnEllipse,
+                PointsOnObstacle = PointsOnObstacle,
+                ObstacleDistance = ObstacleDistances,
+                ObstaclePenalization = ObstaclePenalization,
+                NumberDebugPoints = VisualDebugElements,
+                IsDebug = true,
+                DebugIndex = CurrentFrame
+            };
+            jobCrowd.Schedule().Complete();
+            // DEBUG
+            for (int i = 0; i < VisualDebugElements[0]; i++)
+            {
+                // character space to world space
+                PointsOnEllipse[i] = SkeletonTransforms[0].TransformPoint(PointsOnEllipse[i]);
+                PointsOnObstacle[i] = SkeletonTransforms[0].TransformPoint(PointsOnObstacle[i]);
+            }
         }
 
         private void UpdateAnimationSpaceOrigin()
@@ -275,9 +309,6 @@ namespace MotionMatching
             // Init Query Vector
             FeatureSet.GetFeature(QueryFeature, CurrentFrame);
             FillQueryVector(QueryFeature);
-            // HARDCODED
-            NativeArray<float> means = new(FeatureSet.GetMeans(), Allocator.TempJob);
-            NativeArray<float> stds = new(FeatureSet.GetStandardDeviations(), Allocator.TempJob);
 
             // Get next feature vector (when doing motion matching search, they need less error than this)
             float currentDistance = float.MaxValue;
@@ -345,13 +376,17 @@ namespace MotionMatching
                     FeatureStaticSize = FeatureSet.FeatureStaticSize,
                     BestIndex = SearchResult,
                     DebugCrowdDistance = DebugCrowdDistance,
-                    Distances = DistanceFeatures
+                    Distances = DistanceFeatures,
+                    PointsOnEllipse = PointsOnEllipse,
+                    PointsOnObstacle = PointsOnObstacle,
+                    ObstacleDistance = ObstacleDistances,
+                    ObstaclePenalization = ObstaclePenalization,
+                    NumberDebugPoints = VisualDebugElements,
+                    IsDebug=false
+                    
                 };
                 jobCrowd.Schedule().Complete();
             }
-
-            means.Dispose();
-            stds.Dispose();
 
             // Check if use current or best
             int best = SearchResult[0];
@@ -728,6 +763,7 @@ namespace MotionMatching
             if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
             if (TagMask != null && TagMask.IsCreated) TagMask.Dispose();
+            // HARDCODED: dispose the native arrays that have been added (debug and hardcoded, but i'm waiting to finish refactor before including them here)
         }
 
         private void OnApplicationQuit()
@@ -755,7 +791,6 @@ namespace MotionMatching
             if (PoseSet == null) return;
 
             int currentFrame = CurrentFrame;
-            PoseSet.GetPose(currentFrame, out PoseVector pose);
             float3 characterOrigin = SkeletonTransforms[0].position;
             float3 characterForward = SkeletonTransforms[0].forward;
 
@@ -816,45 +851,23 @@ namespace MotionMatching
             FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
                                            SkeletonTransforms, PoseSet.Skeleton, Color.blue, DebugPose, DebugTrajectory, DebugDynamic);
 
-            // Visualization DEBUG
-            const int window = 200;
-            if (NumberDebugTrajectories > 0)
+            // DEBUG DebugDistanceToObstacles
+            if (DebugDistanceToObstacles)
             {
-                BestTrajectoryDistance = DistanceFeatures[SearchResult[0]];
-                for (int i = 0; i < ValidDistanceFeatures.Length; i++)
+                for (int i = 0; i < VisualDebugElements[0]; i++)
                 {
-                    ValidDistanceFeatures[i] = true;
-                }
-                ValidDistanceFeatures[SearchResult[0]] = false;
-                for (int i = SearchResult[0] - window; i < SearchResult[0] + window; i++)
-                {
-                    if (i < 0 || i >= DistanceFeatures.Length) continue;
-                    ValidDistanceFeatures[i] = false;
-                }
-                for (int t = 0; t < NumberDebugTrajectories; t++)
-                {
-                    float minDistance = float.MaxValue;
-                    int best = 0;
-                    for (int i = 0; i < DistanceFeatures.Length; i++)
-                    {
-                        if (DistanceFeatures[i] != 0.0f && DistanceFeatures[i] < minDistance && ValidDistanceFeatures[i])
-                        {
-                            minDistance = DistanceFeatures[i];
-                            best = i;
-                        }
-                    }
-                    DebugTrajectories[t].Distance = minDistance;
-                    for (int i = best - window; i < best + window; i++)
-                    {
-                        if (i < 0 || i >= DistanceFeatures.Length) continue;
-                        ValidDistanceFeatures[i] = false;
-                    }
-                    if (DebugTrajectories[t].Enable)
-                    {
-                        FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, best, characterOrigin, characterForward,
-                                                       SkeletonTransforms, PoseSet.Skeleton, debugPose: false, debugTrajectory: DebugTrajectory, debugDynamic: DebugDynamic,
-                                                       trajectoryColor: Color.red);
-                    }
+                    float3 dir = math.normalize(PointsOnObstacle[i] - PointsOnEllipse[i]);
+                    float3 pointOnDisk = PointsOnEllipse[i] + dir * ObstacleDistances[i];
+                    Gizmos.color = new Color(1.0f, 0.5f, 0.0f);
+                    Gizmos.DrawSphere(PointsOnEllipse[i], SpheresRadius);
+                    Gizmos.DrawLine(PointsOnEllipse[i], pointOnDisk);
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawSphere(pointOnDisk, SpheresRadius);
+                    GUI.color = Color.red;
+                    Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 2.0f, ObstaclePenalization[i].ToString("0.00"));
+                    Handles.Label(characterOrigin + math.up() * 2.0f, VisualDebugElements[0].ToString());
+                    GUI.color = new Color(1.0f, 0.5f, 0.0f);
+                    Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 3.0f, ObstacleDistances[i].ToString("0.0000"));
                 }
             }
         }
