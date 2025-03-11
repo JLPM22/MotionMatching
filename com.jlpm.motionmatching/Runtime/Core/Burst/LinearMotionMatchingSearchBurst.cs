@@ -179,10 +179,27 @@ namespace MotionMatching
             return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, 1e-3f));
         }
 
-        private float FeatureCheck(int i, float minDistance, bool saveDebug)
+        private float ComputePenalization(float2 pos, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
         {
             const int maxIterationsRootFinder = 5;
 
+            float distance = UtilitiesBurst.DistanceToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
+            distance = math.max(distance - Obstacles[obstacle].Item2, 1e-9f);
+            float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
+            // DEBUG
+            if (saveDebug && distance < CrowdThreshold)
+            {
+                PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest.x, 0.0f, closest.y);
+                PointsOnObstacle[NumberDebugPoints[0]] = new float3(Obstacles[obstacle].Item1.x, 0.0f, Obstacles[obstacle].Item1.y);
+                ObstacleDistance[NumberDebugPoints[0]] = distance;
+                ObstaclePenalization[NumberDebugPoints[0]] = penalization;
+                NumberDebugPoints[0] += 1;
+            }
+            return penalization;
+        }
+
+        private float FeatureCheck(int i, float minDistance, bool saveDebug)
+        {
             int featureIndex = i * FeatureSize;
             float sqrDistance = Distances[i];
             float auxDebugTrajectory = sqrDistance;
@@ -213,49 +230,27 @@ namespace MotionMatching
             float debugTotalCrowdDistance = 0.0f;
             for (int obstacle = 0; obstacle < Obstacles.Length; obstacle++)
             {
-                float distance1 = UtilitiesBurst.DistanceToEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, Obstacles[obstacle].Item1, out float2 closest1, maxIterationsRootFinder);
-                distance1 = math.max(distance1 - Obstacles[obstacle].Item2, 1e-9f);
-                float distance2 = UtilitiesBurst.DistanceToEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, Obstacles[obstacle].Item1, out float2 closest2, maxIterationsRootFinder);
-                distance2 = math.max(distance2 - Obstacles[obstacle].Item2, 1e-9f);
-                float distance3 = UtilitiesBurst.DistanceToEllipse(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, Obstacles[obstacle].Item1, out float2 closest3, maxIterationsRootFinder);
-                distance3 = math.max(distance3 - Obstacles[obstacle].Item2, 1e-9f);
-                float crowdDistance = 0.0f;
-                float penalization1 = DistanceFunction(distance1, CrowdThreshold);
-                // DEBUG
-                if (saveDebug && distance1 < CrowdThreshold)
+                float penalization1 = ComputePenalization(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacle, 1.0f, saveDebug);
+                debugTotalCrowdDistance += penalization1;
+                sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
                 {
-                    PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest1.x, 0.0f, closest1.y);
-                    PointsOnObstacle[NumberDebugPoints[0]] = new float3(Obstacles[obstacle].Item1.x, 0.0f, Obstacles[obstacle].Item1.y);
-                    ObstacleDistance[NumberDebugPoints[0]] = distance1;
-                    ObstaclePenalization[NumberDebugPoints[0]] = penalization1;
-                    NumberDebugPoints[0] += 1;
+                    break;
                 }
-                crowdDistance += penalization1;
-                float penalization2 = DistanceFunction(distance2, CrowdThreshold) * CrowdSecondTrajectoryWeight;
-                // DEBUG
-                if (saveDebug && distance2 < CrowdThreshold)
+                float penalization2 = ComputePenalization(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacle, CrowdSecondTrajectoryWeight, saveDebug);
+                debugTotalCrowdDistance += penalization2;
+                sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
                 {
-                    PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest2.x, 0.0f, closest2.y);
-                    PointsOnObstacle[NumberDebugPoints[0]] = new float3(Obstacles[obstacle].Item1.x, 0.0f, Obstacles[obstacle].Item1.y);
-                    ObstacleDistance[NumberDebugPoints[0]] = distance2;
-                    ObstaclePenalization[NumberDebugPoints[0]] = penalization2;
-                    NumberDebugPoints[0] += 1;
+                    break;
                 }
-                crowdDistance += penalization2;
-                float penalization3 = DistanceFunction(distance3, CrowdThreshold) * CrowdThirdTrajectoryWeight;
-                // DEBUG
-                if (saveDebug && distance3 < CrowdThreshold)
+                float penalization3 = ComputePenalization(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacle, CrowdThirdTrajectoryWeight, saveDebug);
+                debugTotalCrowdDistance += penalization3;
+                sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
                 {
-                    PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest3.x, 0.0f, closest3.y);
-                    PointsOnObstacle[NumberDebugPoints[0]] = new float3(Obstacles[obstacle].Item1.x, 0.0f, Obstacles[obstacle].Item1.y);
-                    ObstacleDistance[NumberDebugPoints[0]] = distance3;
-                    ObstaclePenalization[NumberDebugPoints[0]] = penalization3;
-                    NumberDebugPoints[0] += 1;
+                    break;
                 }
-                crowdDistance += penalization3;
-
-                debugTotalCrowdDistance += crowdDistance;
-                sqrDistance += crowdDistance * FeatureWeights[FeatureStaticSize];
             }
 
             Distances[i] = sqrDistance;
