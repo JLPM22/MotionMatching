@@ -116,7 +116,7 @@ namespace MotionMatching
             Quaternion rot = Animator.transform.rotation;
             Animator.transform.rotation = Quaternion.identity;
             SkeletonBone[] targetSkeletonBones = Animator.avatar.humanDescription.skeleton;
-            Quaternion hipsRot = Quaternion.identity;
+            Quaternion targetHipsRot = Quaternion.identity;
             for (int i = 0; i < BodyJoints.Length; i++)
             {
                 Transform targetJoint = Animator.GetBoneTransform(BodyJoints[i]);
@@ -148,13 +148,13 @@ namespace MotionMatching
                 TargetTPose[i] = cumulativeRotation;
                 if (BodyJoints[i] == HumanBodyBones.Hips)
                 {
-                    hipsRot = cumulativeRotation;
+                    targetHipsRot = cumulativeRotation;
                 }
             }
             Animator.transform.rotation = rot;
             // Find ForwardLocalVector and UpLocalVector
-            float3 forwardLocalVector = math.mul(math.inverse(hipsRot), math.forward());
-            float3 upLocalVector = math.mul(math.inverse(hipsRot), math.up());
+            float3 forwardLocalVector = math.mul(math.inverse(targetHipsRot), math.forward());
+            float3 upLocalVector = math.mul(math.inverse(targetHipsRot), math.up());
             // Correct body orientation so they are both facing the same direction
             float3 targetWorldForward = math.mul(TargetTPose[0], forwardLocalVector);
             float3 targetWorldUp = math.mul(TargetTPose[0], upLocalVector);
