@@ -34,6 +34,7 @@ namespace MotionMatching
         [Range(0.0f, 1.0f)] public float InertializeHalfLife = 0.1f; // Time needed to move half of the distance between the source to the target pose
         [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Tooltip("How important is the current pose")][Range(0.0f, 1.0f)] public float Quality = 1.0f;
+        public bool DynamicDirectionWeight = true; // HARDCODED: this could maybe be an additional scriptable object that the user can provide to control the behaviour of Motion Matching
         [HideInInspector] public float[] FeatureWeights;
         [Header("Debug")]
         public float SpheresRadius = 0.1f;
@@ -45,6 +46,7 @@ namespace MotionMatching
         public bool DebugDynamic = true;
         public bool DebugDistanceToObstacles = true;
         public bool DebugContacts = true;
+        public bool DebugGUI = true;
 
         public float3 Velocity { get; private set; }
         public float3 AngularVelocity { get; private set; }
@@ -93,6 +95,7 @@ namespace MotionMatching
         // HARDCODED
         private NativeArray<float> means;
         private NativeArray<float> stds;
+        private float StartDirectionWeight;
 
         private void Awake()
         {
@@ -202,6 +205,8 @@ namespace MotionMatching
             VisualDebugElements = new NativeArray<int>(1, Allocator.Persistent);
             means = new(FeatureSet.GetMeans(), Allocator.Persistent);
             stds = new(FeatureSet.GetStandardDeviations(), Allocator.Persistent);
+            Debug.Assert(MMData.TrajectoryFeatures[1].Name == "FutureDirection");
+            StartDirectionWeight = FeatureWeights[1];
         }
 
         private void OnEnable()
@@ -284,6 +289,20 @@ namespace MotionMatching
                 DebugIndex = CurrentFrame
             };
             jobCrowd.Schedule().Complete();
+            
+            if (DynamicDirectionWeight)
+            {
+                // HARDCODED: this should be defined dynamically because the direction feature may not be the first one
+                if (VisualDebugElements[0] > 0)
+                {
+                    FeatureWeights[1] = math.lerp(FeatureWeights[1], 0.01f, Time.deltaTime * 10.0f);
+                }
+                else
+                {
+                    FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight, Time.deltaTime * 10.0f);
+                }
+            }
+
             // DEBUG
             for (int i = 0; i < VisualDebugElements[0]; i++)
             {
@@ -756,13 +775,16 @@ namespace MotionMatching
 
         private void OnGUI()
         {
-            GUIStyle headStyle = new()
+            if (DebugGUI)
             {
-                fontSize = 40,
-            };
-            GUI.Label(new Rect(10.0f, 10.0f, 190.0f, 20.0f), "Crowd: " + DebugCrowdDistance[0].ToString("0.0000"), headStyle);
-            GUI.Label(new Rect(10.0f, 60.0f, 190.0f, 20.0f), "Crowd Weight: " + DebugCrowdDistance[2].ToString("0.0000"), headStyle);
-            GUI.Label(new Rect(10.0f, 110.0f, 190.0f, 20.0f), "Trajectory: " + DebugCrowdDistance[1].ToString("0.0000"), headStyle);
+                GUIStyle headStyle = new()
+                {
+                    fontSize = 40,
+                };
+                GUI.Label(new Rect(10.0f, 10.0f, 190.0f, 20.0f), "Crowd: " + DebugCrowdDistance[0].ToString("0.0000"), headStyle);
+                GUI.Label(new Rect(10.0f, 60.0f, 190.0f, 20.0f), "Crowd Weight: " + DebugCrowdDistance[2].ToString("0.0000"), headStyle);
+                GUI.Label(new Rect(10.0f, 110.0f, 190.0f, 20.0f), "Trajectory: " + DebugCrowdDistance[1].ToString("0.0000"), headStyle);
+            }
         }
 
         private void OnDestroy()

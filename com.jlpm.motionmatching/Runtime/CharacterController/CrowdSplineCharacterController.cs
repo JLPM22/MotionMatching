@@ -17,6 +17,8 @@ namespace MotionMatching
         public SplineContainer SplineContainer;
         public float Speed = 1.0f;
 
+        public bool DebugDraw = true;
+
         private float T;
 
         private float2 CurrentPosition;
@@ -169,6 +171,8 @@ namespace MotionMatching
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
+            if (!DebugDraw) return;
+
             if (SplineContainer == null) return;
 
             const float heightOffset = 0.01f;

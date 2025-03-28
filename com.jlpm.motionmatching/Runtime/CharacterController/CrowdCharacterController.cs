@@ -10,7 +10,12 @@ namespace MotionMatching
 
     public class CrowdCharacterController : MotionMatchingCharacterController
     {
+        [Header("Crowd")]
         public Obstacle IgnoreObstacle;
+        public bool DoSteering = false;
+        public float SteeringLookAhead = 4.0f;
+        public float SteeringForce = 2.0f;
+        public float SteeringChangeFactor = 5.0f;
         // Features ----------------------------------------------------------
         [Header("Features")]
         public string TrajectoryPositionFeatureName = "FuturePosition";
@@ -63,6 +68,7 @@ namespace MotionMatching
         // Crowds ------------------------------------------------------------------
         private Obstacle[] Obstacles;
         private NativeArray<(float2, float)> ObstaclesArray;
+        private float2 Steering;
         // --------------------------------------------------------------------------
 
         // FUNCTIONS ---------------------------------------------------------------
@@ -95,8 +101,18 @@ namespace MotionMatching
             PredictedRotations = new quaternion[NumberPredictionRot];
             PredictedAngularVelocities = new float3[NumberPredictionRot];
             // Crowds
-            Obstacles = FindObjectsByType<Obstacle>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length - (IgnoreObstacle != null ? 1 : 0), Allocator.Persistent);
+            Obstacle[] candidates = FindObjectsByType<Obstacle>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            Obstacles = new Obstacle[candidates.Length - 1];
+            int it = 0;
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                if (candidates[i] != IgnoreObstacle)
+                {
+                    Obstacles[it] = candidates[i];
+                    it += 1;
+                }
+            }
+            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length, Allocator.Persistent);
         }
 
         // Input a change in the movement direction
@@ -129,14 +145,21 @@ namespace MotionMatching
             PredictRotations(currentRotation, DatabaseDeltaTime);
             // Update Current Rotation
             quaternion newRot = ComputeNewRot(currentRotation);
+            transform.rotation = newRot;
 
             // Positions
+            float2 currentPos = new(MotionMatching.transform.position.x, MotionMatching.transform.position.z);
             float2 desiredSpeed = InputMovement * MaxSpeed;
-            float2 currentPos = new float2(MotionMatching.transform.position.x, MotionMatching.transform.position.z);
+            if (DoSteering)
+            {
+                float2 targetSteering = ComputeSteering(currentPos);
+                Steering = math.lerp(Steering, targetSteering, Time.deltaTime * SteeringChangeFactor);
+                desiredSpeed += Steering;
+            }
             // Predict
             PredictPositions(currentPos, desiredSpeed, DatabaseDeltaTime);
             // Update Current Position
-            float2 newPos = ComputeNewPos(currentPos, desiredSpeed);
+            float2 newPos = ComputeNewPos(currentPos, desiredSpeed); // do not remove, important to update the velocity
 
             // Update Character Controller
             //if (math.lengthsq(Velocity) > MinimumVelocityClamp * MinimumVelocityClamp)
@@ -146,7 +169,6 @@ namespace MotionMatching
             //    transform.rotation = newRot;
             //}
             transform.position = new float3(currentPos.x, transform.position.y, currentPos.y);
-            transform.rotation = newRot;
 
             // Adjust MotionMatching to pull the Character towards the Character Controller
             if (DoAdjustment) AdjustMotionMatching();
@@ -261,6 +283,39 @@ namespace MotionMatching
             MotionMatching.SetRotAdjustment(adjustmentRotation);
         }
 
+        private float2 ComputeSteering(float2 currentPos)
+        {
+            float2 resHitPoint = float2.zero;
+            float resHitDistance = float.MaxValue;
+            for (int i = 0; i < Obstacles.Length; i++)
+            {
+                float2 rayOrigin = currentPos;
+                float2 rayDirection = math.normalize(new float2(transform.forward.x, transform.forward.z));
+                if (Obstacles[i].Intersect(rayOrigin, rayDirection, out float2 hitPoint1, out float hitDistance1, out float2 hitPoint2, out float hitDistance2))
+                {
+                    float2 hitPoint = hitPoint1;
+                    float hitDistance = hitDistance1;
+                    if (hitDistance2 < hitDistance1)
+                    {
+                        hitPoint = hitPoint2;
+                        hitDistance = hitDistance2;
+                    }
+                    if (hitDistance < resHitDistance)
+                    {
+                        resHitPoint = hitPoint;
+                        resHitDistance = hitDistance;
+                    }
+                }
+            }
+            float2 steering = float2.zero;
+            if (resHitDistance < SteeringLookAhead)
+            {
+                steering = math.normalize(resHitPoint - currentPos) * SteeringForce * (1.0f - (resHitDistance / SteeringLookAhead));
+                steering = new float2(-steering.y, steering.x); // perpendicular
+            }
+            return steering;
+        }
+
         public float3 GetCurrentPosition()
         {
             return transform.position;
@@ -305,7 +360,6 @@ namespace MotionMatching
                 int it = 0;
                 for (int i = 0; i < Obstacles.Length; i++)
                 {
-                    if (Obstacles[i] == IgnoreObstacle) continue;
                     float3 world = Obstacles[i].GetProjWorldPosition(); ;
                     float3 localPos = character.InverseTransformPoint(world);
                     // HARDCODED: circle radius
@@ -363,6 +417,13 @@ namespace MotionMatching
                     float3 predictedDir3D = new float3(predictedDir.x, 0.0f, predictedDir.y);
                     Gizmos.DrawSphere(predictedPos, radius);
                     GizmosExtensions.DrawLine(predictedPos, predictedPos + predictedDir3D * vectorReduction, 3);
+                }
+
+                // Draw Steering
+                if (DoSteering && math.lengthsq(Steering) > 0.0001f)
+                {
+                    Gizmos.color = new Color(0.1f, 0.8f, 0.1f, 1.0f);
+                    GizmosExtensions.DrawLine(transformPos, transformPos + new Vector3(Steering.x, 0.0f, Steering.y) * vectorReduction, 3);
                 }
             }
 

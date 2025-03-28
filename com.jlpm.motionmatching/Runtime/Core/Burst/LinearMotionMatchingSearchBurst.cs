@@ -161,6 +161,7 @@ namespace MotionMatching
         public NativeArray<int> BestIndex;
         public NativeArray<float> DebugCrowdDistance;
         public NativeArray<float> Distances;
+
         // Debug Visuals
         [WriteOnly] public NativeArray<float3> PointsOnEllipse;
         [WriteOnly] public NativeArray<float3> PointsOnObstacle;
