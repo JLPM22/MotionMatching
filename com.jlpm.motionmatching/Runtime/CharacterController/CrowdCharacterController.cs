@@ -152,7 +152,7 @@ namespace MotionMatching
             float2 desiredSpeed = InputMovement * MaxSpeed;
             if (DoSteering)
             {
-                float2 targetSteering = ComputeSteering(currentPos);
+                float2 targetSteering = ComputeSteering(currentPos, transform.forward, Obstacles, SteeringLookAhead, SteeringForce);
                 Steering = math.lerp(Steering, targetSteering, Time.deltaTime * SteeringChangeFactor);
                 desiredSpeed += Steering;
             }
@@ -283,15 +283,17 @@ namespace MotionMatching
             MotionMatching.SetRotAdjustment(adjustmentRotation);
         }
 
-        private float2 ComputeSteering(float2 currentPos)
+        public static float2 ComputeSteering(float2 currentPos, Vector3 transformForward, Obstacle[] obstacles, 
+                                              float lookAhead, float force)
         {
             float2 resHitPoint = float2.zero;
             float resHitDistance = float.MaxValue;
-            for (int i = 0; i < Obstacles.Length; i++)
+            for (int i = 0; i < obstacles.Length; i++)
             {
+                if (obstacles[i].IsStatic) continue;
                 float2 rayOrigin = currentPos;
-                float2 rayDirection = math.normalize(new float2(transform.forward.x, transform.forward.z));
-                if (Obstacles[i].Intersect(rayOrigin, rayDirection, out float2 hitPoint1, out float hitDistance1, out float2 hitPoint2, out float hitDistance2))
+                float2 rayDirection = math.normalize(new float2(transformForward.x, transformForward.z));
+                if (obstacles[i].Intersect(rayOrigin, rayDirection, out float2 hitPoint1, out float hitDistance1, out float2 hitPoint2, out float hitDistance2))
                 {
                     float2 hitPoint = hitPoint1;
                     float hitDistance = hitDistance1;
@@ -308,9 +310,9 @@ namespace MotionMatching
                 }
             }
             float2 steering = float2.zero;
-            if (resHitDistance < SteeringLookAhead)
+            if (resHitDistance < lookAhead)
             {
-                steering = math.normalize(resHitPoint - currentPos) * SteeringForce * (1.0f - (resHitDistance / SteeringLookAhead));
+                steering = math.normalize(resHitPoint - currentPos) * force * (1.0f - (resHitDistance / lookAhead));
                 steering = new float2(-steering.y, steering.x); // perpendicular
             }
             return steering;
@@ -357,14 +359,12 @@ namespace MotionMatching
                 output[1] = 0.0f;
                 output[2] = 0.0f;
                 output[3] = 0.0f;
-                int it = 0;
                 for (int i = 0; i < Obstacles.Length; i++)
                 {
                     float3 world = Obstacles[i].GetProjWorldPosition(); ;
                     float3 localPos = character.InverseTransformPoint(world);
                     // HARDCODED: circle radius
-                    ObstaclesArray[it] = (new float2(localPos.x, localPos.z), Obstacles[it].Radius);
-                    it += 1;
+                    ObstaclesArray[i] = (new float2(localPos.x, localPos.z), Obstacles[i].Radius);
                 }
                 MotionMatching.SetObstacle(ObstaclesArray);
             }

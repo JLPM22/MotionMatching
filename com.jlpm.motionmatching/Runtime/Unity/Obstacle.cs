@@ -7,6 +7,7 @@ namespace MotionMatching
     public class Obstacle : MonoBehaviour
     {
         public float Radius = 1.0f;
+        public bool IsStatic = false;
 
         public Vector3 GetWorldPosition()
         {

@@ -34,7 +34,7 @@ namespace MotionMatching
         [Range(0.0f, 1.0f)] public float InertializeHalfLife = 0.1f; // Time needed to move half of the distance between the source to the target pose
         [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Tooltip("How important is the current pose")][Range(0.0f, 1.0f)] public float Quality = 1.0f;
-        public bool DynamicDirectionWeight = true; // HARDCODED: this could maybe be an additional scriptable object that the user can provide to control the behaviour of Motion Matching
+        [Range(0.0f, 1.0f)] public float DynamicDirectionWeightFactor = 0.01f; // HARDCODED: this could maybe be an additional scriptable object that the user can provide to control the behaviour of Motion Matching
         [HideInInspector] public float[] FeatureWeights;
         [Header("Debug")]
         public float SpheresRadius = 0.1f;
@@ -289,18 +289,15 @@ namespace MotionMatching
                 DebugIndex = CurrentFrame
             };
             jobCrowd.Schedule().Complete();
-            
-            if (DynamicDirectionWeight)
+
+            // HARDCODED: this should be defined dynamically because the direction feature may not be the first one
+            if (VisualDebugElements[0] > 0)
             {
-                // HARDCODED: this should be defined dynamically because the direction feature may not be the first one
-                if (VisualDebugElements[0] > 0)
-                {
-                    FeatureWeights[1] = math.lerp(FeatureWeights[1], 0.01f, Time.deltaTime * 10.0f);
-                }
-                else
-                {
-                    FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight, Time.deltaTime * 10.0f);
-                }
+                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight * DynamicDirectionWeightFactor, Time.deltaTime * 10.0f);
+            }
+            else
+            {
+                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight, Time.deltaTime * 10.0f);
             }
 
             // DEBUG
