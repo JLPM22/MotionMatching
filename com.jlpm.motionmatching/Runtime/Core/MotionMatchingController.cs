@@ -18,6 +18,7 @@ namespace MotionMatching
     {
         public event Action OnSkeletonTransformUpdated;
 
+        public bool DoCrowdSearch = true; // HARDCODED
         public float CrowdThreshold = 0.6f;
         public float CrowdSecondTrajectoryWeight = 0.4f;
         public float CrowdThirdTrajectoryWeight = 0.1f;
@@ -262,33 +263,36 @@ namespace MotionMatching
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
 
             // DEBUG: at the end of the frame update, recompute features to display debug information
-            FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
-            var jobCrowd = new CrowdMotionMatchingSearchBurst
+            if (DoCrowdSearch)
             {
-                Valid = FeatureSet.GetValid(),
-                TagMask = TagMask,
-                Features = FeatureSet.GetFeatures(),
-                FeatureWeights = FeaturesWeightsNativeArray,
-                CrowdThreshold = CrowdThreshold,
-                CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                Mean = means,
-                Std = stds,
-                Obstacles = Obstacles,
-                FeatureSize = FeatureSet.FeatureSize,
-                FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                BestIndex = SearchResult,
-                DebugCrowdDistance = DebugCrowdDistance,
-                Distances = DistanceFeatures,
-                PointsOnEllipse = PointsOnEllipse,
-                PointsOnObstacle = PointsOnObstacle,
-                ObstacleDistance = ObstacleDistances,
-                ObstaclePenalization = ObstaclePenalization,
-                NumberDebugPoints = VisualDebugElements,
-                IsDebug = true,
-                DebugIndex = CurrentFrame
-            };
-            jobCrowd.Schedule().Complete();
+                FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
+                var jobCrowd = new CrowdMotionMatchingSearchBurst
+                {
+                    Valid = FeatureSet.GetValid(),
+                    TagMask = TagMask,
+                    Features = FeatureSet.GetFeatures(),
+                    FeatureWeights = FeaturesWeightsNativeArray,
+                    CrowdThreshold = CrowdThreshold,
+                    CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
+                    CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
+                    Mean = means,
+                    Std = stds,
+                    Obstacles = Obstacles,
+                    FeatureSize = FeatureSet.FeatureSize,
+                    FeatureStaticSize = FeatureSet.FeatureStaticSize,
+                    BestIndex = SearchResult,
+                    DebugCrowdDistance = DebugCrowdDistance,
+                    Distances = DistanceFeatures,
+                    PointsOnEllipse = PointsOnEllipse,
+                    PointsOnObstacle = PointsOnObstacle,
+                    ObstacleDistance = ObstacleDistances,
+                    ObstaclePenalization = ObstaclePenalization,
+                    NumberDebugPoints = VisualDebugElements,
+                    IsDebug = true,
+                    DebugIndex = CurrentFrame
+                };
+                jobCrowd.Schedule().Complete();
+            }
 
             // HARDCODED: this should be defined dynamically because the direction feature may not be the first one
             if (VisualDebugElements[0] > 0)
@@ -385,32 +389,35 @@ namespace MotionMatching
                     Distances = DistanceFeatures
                 };
                 job.Schedule().Complete();
-                var jobCrowd = new CrowdMotionMatchingSearchBurst
+                if (DoCrowdSearch)
                 {
-                    Valid = FeatureSet.GetValid(),
-                    TagMask = TagMask,
-                    Features = FeatureSet.GetFeatures(),
-                    FeatureWeights = FeaturesWeightsNativeArray,
-                    CrowdThreshold = CrowdThreshold,
-                    CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                    CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                    Mean = means,
-                    Std = stds,
-                    Obstacles = Obstacles,
-                    FeatureSize = FeatureSet.FeatureSize,
-                    FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                    BestIndex = SearchResult,
-                    DebugCrowdDistance = DebugCrowdDistance,
-                    Distances = DistanceFeatures,
-                    PointsOnEllipse = PointsOnEllipse,
-                    PointsOnObstacle = PointsOnObstacle,
-                    ObstacleDistance = ObstacleDistances,
-                    ObstaclePenalization = ObstaclePenalization,
-                    NumberDebugPoints = VisualDebugElements,
-                    IsDebug=false
-                    
-                };
-                jobCrowd.Schedule().Complete();
+                    var jobCrowd = new CrowdMotionMatchingSearchBurst
+                    {
+                        Valid = FeatureSet.GetValid(),
+                        TagMask = TagMask,
+                        Features = FeatureSet.GetFeatures(),
+                        FeatureWeights = FeaturesWeightsNativeArray,
+                        CrowdThreshold = CrowdThreshold,
+                        CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
+                        CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
+                        Mean = means,
+                        Std = stds,
+                        Obstacles = Obstacles,
+                        FeatureSize = FeatureSet.FeatureSize,
+                        FeatureStaticSize = FeatureSet.FeatureStaticSize,
+                        BestIndex = SearchResult,
+                        DebugCrowdDistance = DebugCrowdDistance,
+                        Distances = DistanceFeatures,
+                        PointsOnEllipse = PointsOnEllipse,
+                        PointsOnObstacle = PointsOnObstacle,
+                        ObstacleDistance = ObstacleDistances,
+                        ObstaclePenalization = ObstaclePenalization,
+                        NumberDebugPoints = VisualDebugElements,
+                        IsDebug = false
+
+                    };
+                    jobCrowd.Schedule().Complete();
+                }
             }
 
             // Check if use current or best

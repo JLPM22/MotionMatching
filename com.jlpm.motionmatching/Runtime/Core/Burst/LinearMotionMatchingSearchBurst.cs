@@ -199,6 +199,7 @@ namespace MotionMatching
             return penalization;
         }
 
+        // HARDCODED
         private float FeatureCheck(int i, float minDistance, bool saveDebug)
         {
             int featureIndex = i * FeatureSize;

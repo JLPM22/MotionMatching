@@ -102,7 +102,7 @@ namespace MotionMatching
             PredictedAngularVelocities = new float3[NumberPredictionRot];
             // Crowds
             Obstacle[] candidates = FindObjectsByType<Obstacle>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            Obstacles = new Obstacle[candidates.Length - 1];
+            Obstacles = new Obstacle[candidates.Length - (IgnoreObstacle == null ? 0 : 1)];
             int it = 0;
             for (int i = 0; i < candidates.Length; i++)
             {
