@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -76,18 +77,18 @@ namespace MotionMatching
             PredictedPositions = new float2[NumberPredictionPos];
             PredictedDirections = new float2[NumberPredictionRot];
             // Crowds
-            Obstacle[] candidates = FindObjectsByType<Obstacle>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            Obstacles = new Obstacle[candidates.Length - (IgnoreObstacle == null ? 0 : 1)];
-            int it = 0;
-            for (int i = 0; i < candidates.Length; i++)
-            {
-                if (candidates[i] != IgnoreObstacle)
-                {
-                    Obstacles[it] = candidates[i];
-                    it += 1;
-                }
-            }
-            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length, Allocator.Persistent);
+            OnObstaclesUpdated(ObstacleManager.Instance.GetObstacles());
+        }
+
+        private void OnEnable()
+        {
+            ObstacleManager.Instance.OnObstaclesUpdated += OnObstaclesUpdated;
+        }
+
+        private void OnDisable()
+        {
+            ObstacleManager.Instance.OnObstaclesUpdated -= OnObstaclesUpdated;
+            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
         }
 
         protected override void OnUpdate()
@@ -189,6 +190,22 @@ namespace MotionMatching
                     PredictedPositions[i] += SteeringOffset;
                 }
             }
+        }
+
+        private void OnObstaclesUpdated(List<Obstacle> obstacles)
+        {
+            Obstacles = new Obstacle[obstacles.Count - (IgnoreObstacle == null ? 0 : 1)];
+            int it = 0;
+            for (int i = 0; i < obstacles.Count; i++)
+            {
+                if (obstacles[i] != IgnoreObstacle)
+                {
+                    Obstacles[it] = obstacles[i];
+                    it += 1;
+                }
+            }
+            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
+            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length, Allocator.Persistent);
         }
 
         public float3 GetCurrentPosition()

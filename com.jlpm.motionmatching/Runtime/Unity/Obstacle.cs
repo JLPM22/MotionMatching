@@ -9,6 +9,16 @@ namespace MotionMatching
         public float Radius = 1.0f;
         public bool IsStatic = false;
 
+        private void OnEnable()
+        {
+            ObstacleManager.Instance.RegisterObstacle(this);
+        }
+
+        private void OnDisable()
+        {
+            ObstacleManager.Instance.UnregisterObstacle(this);
+        }
+
         public Vector3 GetWorldPosition()
         {
             return transform.position;
