@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEditor;
+using System.Diagnostics;
 
 namespace MotionMatching
 {
@@ -97,6 +98,7 @@ namespace MotionMatching
         private NativeArray<float> means;
         private NativeArray<float> stds;
         private float StartDirectionWeight;
+        private int EvalAgentID; // DEBUG
 
         private void Awake()
         {
@@ -208,6 +210,9 @@ namespace MotionMatching
             stds = new(FeatureSet.GetStandardDeviations(), Allocator.Persistent);
             Debug.Assert(MMData.TrajectoryFeatures[1].Name == "FutureDirection");
             StartDirectionWeight = FeatureWeights[1];
+
+            if (EvaluationManager.Instance != null)
+                EvalAgentID = EvaluationManager.Instance.GetAgentID(); // DEBUG
         }
 
         private void OnEnable()
@@ -225,6 +230,10 @@ namespace MotionMatching
 
         private void OnCharacterControllerUpdated(float deltaTime)
         {
+            // DEBUG
+            Stopwatch stopwatch = new();
+            stopwatch.Restart();
+
             PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Total");
             if (SearchTimeLeft <= 0)
             {
@@ -310,6 +319,12 @@ namespace MotionMatching
                 // character space to world space
                 PointsOnEllipse[i] = SkeletonTransforms[0].TransformPoint(PointsOnEllipse[i]);
                 PointsOnObstacle[i] = SkeletonTransforms[0].TransformPoint(PointsOnObstacle[i]);
+            }
+
+            if (EvaluationManager.Instance != null && SearchTimeLeft == SearchTime)
+            {
+                stopwatch.Stop();
+                EvaluationManager.Instance.RegisterAgentPerformance(EvalAgentID, (float)stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 
