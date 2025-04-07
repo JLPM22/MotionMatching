@@ -66,5 +66,9 @@ namespace MotionMatching
         /// Similarly to GetTrajectoryFeature, the output should be filled with the predicted values of the feature.
         /// </summary>
         public virtual void GetDynamicFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output) { }
+
+        // HARDCODED
+        public abstract NativeArray<(float2, float)> GetAllObstacles(Transform character);
+        public abstract NativeArray<(float2, float)> GetNearbyObstacles(Transform character);
     }
 }

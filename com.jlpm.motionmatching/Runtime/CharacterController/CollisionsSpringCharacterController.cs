@@ -390,6 +390,16 @@ namespace MotionMatching
                 }
             }
         }
+
+        public override NativeArray<(float2, float)> GetAllObstacles(Transform character)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override NativeArray<(float2, float)> GetNearbyObstacles(Transform character)
+        {
+            throw new NotImplementedException();
+        }
 #endif
     }
 }

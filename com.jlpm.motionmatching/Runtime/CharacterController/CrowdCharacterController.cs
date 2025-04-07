@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
+using UnityEngine.TextCore.Text;
 
 namespace MotionMatching
 {
@@ -331,8 +332,6 @@ namespace MotionMatching
                     it += 1;
                 }
             }
-            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
-            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length, Allocator.Persistent);
         }
 
         public float3 GetCurrentPosition()
@@ -367,6 +366,34 @@ namespace MotionMatching
             }
         }
 
+        public override NativeArray<(float2, float)> GetAllObstacles(Transform character)
+        {
+            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
+            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length, Allocator.TempJob);
+            for (int i = 0; i < Obstacles.Length; i++)
+            {
+                float3 world = Obstacles[i].GetProjWorldPosition(); ;
+                float3 localPos = character.InverseTransformPoint(world);
+                // HARDCODED: circle radius
+                ObstaclesArray[i] = (new float2(localPos.x, localPos.z), Obstacles[i].Radius);
+            }
+            return ObstaclesArray;
+        }
+
+        public override NativeArray<(float2, float)> GetNearbyObstacles(Transform character)
+        {
+            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
+            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length, Allocator.TempJob);
+            for (int i = 0; i < Obstacles.Length; i++)
+            {
+                float3 world = Obstacles[i].GetProjWorldPosition(); ;
+                float3 localPos = character.InverseTransformPoint(world);
+                // HARDCODED: circle radius
+                ObstaclesArray[i] = (new float2(localPos.x, localPos.z), Obstacles[i].Radius);
+            }
+            return ObstaclesArray;
+        }
+
         // TODO: maybe get dynamic feature could return something more generic that allows to send custom data like the obstacle arrays
         public override void GetDynamicFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
@@ -376,14 +403,6 @@ namespace MotionMatching
                 output[1] = 0.0f;
                 output[2] = 0.0f;
                 output[3] = 0.0f;
-                for (int i = 0; i < Obstacles.Length; i++)
-                {
-                    float3 world = Obstacles[i].GetProjWorldPosition(); ;
-                    float3 localPos = character.InverseTransformPoint(world);
-                    // HARDCODED: circle radius
-                    ObstaclesArray[i] = (new float2(localPos.x, localPos.z), Obstacles[i].Radius);
-                }
-                MotionMatching.SetObstacle(ObstaclesArray);
             }
             else
             {

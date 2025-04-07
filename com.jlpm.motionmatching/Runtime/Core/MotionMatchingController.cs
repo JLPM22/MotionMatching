@@ -87,7 +87,6 @@ namespace MotionMatching
         private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
         // Crowds
-        private NativeArray<(float2, float)> Obstacles; // (projected position, disk radius)
         private NativeArray<float> DistanceFeatures; // DEBUG
         private NativeArray<float3> PointsOnEllipse; // DEBUG
         private NativeArray<float3> PointsOnObstacle; // DEBUG
@@ -274,6 +273,7 @@ namespace MotionMatching
             // DEBUG: at the end of the frame update, recompute features to display debug information
             if (DoCrowdSearch)
             {
+                NativeArray<(float2, float)> obstacles = CharacterController.GetAllObstacles(SkeletonTransforms[0]);
                 FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
                 var jobCrowd = new CrowdMotionMatchingSearchBurst
                 {
@@ -286,7 +286,7 @@ namespace MotionMatching
                     CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
                     Mean = means,
                     Std = stds,
-                    Obstacles = Obstacles,
+                    Obstacles = obstacles,
                     FeatureSize = FeatureSet.FeatureSize,
                     FeatureStaticSize = FeatureSet.FeatureStaticSize,
                     BestIndex = SearchResult,
@@ -406,6 +406,7 @@ namespace MotionMatching
                 job.Schedule().Complete();
                 if (DoCrowdSearch)
                 {
+                    NativeArray<(float2, float)> obstacles = CharacterController.GetAllObstacles(SkeletonTransforms[0]);
                     var jobCrowd = new CrowdMotionMatchingSearchBurst
                     {
                         Valid = FeatureSet.GetValid(),
@@ -417,7 +418,7 @@ namespace MotionMatching
                         CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
                         Mean = means,
                         Std = stds,
-                        Obstacles = Obstacles,
+                        Obstacles = obstacles,
                         FeatureSize = FeatureSet.FeatureSize,
                         FeatureStaticSize = FeatureSet.FeatureStaticSize,
                         BestIndex = SearchResult,
@@ -721,10 +722,6 @@ namespace MotionMatching
         public void SetCurrentFrame(int frame)
         {
             CurrentFrame = frame;
-        }
-        public void SetObstacle(NativeArray<(float2, float)> obstacles)
-        {
-            Obstacles = obstacles;
         }
         public FeatureSet GetFeatureSet()
         {
