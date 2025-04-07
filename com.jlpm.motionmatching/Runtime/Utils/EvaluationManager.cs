@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Linq;
 using UnityEngine;
 
+[DefaultExecutionOrder(-1000)]
 public class EvaluationManager : MonoBehaviour
 {
     public static EvaluationManager Instance { get; private set; }

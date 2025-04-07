@@ -18,6 +18,7 @@ namespace MotionMatching
         public float SteeringLookAhead = 4.0f;
         public float SteeringForce = 2.0f;
         public float SteeringChangeFactor = 5.0f;
+        public float MaximumEllipseLength = 0.9f;
         // Features ----------------------------------------------------------
         [Header("Features")]
         public string TrajectoryPositionFeatureName = "FuturePosition";
@@ -70,6 +71,7 @@ namespace MotionMatching
         // Crowds ------------------------------------------------------------------
         private Obstacle[] Obstacles;
         private NativeArray<(float2, float)> ObstaclesArray;
+        private List<Obstacle> CandidateObstacles = new();
         private float2 Steering;
         // --------------------------------------------------------------------------
 
@@ -382,14 +384,30 @@ namespace MotionMatching
 
         public override NativeArray<(float2, float)> GetNearbyObstacles(Transform character)
         {
-            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
-            ObstaclesArray = new NativeArray<(float2, float)>(Obstacles.Length, Allocator.TempJob);
-            for (int i = 0; i < Obstacles.Length; i++)
+            CandidateObstacles.Clear();
+            float candidateThreshold = MaximumEllipseLength + MotionMatching.CrowdThreshold;
+            for (int p = 0; p < PredictedPosition.Length; p++)
             {
-                float3 world = Obstacles[i].GetProjWorldPosition(); ;
+                float3 predPos = new(PredictedPosition[p].x, 0.0f, PredictedPosition[p].y);
+                for (int i = 0; i < Obstacles.Length; i++)
+                {
+                    Obstacle obs = Obstacles[i];
+                    if (CandidateObstacles.Contains(obs)) continue; // already added
+                    if (math.distance(predPos, obs.GetProjWorldPosition()) < candidateThreshold + obs.Radius)
+                    {
+                        CandidateObstacles.Add(obs);
+                    }
+                }
+            }
+
+            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
+            ObstaclesArray = new NativeArray<(float2, float)>(CandidateObstacles.Count, Allocator.TempJob);
+            for (int i = 0; i < CandidateObstacles.Count; i++)
+            {
+                float3 world = CandidateObstacles[i].GetProjWorldPosition();
                 float3 localPos = character.InverseTransformPoint(world);
                 // HARDCODED: circle radius
-                ObstaclesArray[i] = (new float2(localPos.x, localPos.z), Obstacles[i].Radius);
+                ObstaclesArray[i] = (new float2(localPos.x, localPos.z), CandidateObstacles[i].Radius);
             }
             return ObstaclesArray;
         }

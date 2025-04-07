@@ -98,6 +98,7 @@ namespace MotionMatching
         private NativeArray<float> stds;
         private float StartDirectionWeight;
         private int EvalAgentID; // DEBUG
+        private GUIStyle SingleLineStyle = new(); // DEBUG
 
         private void Awake()
         {
@@ -212,6 +213,9 @@ namespace MotionMatching
 
             if (EvaluationManager.Instance != null)
                 EvalAgentID = EvaluationManager.Instance.GetAgentID(); // DEBUG
+
+            SingleLineStyle.wordWrap = false;
+            SingleLineStyle.normal.textColor = Color.red;
         }
 
         private void OnEnable()
@@ -273,34 +277,41 @@ namespace MotionMatching
             // DEBUG: at the end of the frame update, recompute features to display debug information
             if (DoCrowdSearch)
             {
-                NativeArray<(float2, float)> obstacles = CharacterController.GetAllObstacles(SkeletonTransforms[0]);
-                FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
-                var jobCrowd = new CrowdMotionMatchingSearchBurst
+                NativeArray<(float2, float)> obstacles = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
+                if (obstacles.Length > 0)
                 {
-                    Valid = FeatureSet.GetValid(),
-                    TagMask = TagMask,
-                    Features = FeatureSet.GetFeatures(),
-                    FeatureWeights = FeaturesWeightsNativeArray,
-                    CrowdThreshold = CrowdThreshold,
-                    CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                    CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                    Mean = means,
-                    Std = stds,
-                    Obstacles = obstacles,
-                    FeatureSize = FeatureSet.FeatureSize,
-                    FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                    BestIndex = SearchResult,
-                    DebugCrowdDistance = DebugCrowdDistance,
-                    Distances = DistanceFeatures,
-                    PointsOnEllipse = PointsOnEllipse,
-                    PointsOnObstacle = PointsOnObstacle,
-                    ObstacleDistance = ObstacleDistances,
-                    ObstaclePenalization = ObstaclePenalization,
-                    NumberDebugPoints = VisualDebugElements,
-                    IsDebug = true,
-                    DebugIndex = CurrentFrame
-                };
-                jobCrowd.Schedule().Complete();
+                    FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
+                    var jobCrowd = new CrowdMotionMatchingSearchBurst
+                    {
+                        Valid = FeatureSet.GetValid(),
+                        TagMask = TagMask,
+                        Features = FeatureSet.GetFeatures(),
+                        FeatureWeights = FeaturesWeightsNativeArray,
+                        CrowdThreshold = CrowdThreshold,
+                        CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
+                        CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
+                        Mean = means,
+                        Std = stds,
+                        Obstacles = obstacles,
+                        FeatureSize = FeatureSet.FeatureSize,
+                        FeatureStaticSize = FeatureSet.FeatureStaticSize,
+                        BestIndex = SearchResult,
+                        DebugCrowdDistance = DebugCrowdDistance,
+                        Distances = DistanceFeatures,
+                        PointsOnEllipse = PointsOnEllipse,
+                        PointsOnObstacle = PointsOnObstacle,
+                        ObstacleDistance = ObstacleDistances,
+                        ObstaclePenalization = ObstaclePenalization,
+                        NumberDebugPoints = VisualDebugElements,
+                        IsDebug = true,
+                        DebugIndex = CurrentFrame
+                    };
+                    jobCrowd.Schedule().Complete();
+                }
+                else
+                {
+                    VisualDebugElements[0] = 0;
+                }
             }
 
             // HARDCODED: this should be defined dynamically because the direction feature may not be the first one
@@ -406,33 +417,36 @@ namespace MotionMatching
                 job.Schedule().Complete();
                 if (DoCrowdSearch)
                 {
-                    NativeArray<(float2, float)> obstacles = CharacterController.GetAllObstacles(SkeletonTransforms[0]);
-                    var jobCrowd = new CrowdMotionMatchingSearchBurst
+                    NativeArray<(float2, float)> obstacles = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
+                    if (obstacles.Length > 0)
                     {
-                        Valid = FeatureSet.GetValid(),
-                        TagMask = TagMask,
-                        Features = FeatureSet.GetFeatures(),
-                        FeatureWeights = FeaturesWeightsNativeArray,
-                        CrowdThreshold = CrowdThreshold,
-                        CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                        CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                        Mean = means,
-                        Std = stds,
-                        Obstacles = obstacles,
-                        FeatureSize = FeatureSet.FeatureSize,
-                        FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                        BestIndex = SearchResult,
-                        DebugCrowdDistance = DebugCrowdDistance,
-                        Distances = DistanceFeatures,
-                        PointsOnEllipse = PointsOnEllipse,
-                        PointsOnObstacle = PointsOnObstacle,
-                        ObstacleDistance = ObstacleDistances,
-                        ObstaclePenalization = ObstaclePenalization,
-                        NumberDebugPoints = VisualDebugElements,
-                        IsDebug = false
+                        var jobCrowd = new CrowdMotionMatchingSearchBurst
+                        {
+                            Valid = FeatureSet.GetValid(),
+                            TagMask = TagMask,
+                            Features = FeatureSet.GetFeatures(),
+                            FeatureWeights = FeaturesWeightsNativeArray,
+                            CrowdThreshold = CrowdThreshold,
+                            CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
+                            CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
+                            Mean = means,
+                            Std = stds,
+                            Obstacles = obstacles,
+                            FeatureSize = FeatureSet.FeatureSize,
+                            FeatureStaticSize = FeatureSet.FeatureStaticSize,
+                            BestIndex = SearchResult,
+                            DebugCrowdDistance = DebugCrowdDistance,
+                            Distances = DistanceFeatures,
+                            PointsOnEllipse = PointsOnEllipse,
+                            PointsOnObstacle = PointsOnObstacle,
+                            ObstacleDistance = ObstacleDistances,
+                            ObstaclePenalization = ObstaclePenalization,
+                            NumberDebugPoints = VisualDebugElements,
+                            IsDebug = false
 
-                    };
-                    jobCrowd.Schedule().Complete();
+                        };
+                        jobCrowd.Schedule().Complete();
+                    }
                 }
             }
 
@@ -912,10 +926,10 @@ namespace MotionMatching
                     Gizmos.DrawSphere(pointOnDisk, SpheresRadius);
                     GUI.color = Color.red;
                     Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 2.0f, ObstaclePenalization[i].ToString("0.00"));
-                    Handles.Label(characterOrigin + math.up() * 2.0f, VisualDebugElements[0].ToString());
                     GUI.color = new Color(1.0f, 0.5f, 0.0f);
                     Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 3.0f, ObstacleDistances[i].ToString("0.0000"));
                 }
+                Handles.Label(characterOrigin + math.up() * 2.0f, VisualDebugElements[0].ToString(), SingleLineStyle);
             }
         }
 #endif
