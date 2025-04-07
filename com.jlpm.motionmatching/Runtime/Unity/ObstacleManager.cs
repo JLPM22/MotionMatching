@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace MotionMatching
 {
+    [DefaultExecutionOrder(-1000)]
     public class ObstacleManager : MonoBehaviour
     {
         public static ObstacleManager Instance { get; private set; }
