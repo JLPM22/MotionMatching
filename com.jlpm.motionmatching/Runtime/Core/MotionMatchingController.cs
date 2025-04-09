@@ -84,7 +84,6 @@ namespace MotionMatching
         private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
         // Crowds
-        private NativeArray<float> DistanceFeatures; // DEBUG
         private NativeArray<float3> PointsOnEllipse; // DEBUG
         private NativeArray<float3> PointsOnObstacle; // DEBUG
         private NativeArray<float> ObstacleDistances; // DEBUG
@@ -197,7 +196,6 @@ namespace MotionMatching
             SkeletonTransforms[0].rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
 
             // Crowds
-            DistanceFeatures = new NativeArray<float>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
             PointsOnEllipse = new NativeArray<float3>(1000, Allocator.Persistent); // some large number
             PointsOnObstacle = new NativeArray<float3>(1000, Allocator.Persistent); // some large number
             ObstacleDistances = new NativeArray<float>(1000, Allocator.Persistent); // some large number
@@ -283,6 +281,7 @@ namespace MotionMatching
                         Valid = FeatureSet.GetValid(),
                         Features = FeatureSet.GetFeatures(),
                         FeatureWeights = FeaturesWeightsNativeArray,
+                        QueryFeature = QueryFeature,
                         CrowdThreshold = CrowdThreshold,
                         CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
                         CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
@@ -292,7 +291,6 @@ namespace MotionMatching
                         FeatureSize = FeatureSet.FeatureSize,
                         FeatureStaticSize = FeatureSet.FeatureStaticSize,
                         BestIndex = SearchResult,
-                        Distances = DistanceFeatures,
                         PointsOnEllipse = PointsOnEllipse,
                         PointsOnObstacle = PointsOnObstacle,
                         ObstacleDistance = ObstacleDistances,
@@ -384,11 +382,11 @@ namespace MotionMatching
                 var job = new BVHMotionMatchingSearchBurst
                 {
                     Valid = FeatureSet.GetValid(),
-                    TagMask = TagMask,
                     Features = FeatureSet.GetFeatures(),
                     QueryFeature = QueryFeature,
                     FeatureWeights = FeaturesWeightsNativeArray,
                     FeatureSize = FeatureSet.FeatureSize,
+                    FeatureStaticSize = FeatureSet.FeatureStaticSize,
                     PoseOffset = FeatureSet.PoseOffset,
                     CurrentDistance = currentDistance,
                     LargeBoundingBoxMin = LargeBoundingBoxMin,
@@ -401,57 +399,61 @@ namespace MotionMatching
             }
             else
             {
-                //swLocal.Start();
-                var job = new LinearMotionMatchingSearchBurst
+                NativeArray<(float2, float)> obstacles = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
+                if (obstacles.Length == 0 || !DoCrowdSearch)
                 {
-                    Valid = FeatureSet.GetValid(),
-                    Features = FeatureSet.GetFeatures(),
-                    QueryFeature = QueryFeature,
-                    FeatureWeights = FeaturesWeightsNativeArray,
-                    FeatureSize = FeatureSet.FeatureSize,
-                    FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                    CurrentDistance = currentDistance,
-                    BestIndex = SearchResult,
-                    Distances = DistanceFeatures
-                };
-                job.Schedule().Complete();
-                //swLocal.Stop();
-                //Debug.Log($"[Motion Matching] Linear Search Time: {swLocal.Elapsed.TotalMilliseconds} ms");
-                if (DoCrowdSearch)
-                {
-                    NativeArray<(float2, float)> obstacles = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
-                    if (obstacles.Length > 0)
+                    //swLocal.Start();
+                    var job = new BVHMotionMatchingSearchBurst
                     {
-                        //swLocal.Restart();
-                        var jobCrowd = new CrowdMotionMatchingSearchBurst
-                        {
-                            Valid = FeatureSet.GetValid(),
-                            Features = FeatureSet.GetFeatures(),
-                            FeatureWeights = FeaturesWeightsNativeArray,
-                            CrowdThreshold = CrowdThreshold,
-                            CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                            CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                            Mean = means,
-                            Std = stds,
-                            Obstacles = obstacles,
-                            FeatureSize = FeatureSet.FeatureSize,
-                            FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                            BestIndex = SearchResult,
-                            Distances = DistanceFeatures,
-                            PointsOnEllipse = PointsOnEllipse,
-                            PointsOnObstacle = PointsOnObstacle,
-                            ObstacleDistance = ObstacleDistances,
-                            ObstaclePenalization = ObstaclePenalization,
-                            NumberDebugPoints = VisualDebugElements,
-                            IsDebug = false,
-                            LargeStepSize = LargeStepSize,
+                        Valid = FeatureSet.GetValid(),
+                        Features = FeatureSet.GetFeatures(),
+                        QueryFeature = QueryFeature,
+                        FeatureWeights = FeaturesWeightsNativeArray,
+                        FeatureSize = FeatureSet.FeatureSize,
+                        FeatureStaticSize = FeatureSet.FeatureStaticSize,
+                        PoseOffset = FeatureSet.PoseOffset,
+                        CurrentDistance = currentDistance,
+                        LargeBoundingBoxMin = LargeBoundingBoxMin,
+                        LargeBoundingBoxMax = LargeBoundingBoxMax,
+                        SmallBoundingBoxMin = SmallBoundingBoxMin,
+                        SmallBoundingBoxMax = SmallBoundingBoxMax,
+                        BestIndex = SearchResult
+                    };
+                    job.Schedule().Complete();
+                    //swLocal.Stop();
+                    //Debug.Log($"[Motion Matching] BVH Search Time: {swLocal.Elapsed.TotalMilliseconds} ms");
+                }
+                else
+                {
+                    //swLocal.Restart();
+                    var jobCrowd = new CrowdMotionMatchingSearchBurst
+                    {
+                        Valid = FeatureSet.GetValid(),
+                        Features = FeatureSet.GetFeatures(),
+                        FeatureWeights = FeaturesWeightsNativeArray,
+                        QueryFeature = QueryFeature,
+                        CrowdThreshold = CrowdThreshold,
+                        CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
+                        CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
+                        Mean = means,
+                        Std = stds,
+                        Obstacles = obstacles,
+                        FeatureSize = FeatureSet.FeatureSize,
+                        FeatureStaticSize = FeatureSet.FeatureStaticSize,
+                        BestIndex = SearchResult,
+                        PointsOnEllipse = PointsOnEllipse,
+                        PointsOnObstacle = PointsOnObstacle,
+                        ObstacleDistance = ObstacleDistances,
+                        ObstaclePenalization = ObstaclePenalization,
+                        NumberDebugPoints = VisualDebugElements,
+                        IsDebug = false,
+                        LargeStepSize = LargeStepSize,
 
-                        };
-                        jobCrowd.Schedule().Complete();
+                    };
+                    jobCrowd.Schedule().Complete();
 
-                        //swLocal.Stop();
-                        //Debug.Log($"[Motion Matching] Crowd Search Time: {swLocal.Elapsed.TotalMilliseconds} ms");
-                    }
+                    //swLocal.Stop();
+                    //Debug.Log($"[Motion Matching] Crowd Search Time: {swLocal.Elapsed.TotalMilliseconds} ms");
                 }
             }
 

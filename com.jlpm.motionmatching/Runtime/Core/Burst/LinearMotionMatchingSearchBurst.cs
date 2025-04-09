@@ -95,50 +95,50 @@ namespace MotionMatching
     //    }
     //}
 
-    [BurstCompile]
-    public struct LinearMotionMatchingSearchBurst : IJob
-    {
-        [ReadOnly] public NativeArray<bool> Valid;
-        [ReadOnly] public NativeArray<float> Features;
-        [ReadOnly] public NativeArray<float> QueryFeature;
-        [ReadOnly] public NativeArray<float> FeatureWeights;
-        [ReadOnly] public int FeatureSize;
-        [ReadOnly] public int FeatureStaticSize;
-        [ReadOnly] public float CurrentDistance;
+    //[BurstCompile]
+    //public struct LinearMotionMatchingSearchBurst : IJob
+    //{
+    //    [ReadOnly] public NativeArray<bool> Valid;
+    //    [ReadOnly] public NativeArray<float> Features;
+    //    [ReadOnly] public NativeArray<float> QueryFeature;
+    //    [ReadOnly] public NativeArray<float> FeatureWeights;
+    //    [ReadOnly] public int FeatureSize;
+    //    [ReadOnly] public int FeatureStaticSize;
+    //    [ReadOnly] public float CurrentDistance;
 
-        [WriteOnly] public NativeArray<int> BestIndex;
-        [WriteOnly] public NativeArray<float> Distances;
+    //    [WriteOnly] public NativeArray<int> BestIndex;
+    //    [WriteOnly] public NativeArray<float> Distances;
 
-        public void Execute()
-        {
-            float minDistance = CurrentDistance;
-            int bestIndex = -1;
+    //    public void Execute()
+    //    {
+    //        float minDistance = CurrentDistance;
+    //        int bestIndex = -1;
 
-            for (int i = 0; i < Valid.Length; ++i)
-            {
-                if (Valid[i])
-                {
-                    float sqrDistance = 0.0f;
-                    int featureIndex = i * FeatureSize;
+    //        for (int i = 0; i < Valid.Length; ++i)
+    //        {
+    //            if (Valid[i])
+    //            {
+    //                float sqrDistance = 0.0f;
+    //                int featureIndex = i * FeatureSize;
 
-                    for (int j = 0; j < FeatureStaticSize; ++j)
-                    {
-                        float diff = Features[featureIndex + j] - QueryFeature[j];
-                        sqrDistance += diff * diff * FeatureWeights[j];
-                    }
+    //                for (int j = 0; j < FeatureStaticSize; ++j)
+    //                {
+    //                    float diff = Features[featureIndex + j] - QueryFeature[j];
+    //                    sqrDistance += diff * diff * FeatureWeights[j];
+    //                }
 
-                    Distances[i] = sqrDistance;
-                    if (sqrDistance < minDistance)
-                    {
-                        minDistance = sqrDistance;
-                        bestIndex = i;
-                    }
-                }
-            }
+    //                Distances[i] = sqrDistance;
+    //                if (sqrDistance < minDistance)
+    //                {
+    //                    minDistance = sqrDistance;
+    //                    bestIndex = i;
+    //                }
+    //            }
+    //        }
 
-            BestIndex[0] = bestIndex;
-        }
-    }
+    //        BestIndex[0] = bestIndex;
+    //    }
+    //}
 
     [BurstCompile]
     public struct CrowdMotionMatchingSearchBurst : IJob
@@ -146,6 +146,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<bool> Valid;
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> FeatureWeights;
+        [ReadOnly] public NativeArray<float> QueryFeature;
         [ReadOnly] public float CrowdThreshold;
         [ReadOnly] public float CrowdSecondTrajectoryWeight;
         [ReadOnly] public float CrowdThirdTrajectoryWeight;
@@ -157,7 +158,6 @@ namespace MotionMatching
         [ReadOnly] public int FeatureStaticSize;
 
         public NativeArray<int> BestIndex;
-        public NativeArray<float> Distances;
 
         // Debug Visuals
         [WriteOnly] public NativeArray<float3> PointsOnEllipse;
@@ -168,6 +168,20 @@ namespace MotionMatching
         [ReadOnly] public bool IsDebug;
         [ReadOnly] public int DebugIndex;
         [ReadOnly] public int LargeStepSize;
+
+        private float StaticSqrDistance(int i)
+        {
+            float sqrDistance = 0.0f;
+            int featureIndex = i * FeatureSize;
+
+            for (int j = 0; j < FeatureStaticSize; ++j)
+            {
+                float diff = Features[featureIndex + j] - QueryFeature[j];
+                sqrDistance += diff * diff * FeatureWeights[j];
+            }
+
+            return sqrDistance;
+        }
 
         private float DistanceFunction(float distance, float threshold)
         {
@@ -198,10 +212,9 @@ namespace MotionMatching
         }
 
         // HARDCODED
-        private float FeatureCheck(int i, float minDistance, bool saveDebug)
+        private float FeatureCheck(int i, float minDistance, float sqrDistance, bool saveDebug)
         {
             int featureIndex = i * FeatureSize;
-            float sqrDistance = Distances[i];
 
             // HARDCODED: crowd forces
             float2 pos1 = new(Features[featureIndex + 0] * Std[0] + Mean[0],
@@ -283,7 +296,8 @@ namespace MotionMatching
             if (IsDebug)
             {
                 NumberDebugPoints[0] = 0;
-                FeatureCheck(DebugIndex, float.MinValue, true);
+                float staticSqrDistance = StaticSqrDistance(DebugIndex);
+                FeatureCheck(DebugIndex, float.MinValue, staticSqrDistance, true);
             }
             else
             {
@@ -295,17 +309,19 @@ namespace MotionMatching
                 {
                     if (Valid[i])
                     {
-                        float newMinDistance = FeatureCheck(i, minDistance, false);
+                        float staticSqrDistance = StaticSqrDistance(i);
+                        float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
                         if (newMinDistance < minDistance)
                         {
-                            minDistance = math.min(minDistance, newMinDistance);
+                            minDistance = newMinDistance;
                             if (LargeStepSize > 1)
                             {
                                 for (int j = math.max(i - LargeStepSize / 2, 0); j < i + LargeStepSize / 2; j++)
                                 {
-                                    if (Valid[j])
+                                    if (i != j && Valid[j])
                                     {
-                                        minDistance = FeatureCheck(j, minDistance, false);
+                                        staticSqrDistance = StaticSqrDistance(j);
+                                        minDistance = FeatureCheck(j, minDistance, staticSqrDistance,false);
                                     }
                                 }
                             }
