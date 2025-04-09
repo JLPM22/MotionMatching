@@ -9,10 +9,7 @@ using System.Diagnostics;
 namespace MotionMatching
 {
     using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
-    using PoseFeature = MotionMatchingData.PoseFeature;
     using Debug = UnityEngine.Debug;
-    using static MotionMatching.Skeleton;
-    using static MotionMatching.MotionMatchingData;
 
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
@@ -23,6 +20,7 @@ namespace MotionMatching
         public float CrowdThreshold = 0.6f;
         public float CrowdSecondTrajectoryWeight = 0.4f;
         public float CrowdThirdTrajectoryWeight = 0.1f;
+        public int LargeStepSize = 8;
 
         [Header("General")]
         public MotionMatchingCharacterController CharacterController;
@@ -68,7 +66,6 @@ namespace MotionMatching
         private float SearchTimeLeft;
         private NativeArray<float> QueryFeature;
         private NativeArray<int> SearchResult;
-        private NativeArray<float> DebugCrowdDistance; // DEBUG
         private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
         // BVH Acceleration Structure
@@ -147,7 +144,6 @@ namespace MotionMatching
 
             // Other initialization
             SearchResult = new NativeArray<int>(1, Allocator.Persistent);
-            DebugCrowdDistance = new NativeArray<float>(3, Allocator.Persistent);
             int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count + MMData.DynamicFeatures.Count;
             if (FeatureWeights == null || FeatureWeights.Length != numberFeatures)
             {
@@ -172,8 +168,9 @@ namespace MotionMatching
             }
 
             // Tags
-            TagMask = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
-            DisableQueryTag();
+            // DEBUG: tags were removed from the Burst Search functions
+            //TagMask = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
+            //DisableQueryTag();
 
             // Foot Lock
             if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.LogError("[Motion Matching] LeftToes not found");
@@ -284,7 +281,6 @@ namespace MotionMatching
                     var jobCrowd = new CrowdMotionMatchingSearchBurst
                     {
                         Valid = FeatureSet.GetValid(),
-                        TagMask = TagMask,
                         Features = FeatureSet.GetFeatures(),
                         FeatureWeights = FeaturesWeightsNativeArray,
                         CrowdThreshold = CrowdThreshold,
@@ -296,7 +292,6 @@ namespace MotionMatching
                         FeatureSize = FeatureSet.FeatureSize,
                         FeatureStaticSize = FeatureSet.FeatureStaticSize,
                         BestIndex = SearchResult,
-                        DebugCrowdDistance = DebugCrowdDistance,
                         Distances = DistanceFeatures,
                         PointsOnEllipse = PointsOnEllipse,
                         PointsOnObstacle = PointsOnObstacle,
@@ -304,7 +299,8 @@ namespace MotionMatching
                         ObstaclePenalization = ObstaclePenalization,
                         NumberDebugPoints = VisualDebugElements,
                         IsDebug = true,
-                        DebugIndex = CurrentFrame
+                        DebugIndex = CurrentFrame,
+                        LargeStepSize = LargeStepSize,
                     };
                     jobCrowd.Schedule().Complete();
                 }
@@ -355,6 +351,9 @@ namespace MotionMatching
 
         private int SearchMotionMatching()
         {
+            //Stopwatch sw = Stopwatch.StartNew();
+            //Stopwatch swLocal = new Stopwatch();
+
             // Weights
             UpdateAndGetFeatureWeights();
 
@@ -365,7 +364,8 @@ namespace MotionMatching
             // Get next feature vector (when doing motion matching search, they need less error than this)
             float currentDistance = float.MaxValue;
             bool currentValid = false;
-            if (FeatureSet.IsValidFeature(CurrentFrame) && TagMask[CurrentFrame])
+            //if (FeatureSet.IsValidFeature(CurrentFrame) && TagMask[CurrentFrame]) // DEBUG: tags were removed from the Burst Search functions
+            if (FeatureSet.IsValidFeature(CurrentFrame))
             {
                 currentValid = true;
                 currentDistance = 0.0f;
@@ -401,10 +401,10 @@ namespace MotionMatching
             }
             else
             {
+                //swLocal.Start();
                 var job = new LinearMotionMatchingSearchBurst
                 {
                     Valid = FeatureSet.GetValid(),
-                    TagMask = TagMask,
                     Features = FeatureSet.GetFeatures(),
                     QueryFeature = QueryFeature,
                     FeatureWeights = FeaturesWeightsNativeArray,
@@ -415,15 +415,17 @@ namespace MotionMatching
                     Distances = DistanceFeatures
                 };
                 job.Schedule().Complete();
+                //swLocal.Stop();
+                //Debug.Log($"[Motion Matching] Linear Search Time: {swLocal.Elapsed.TotalMilliseconds} ms");
                 if (DoCrowdSearch)
                 {
                     NativeArray<(float2, float)> obstacles = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
                     if (obstacles.Length > 0)
                     {
+                        //swLocal.Restart();
                         var jobCrowd = new CrowdMotionMatchingSearchBurst
                         {
                             Valid = FeatureSet.GetValid(),
-                            TagMask = TagMask,
                             Features = FeatureSet.GetFeatures(),
                             FeatureWeights = FeaturesWeightsNativeArray,
                             CrowdThreshold = CrowdThreshold,
@@ -435,17 +437,20 @@ namespace MotionMatching
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,
-                            DebugCrowdDistance = DebugCrowdDistance,
                             Distances = DistanceFeatures,
                             PointsOnEllipse = PointsOnEllipse,
                             PointsOnObstacle = PointsOnObstacle,
                             ObstacleDistance = ObstacleDistances,
                             ObstaclePenalization = ObstaclePenalization,
                             NumberDebugPoints = VisualDebugElements,
-                            IsDebug = false
+                            IsDebug = false,
+                            LargeStepSize = LargeStepSize,
 
                         };
                         jobCrowd.Schedule().Complete();
+
+                        //swLocal.Stop();
+                        //Debug.Log($"[Motion Matching] Crowd Search Time: {swLocal.Elapsed.TotalMilliseconds} ms");
                     }
                 }
             }
@@ -455,6 +460,9 @@ namespace MotionMatching
             if (currentValid && best == -1) best = CurrentFrame;
 
             Debug.Assert(best != -1, "Motion Matching is not able to find any valid pose. Maybe the motion database is empty or the query tag used produces an empty set of poses?");
+
+            //sw.Stop();
+            //Debug.Log($"[Motion Matching] Search Time: {sw.Elapsed.TotalMilliseconds} ms");
 
             return best;
         }
@@ -665,6 +673,7 @@ namespace MotionMatching
         /// </summary>
         public void DisableQueryTag()
         {
+            throw new NotImplementedException(); // DEBUG: tags were removed from the Burst Search functions
             var job = new DisableTagBurst
             {
                 TagMask = TagMask,
@@ -678,6 +687,7 @@ namespace MotionMatching
         /// </summary>
         public void SetQueryTag(string name)
         {
+            throw new NotImplementedException(); // DEBUG: tags were removed from the Burst Search functions
             PoseSet.Tag tag = PoseSet.GetTag(name);
             // TODO: cache results to avoid duplicated computations...
             var job = new SetTagBurst
@@ -696,6 +706,7 @@ namespace MotionMatching
         /// </summary>
         public void SetQueryTag(QueryTag query)
         {
+            throw new NotImplementedException(); // DEBUG: tags were removed from the Burst Search functions
             query.ComputeRanges(PoseSet);
             var job = new SetTagBurst
             {
@@ -801,20 +812,6 @@ namespace MotionMatching
         public Transform[] GetSkeletonTransforms()
         {
             return SkeletonTransforms;
-        }
-
-        private void OnGUI()
-        {
-            if (DebugGUI)
-            {
-                GUIStyle headStyle = new()
-                {
-                    fontSize = 40,
-                };
-                GUI.Label(new Rect(10.0f, 10.0f, 190.0f, 20.0f), "Crowd: " + DebugCrowdDistance[0].ToString("0.0000"), headStyle);
-                GUI.Label(new Rect(10.0f, 60.0f, 190.0f, 20.0f), "Crowd Weight: " + DebugCrowdDistance[2].ToString("0.0000"), headStyle);
-                GUI.Label(new Rect(10.0f, 110.0f, 190.0f, 20.0f), "Trajectory: " + DebugCrowdDistance[1].ToString("0.0000"), headStyle);
-            }
         }
 
         private void OnDestroy()

@@ -1,8 +1,8 @@
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
-using UnityEngine;
 using Unity.Mathematics;
+using System.Collections.Generic;
 
 namespace MotionMatching
 {
@@ -12,7 +12,6 @@ namespace MotionMatching
     //public struct LinearMotionMatchingSearchBurst : IJob
     //{
     //    [ReadOnly] public NativeArray<bool> Valid; // TODO: If all features are valid, this will be unnecessary
-    //    [ReadOnly] public NativeArray<bool> TagMask; // TODO: convert to a bitmask to optimize memory
     //    [ReadOnly] public NativeArray<float> Features;
     //    [ReadOnly] public NativeArray<float> QueryFeature;
     //    [ReadOnly] public NativeArray<float> FeatureWeights; // Size = FeatureSize
@@ -46,22 +45,22 @@ namespace MotionMatching
     //            // Compare
     //            if (math.any(sqrDistance < min)) // most of the time this will be false... (profiling: 5-10% speedup)
     //            {
-    //                if (sqrDistance.x < min.x && Valid[index] && TagMask[index]) // Checking Valid here is more performant than using it to avoid calculations... probably most of the time sqrDistance < min is false and reduces memory accesses (Valid is not used)
+    //                if (sqrDistance.x < min.x && Valid[index]) // Checking Valid here is more performant than using it to avoid calculations... probably most of the time sqrDistance < min is false and reduces memory accesses (Valid is not used)
     //                {
     //                    min.x = sqrDistance.x;
     //                    bestIndex.x = index;
     //                }
-    //                if (sqrDistance.y < min.y && Valid[index + 1] && TagMask[index + 1])
+    //                if (sqrDistance.y < min.y && Valid[index + 1])
     //                {
     //                    min.y = sqrDistance.y;
     //                    bestIndex.y = index + 1;
     //                }
-    //                if (sqrDistance.z < min.z && Valid[index + 2] && TagMask[index + 1])
+    //                if (sqrDistance.z < min.z && Valid[index + 2])
     //                {
     //                    min.z = sqrDistance.z;
     //                    bestIndex.z = index + 2;
     //                }
-    //                if (sqrDistance.w < min.w && Valid[index + 3] && TagMask[index + 1])
+    //                if (sqrDistance.w < min.w && Valid[index + 3])
     //                {
     //                    min.w = sqrDistance.w;
     //                    bestIndex.w = index + 3;
@@ -86,7 +85,7 @@ namespace MotionMatching
     //                float diff = Features[featureIndex + j] - QueryFeature[j];
     //                sqrDistance += diff * diff * FeatureWeights[j];
     //            }
-    //            if (sqrDistance < _min && Valid[index] && TagMask[index])
+    //            if (sqrDistance < _min && Valid[index])
     //            {
     //                _min = sqrDistance;
     //                _bestIndex = index;
@@ -100,7 +99,6 @@ namespace MotionMatching
     public struct LinearMotionMatchingSearchBurst : IJob
     {
         [ReadOnly] public NativeArray<bool> Valid;
-        [ReadOnly] public NativeArray<bool> TagMask;
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> QueryFeature;
         [ReadOnly] public NativeArray<float> FeatureWeights;
@@ -118,7 +116,7 @@ namespace MotionMatching
 
             for (int i = 0; i < Valid.Length; ++i)
             {
-                if (Valid[i] && TagMask[i])
+                if (Valid[i])
                 {
                     float sqrDistance = 0.0f;
                     int featureIndex = i * FeatureSize;
@@ -146,7 +144,6 @@ namespace MotionMatching
     public struct CrowdMotionMatchingSearchBurst : IJob
     {
         [ReadOnly] public NativeArray<bool> Valid;
-        [ReadOnly] public NativeArray<bool> TagMask;
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> FeatureWeights;
         [ReadOnly] public float CrowdThreshold;
@@ -155,11 +152,11 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<float> Mean;
         [ReadOnly] public NativeArray<float> Std;
         [ReadOnly] public NativeArray<(float2, float)> Obstacles;
+        [ReadOnly] public int NumberOfFeatures;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int FeatureStaticSize;
 
         public NativeArray<int> BestIndex;
-        public NativeArray<float> DebugCrowdDistance;
         public NativeArray<float> Distances;
 
         // Debug Visuals
@@ -170,6 +167,7 @@ namespace MotionMatching
         public NativeArray<int> NumberDebugPoints;
         [ReadOnly] public bool IsDebug;
         [ReadOnly] public int DebugIndex;
+        [ReadOnly] public int LargeStepSize;
 
         private float DistanceFunction(float distance, float threshold)
         {
@@ -204,7 +202,6 @@ namespace MotionMatching
         {
             int featureIndex = i * FeatureSize;
             float sqrDistance = Distances[i];
-            float auxDebugTrajectory = sqrDistance;
 
             // HARDCODED: crowd forces
             float2 pos1 = new(Features[featureIndex + 0] * Std[0] + Mean[0],
@@ -255,16 +252,10 @@ namespace MotionMatching
                 }
             }
 
-            Distances[i] = sqrDistance;
             if (sqrDistance < minDistance)
             {
                 minDistance = sqrDistance;
                 BestIndex[0] = i;
-            }
-            if (saveDebug)
-            {
-                DebugCrowdDistance[0] = debugTotalCrowdDistance;
-                DebugCrowdDistance[1] = auxDebugTrajectory;
             }
 
             return minDistance;
@@ -293,18 +284,32 @@ namespace MotionMatching
             {
                 NumberDebugPoints[0] = 0;
                 FeatureCheck(DebugIndex, float.MinValue, true);
-                DebugCrowdDistance[2] = DebugCrowdDistance[0] * FeatureWeights[FeatureStaticSize];
             }
             else
             {
+                // Check all elements in the cluster
                 float minDistance = float.MaxValue;
                 BestIndex[0] = -1;
 
-                for (int i = 0; i < Valid.Length; ++i)
+                for (int i = 0; i < Valid.Length - LargeStepSize; i += LargeStepSize)
                 {
-                    if (Valid[i] && TagMask[i])
+                    if (Valid[i])
                     {
-                        minDistance = FeatureCheck(i, minDistance, false);
+                        float newMinDistance = FeatureCheck(i, minDistance, false);
+                        if (newMinDistance < minDistance)
+                        {
+                            minDistance = math.min(minDistance, newMinDistance);
+                            if (LargeStepSize > 1)
+                            {
+                                for (int j = math.max(i - LargeStepSize / 2, 0); j < i + LargeStepSize / 2; j++)
+                                {
+                                    if (Valid[j])
+                                    {
+                                        minDistance = FeatureCheck(j, minDistance, false);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
