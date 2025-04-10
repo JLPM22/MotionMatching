@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
-using UnityEngine.TextCore.Text;
 
 namespace MotionMatching
 {
@@ -44,6 +43,7 @@ namespace MotionMatching
         public bool DebugCurrent = true;
         public bool DebugPrediction = true;
         public bool DebugClamping = true;
+        public bool DebugSteering = false;
         // --------------------------------------------------------------------------
 
         // PRIVATE ------------------------------------------------------------------
@@ -72,7 +72,7 @@ namespace MotionMatching
         private Obstacle[] Obstacles;
         private NativeArray<(float2, float)> ObstaclesArray;
         private List<Obstacle> CandidateObstacles = new();
-        private float2 Steering;
+        public float2 Steering { get; private set; }
         // --------------------------------------------------------------------------
 
         // FUNCTIONS ---------------------------------------------------------------
@@ -156,7 +156,7 @@ namespace MotionMatching
             float2 desiredSpeed = InputMovement * MaxSpeed;
             if (DoSteering)
             {
-                float2 targetSteering = ComputeSteering(currentPos, transform.forward, Obstacles, SteeringLookAhead, SteeringForce);
+                float2 targetSteering = ComputeSteering(currentPos, transform.forward, Obstacles, SteeringLookAhead, SteeringForce, debug: DebugSteering);
                 Steering = math.lerp(Steering, targetSteering, Time.deltaTime * SteeringChangeFactor);
                 desiredSpeed += Steering;
             }
@@ -287,39 +287,73 @@ namespace MotionMatching
             MotionMatching.SetRotAdjustment(adjustmentRotation);
         }
 
-        public static float2 ComputeSteering(float2 currentPos, Vector3 transformForward, Obstacle[] obstacles, 
-                                              float lookAhead, float force)
+        public static float2 ComputeSteering(float2 currentPos, float3 currentForward, Obstacle[] obstacles, 
+                                             float lookAhead, float force, float fovAngle = 30.0f, int numRays = 20,
+                                             bool debug = false)
         {
-            float2 resHitPoint = float2.zero;
-            float resHitDistance = float.MaxValue;
-            for (int i = 0; i < obstacles.Length; i++)
+            float2 bestSteering = float2.zero;
+            float closestObstacleDistance = lookAhead;
+
+            float forwardAngle = math.degrees(math.atan2(currentForward.z, currentForward.x));
+            float angleIncrement = fovAngle / (numRays - 1);
+
+            for (int i = 0; i < numRays; i++)
             {
-                if (obstacles[i].IsStatic) continue;
-                float2 rayOrigin = currentPos;
-                float2 rayDirection = math.normalize(new float2(transformForward.x, transformForward.z));
-                if (obstacles[i].Intersect(rayOrigin, rayDirection, out float2 hitPoint1, out float hitDistance1, out float2 hitPoint2, out float hitDistance2))
+                float angle = forwardAngle - fovAngle / 2f + i * angleIncrement;
+                float2 rayDirection = new(math.cos(math.radians(angle)), math.sin(math.radians(angle)));
+
+                if (debug)
                 {
-                    float2 hitPoint = hitPoint1;
-                    float hitDistance = hitDistance1;
-                    if (hitDistance2 < hitDistance1)
+                    Debug.DrawRay(new Vector3(currentPos.x, 0.0f, currentPos.y), new float3(rayDirection.x, 0.0f, rayDirection.y) * lookAhead, Color.black);
+                }
+
+                float resHitDistance = float.MaxValue;
+                Obstacle resObstacle = null;
+
+                for (int j = 0; j < obstacles.Length; j++)
+                {
+                    if (obstacles[j].IsStatic) continue; // steering is only computed for dynamic obstacles
+
+                    if (obstacles[j].Intersect(currentPos, rayDirection, out float2 hitPoint1, out float hitDistance1, out float2 hitPoint2, out float hitDistance2))
                     {
-                        hitPoint = hitPoint2;
-                        hitDistance = hitDistance2;
+                        float hitDistance = math.min(hitDistance1, hitDistance2);
+                        //float2 hitPoint = (hitDistance1 < hitDistance2) ? hitPoint1 : hitPoint2;
+
+                        if (hitDistance < resHitDistance && hitDistance < lookAhead)
+                        {
+                            resHitDistance = hitDistance;
+                            resObstacle = obstacles[j];
+                        }
                     }
-                    if (hitDistance < resHitDistance)
+                }
+
+                if (resHitDistance < lookAhead)
+                {
+                    float2 forwardProj = new(currentForward.x, currentForward.z);
+                    float2 localSteering = math.normalize(forwardProj) * force * math.max(0.0f, math.log10(1.0f - (resHitDistance / lookAhead)) + 1.0f);
+                    localSteering = new float2(-localSteering.y, localSteering.x); // Perpendicular
+
+                    if (resObstacle != null && resObstacle.GetCurrentSteering(out float2 obsSteering))
                     {
-                        resHitPoint = hitPoint;
-                        resHitDistance = hitDistance;
+                        obsSteering = math.normalize(obsSteering);
+                        float dot1 = math.dot(math.normalize(localSteering), obsSteering);
+                        float dot2 = math.dot(math.normalize(-localSteering), obsSteering);
+                        if (dot1 > dot2)
+                        {
+                            localSteering = -localSteering;
+                        }
+                    }
+
+                    // Prioritize the closest obstacle's steering
+                    if (resHitDistance < closestObstacleDistance)
+                    {
+                        closestObstacleDistance = resHitDistance;
+                        bestSteering = localSteering;
                     }
                 }
             }
-            float2 steering = float2.zero;
-            if (resHitDistance < lookAhead)
-            {
-                steering = math.normalize(resHitPoint - currentPos) * force * (1.0f - (resHitDistance / lookAhead));
-                steering = new float2(-steering.y, steering.x); // perpendicular
-            }
-            return steering;
+
+            return bestSteering;
         }
 
         private void OnObstaclesUpdated(List<Obstacle> obstacles)

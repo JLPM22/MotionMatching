@@ -8,6 +8,9 @@ namespace MotionMatching
     {
         public float Radius = 1.0f;
         public bool IsStatic = false;
+        // Used for steering coordination, can be left null if not used
+        public CrowdSplineCharacterController CrowdSplineCharacterController;
+        public CrowdCharacterController CrowdCharacter;
 
         private void OnEnable()
         {
@@ -17,6 +20,22 @@ namespace MotionMatching
         private void OnDisable()
         {
             ObstacleManager.Instance.UnregisterObstacle(this);
+        }
+
+        public bool GetCurrentSteering(out float2 steering)
+        {
+            if (CrowdSplineCharacterController != null)
+            {
+                steering = CrowdSplineCharacterController.Steering;
+                return true;
+            }
+            else if (CrowdCharacter != null)
+            {
+                steering = CrowdCharacter.Steering;
+                return true;
+            }
+            steering = float2.zero;
+            return false;
         }
 
         public Vector3 GetWorldPosition()

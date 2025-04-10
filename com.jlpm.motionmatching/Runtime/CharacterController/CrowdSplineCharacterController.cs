@@ -20,8 +20,10 @@ namespace MotionMatching
         public bool Loop = true;
         public float Speed = 1.0f;
         public bool UpdateOnlyWhenCharacterMoving = false;
-        public float DistanceToMove = 1.0f; // If UpdateOnlyWhenCharacterMoving is true, the character will only move if the distance to the next point is greater than this value
-        public float DistanceResumeMoving = 0.75f; // If UpdateOnlyWhenCharacterMoving is true and DistanceToMove was not reached, the character will resume moving if the distance to the next point is greater than this value
+        [Tooltip("If UpdateOnlyWhenCharacterMoving is true, the character will only move if the distance to the next point is greater than this value")]
+        public float DistanceToMove = 1.0f;
+        [Tooltip("If UpdateOnlyWhenCharacterMoving is true and DistanceToMove was not reached, the character will resume moving if the distance to the next point is greater than this value")]
+        public float DistanceResumeMoving = 0.75f; 
         public bool DoSteering = false;
         public float SteeringLookAhead = 4.0f;
         public float SteeringForce = 2.0f;
@@ -30,10 +32,11 @@ namespace MotionMatching
         public float MaximumEllipseLength = 0.9f;
 
         public bool DebugDraw = true;
+        public bool DebugSteering = false;
 
         private float T;
         private bool IsStopped;
-        private float2 Steering;
+        public float2 Steering { get; private set; }
         private float2 SteeringOffset;
 
         private float2 CurrentPosition;
@@ -180,9 +183,9 @@ namespace MotionMatching
                     }
                 }
 
-                float2 steeringPos = CurrentPosition + SteeringOffset;
+                float2 steeringPos = new(MotionMatching.transform.position.x, MotionMatching.transform.position.z);
                 float2 targetSteering = CrowdCharacterController.ComputeSteering(steeringPos, new Vector3(CurrentDirection.x, 0.0f, CurrentDirection.y),
-                                                                                 Obstacles, SteeringLookAhead, SteeringForce);
+                                                                                 Obstacles, SteeringLookAhead, SteeringForce, debug: DebugSteering);
                 targetSteering += -SteeringOffset * SteeringSplineForce;
                 Steering = math.lerp(Steering, targetSteering, Time.deltaTime * SteeringChangeFactor);
                 SteeringOffset += Steering * Time.deltaTime;

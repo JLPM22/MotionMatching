@@ -311,7 +311,17 @@ namespace MotionMatching
             // HARDCODED: this should be defined dynamically because the direction feature may not be the first one
             if (VisualDebugElements[0] > 0)
             {
-                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight * DynamicDirectionWeightFactor, Time.deltaTime * 10.0f);
+                float closestObstacleDistance = float.MaxValue;
+                for (int i = 0; i < VisualDebugElements[0]; i++)
+                {
+                    float distance = ObstacleDistances[i];
+                    if (distance < closestObstacleDistance)
+                    {
+                        closestObstacleDistance = distance;
+                    }
+                }
+                float distanceFactor = closestObstacleDistance / CrowdThreshold; // 1.0f is the max distance, 0.0f is touching
+                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight * math.max(DynamicDirectionWeightFactor, distanceFactor), Time.deltaTime * 10.0f);
             }
             else
             {
