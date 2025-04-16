@@ -8,6 +8,7 @@ namespace MotionMatching
     {
         public float Radius = 1.0f;
         public bool IsStatic = false;
+        public float2 Height = new(0, 1); // Height in Y axis (min, max)
         // Used for steering coordination, can be left null if not used
         public CrowdSplineCharacterController CrowdSplineCharacterController;
         public CrowdCharacterController CrowdCharacter;
@@ -48,6 +49,16 @@ namespace MotionMatching
             return new Vector3(transform.position.x, 0, transform.position.z);
         }
 
+        public float GetMinHeightWorld()
+        {
+            return transform.position.y + Height.x;
+        }
+
+        public float GetMaxHeightWorld()
+        {
+            return transform.position.y + Height.y;
+        }
+
         /* https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection.html */
         public bool Intersect(float2 rayOrigin, float2 rayDirection, out float2 hitPoint1, out float hitDistance1, out float2 hitPoint2, out float hitDistance2)
         {
@@ -83,7 +94,9 @@ namespace MotionMatching
         private void OnDrawGizmos()
         {
             Gizmos.color = Color.red;
-            GizmosExtensions.DrawWireCircle(transform.position, Radius, Quaternion.identity);
+            Vector3 position = transform.position;
+            GizmosExtensions.DrawWireCircle(new Vector3(position.x, GetMinHeightWorld(), position.z), Radius, Quaternion.identity);
+            GizmosExtensions.DrawWireCircle(new Vector3(position.x, GetMaxHeightWorld(), position.z), Radius, Quaternion.identity);
         }
     }
 }
