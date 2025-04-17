@@ -337,6 +337,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> FeatureWeights;
         [ReadOnly] public NativeArray<float> QueryFeature;
+        [ReadOnly] public NativeArray<int> AdaptativeFeaturesIndices;
         [ReadOnly] public float CrowdThreshold;
         [ReadOnly] public float CrowdSecondTrajectoryWeight;
         [ReadOnly] public float CrowdThirdTrajectoryWeight;
@@ -509,28 +510,25 @@ namespace MotionMatching
             }
             else
             {
-                // Check all elements in the cluster
                 float minDistance = float.MaxValue;
                 BestIndex[0] = -1;
 
-                for (int i = 0; i < Valid.Length - DynamicAccelerationConsts.LocalSearchRadius; i += DynamicAccelerationConsts.LocalSearchRadius)
+                for (int a = 0; a < AdaptativeFeaturesIndices.Length; a++)
                 {
-                    if (Valid[i])
+                    int i = AdaptativeFeaturesIndices[a];
+                    float staticSqrDistance = StaticSqrDistance(i);
+                    float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
+                    if (newMinDistance < minDistance)
                     {
-                        float staticSqrDistance = StaticSqrDistance(i);
-                        float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
-                        if (newMinDistance < minDistance)
+                        minDistance = newMinDistance;
+                        if (DynamicAccelerationConsts.LocalSearchRadius > 1)
                         {
-                            minDistance = newMinDistance;
-                            if (DynamicAccelerationConsts.LocalSearchRadius > 1)
+                            for (int j = math.max(i - DynamicAccelerationConsts.LocalSearchRadius, 0); j < i + DynamicAccelerationConsts.LocalSearchRadius; j++)
                             {
-                                for (int j = math.max(i - DynamicAccelerationConsts.LocalSearchRadius, 0); j < i + DynamicAccelerationConsts.LocalSearchRadius; j++)
+                                if (i != j && Valid[j])
                                 {
-                                    if (i != j && Valid[j])
-                                    {
-                                        staticSqrDistance = StaticSqrDistance(j);
-                                        minDistance = FeatureCheck(j, minDistance, staticSqrDistance, false);
-                                    }
+                                    staticSqrDistance = StaticSqrDistance(j);
+                                    minDistance = FeatureCheck(j, minDistance, staticSqrDistance, false);
                                 }
                             }
                         }

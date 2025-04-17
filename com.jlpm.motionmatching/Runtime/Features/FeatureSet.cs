@@ -50,7 +50,6 @@ namespace MotionMatching
         private NativeArray<float> SmallBoundingBoxMax;
 
         // Dynamic acceleration structures
-        private NativeArray<float> AdaptativeFeatures;
         private NativeArray<int> AdaptativeFeaturesIndices; // Index to the real Features array
 
         public FeatureSet(MotionMatchingData mmData, int numberFeatureVectors)
@@ -275,7 +274,8 @@ namespace MotionMatching
             smallBoundingBoxMax = SmallBoundingBoxMax;
         }
 
-        public void GetDynamicAccelerationStructures(DynamicAccelerationConsts consts, out NativeArray<int> adaptativeFeaturesIndices)
+        public void GetDynamicAccelerationStructures(DynamicAccelerationConsts consts, 
+                                                     out NativeArray<int> adaptativeFeaturesIndices)
         {
             if (AdaptativeFeaturesIndices == null || !AdaptativeFeaturesIndices.IsCreated)
             {
@@ -294,7 +294,7 @@ namespace MotionMatching
                 job.Schedule().Complete();
                 AdaptativeFeaturesIndices = adaptativeIndices.AsArray();
             }
-            Debug.Log(GetFeatures().Length / FeatureSize + " ----- " + AdaptativeFeaturesIndices.Length);
+            Debug.Log("Number of features: " + GetFeatures().Length / FeatureSize + " -----  Adaptative Length: " + AdaptativeFeaturesIndices.Length);
             adaptativeFeaturesIndices = AdaptativeFeaturesIndices;
         }
 
