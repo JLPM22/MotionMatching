@@ -278,7 +278,7 @@ namespace MotionMatching
             // DEBUG: at the end of the frame update, recompute features to display debug information
             if (DoCrowdSearch)
             {
-                NativeArray<(float2, float, float2)> obstacles = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
+                (NativeArray<(float2, float, float2)> obstacles, NativeArray<int> obstaclesCount) = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
                 if (obstacles.Length > 0)
                 {
                     FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
@@ -297,6 +297,7 @@ namespace MotionMatching
                             Mean = means,
                             Std = stds,
                             Obstacles = obstacles,
+                            ObstaclesCount = obstaclesCount,
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,
@@ -326,6 +327,7 @@ namespace MotionMatching
                             Mean = means,
                             Std = stds,
                             Obstacles = obstacles,
+                            ObstaclesCount = obstaclesCount,
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,
@@ -449,7 +451,7 @@ namespace MotionMatching
             }
             else
             {
-                NativeArray<(float2, float, float2)> obstacles = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
+                (NativeArray<(float2, float, float2)> obstacles, NativeArray<int> obstaclesCount) = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
                 if (obstacles.Length == 0 || !DoCrowdSearch)
                 {
                     //swLocal.Start();
@@ -492,6 +494,7 @@ namespace MotionMatching
                             Mean = means,
                             Std = stds,
                             Obstacles = obstacles,
+                            ObstaclesCount = obstaclesCount,
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,
@@ -521,6 +524,7 @@ namespace MotionMatching
                             Mean = means,
                             Std = stds,
                             Obstacles = obstacles,
+                            ObstaclesCount = obstaclesCount,
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,

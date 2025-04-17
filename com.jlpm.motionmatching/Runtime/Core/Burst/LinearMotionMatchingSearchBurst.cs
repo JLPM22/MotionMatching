@@ -154,6 +154,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<float> Mean;
         [ReadOnly] public NativeArray<float> Std;
         [ReadOnly] public NativeArray<(float2, float, float2)> Obstacles;
+        [ReadOnly] public NativeArray<int> ObstaclesCount;
         [ReadOnly] public int NumberOfFeatures;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int FeatureStaticSize;
@@ -241,29 +242,40 @@ namespace MotionMatching
             float2 secondaryAxisUnit3 = new(-primaryAxisUnit3.y, primaryAxisUnit3.x);
 
             float debugTotalCrowdDistance = 0.0f;
-            for (int obstacle = 0; obstacle < Obstacles.Length; obstacle++)
+            // HARDCODED: works only when ObstaclesCount.Length == 3
+            int obstacleIt = 0;
+            for (int p = 0; p < ObstaclesCount[0]; p++)
             {
-                float penalization1 = ComputePenalization(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacle, 1.0f, saveDebug);
+                float penalization1 = ComputePenalization(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleIt, 1.0f, saveDebug);
                 debugTotalCrowdDistance += penalization1;
                 sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
                 {
-                    break;
+                    return minDistance;
                 }
-                float penalization2 = ComputePenalization(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacle, CrowdSecondTrajectoryWeight, saveDebug);
+                obstacleIt += 1;
+            }
+            for (int p = 0; p < ObstaclesCount[1]; p++)
+            { 
+                float penalization2 = ComputePenalization(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleIt, CrowdSecondTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization2;
                 sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
                 {
-                    break;
+                    return minDistance;
                 }
-                float penalization3 = ComputePenalization(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacle, CrowdThirdTrajectoryWeight, saveDebug);
+                obstacleIt += 1;
+            }
+            for (int p = 0; p < ObstaclesCount[2]; p++)
+            { 
+                float penalization3 = ComputePenalization(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleIt, CrowdThirdTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization3;
                 sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
                 {
-                    break;
+                    return minDistance;
                 }
+                obstacleIt += 1;
             }
 
             if (sqrDistance < minDistance)
@@ -344,6 +356,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<float> Mean;
         [ReadOnly] public NativeArray<float> Std;
         [ReadOnly] public NativeArray<(float2, float, float2)> Obstacles;
+        [ReadOnly] public NativeArray<int> ObstaclesCount;
         [ReadOnly] public int NumberOfFeatures;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int FeatureStaticSize;
@@ -440,38 +453,49 @@ namespace MotionMatching
             float2 height3 = new(Features[featureIndex + FeatureStaticSize + 16], Features[featureIndex + FeatureStaticSize + 17]);
 
             float debugTotalCrowdDistance = 0.0f;
-            for (int obstacle = 0; obstacle < Obstacles.Length; obstacle++)
+            // HARDCODED: works only when ObstaclesCount.Length == 3
+            int obstacleIt = 0;
+            for (int p = 0; p < ObstaclesCount[0]; p++)
             {
-                if (HeightOverlap(height1, Obstacles[obstacle].Item3))
+                if (HeightOverlap(height1, Obstacles[obstacleIt].Item3))
                 {
-                    float penalization1 = ComputePenalization(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacle, 1.0f, saveDebug);
+                    float penalization1 = ComputePenalization(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleIt, 1.0f, saveDebug);
                     debugTotalCrowdDistance += penalization1;
                     sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
                     {
-                        break;
+                        return minDistance;
                     }
                 }
-                if (HeightOverlap(height2, Obstacles[obstacle].Item3))
-                { 
-                    float penalization2 = ComputePenalization(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacle, CrowdSecondTrajectoryWeight, saveDebug);
+                obstacleIt += 1;
+            }
+            for (int p = 0; p < ObstaclesCount[1]; p++)
+            {
+                if (HeightOverlap(height2, Obstacles[obstacleIt].Item3))
+                {
+                    float penalization2 = ComputePenalization(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleIt, CrowdSecondTrajectoryWeight, saveDebug);
                     debugTotalCrowdDistance += penalization2;
                     sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
                     {
-                        break;
+                        return minDistance;
                     }
                 }
-                if (HeightOverlap(height3, Obstacles[obstacle].Item3))
+                obstacleIt += 1;
+            }
+            for (int p = 0; p < ObstaclesCount[2]; p++)
+            {
+                if (HeightOverlap(height3, Obstacles[obstacleIt].Item3))
                 {
-                    float penalization3 = ComputePenalization(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacle, CrowdThirdTrajectoryWeight, saveDebug);
+                    float penalization3 = ComputePenalization(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleIt, CrowdThirdTrajectoryWeight, saveDebug);
                     debugTotalCrowdDistance += penalization3;
                     sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
                     {
-                        break;
+                        return minDistance;
                     }
                 }
+                obstacleIt += 1;
             }
 
             if (sqrDistance < minDistance)

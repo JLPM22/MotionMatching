@@ -54,7 +54,8 @@ namespace MotionMatching
         // Crowds ------------------------------------------------------------------
         private Obstacle[] Obstacles;
         private NativeArray<(float2, float, float2)> ObstaclesArray;
-        private List<Obstacle> CandidateObstacles = new();
+        private NativeArray<int> ObstaclesArrayCount;
+        private List<List<Obstacle>> CandidateObstacles;
         // --------------------------------------------------------------------------
 
         private void Start()
@@ -81,6 +82,11 @@ namespace MotionMatching
 
             PredictedPositions = new float2[NumberPredictionPos];
             PredictedDirections = new float2[NumberPredictionRot];
+            CandidateObstacles = new List<List<Obstacle>>();
+            for (int i = 0; i < NumberPredictionPos; ++i)
+            {
+                CandidateObstacles.Add(new List<Obstacle>());
+            }
             // Crowds
             OnObstaclesUpdated(ObstacleManager.Instance.GetObstacles());
         }
@@ -244,26 +250,13 @@ namespace MotionMatching
             }
         }
 
-        public override NativeArray<(float2, float, float2)> GetAllObstacles(Transform character)
+        public override (NativeArray<(float2, float, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
         {
-            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
-            ObstaclesArray = new NativeArray<(float2, float, float2)>(Obstacles.Length, Allocator.TempJob);
-            for (int i = 0; i < Obstacles.Length; i++)
+            for (int p = 0; p < CandidateObstacles.Count; p++)
             {
-                Obstacle obstacle = Obstacles[i];
-                float3 world = obstacle.GetProjWorldPosition(); ;
-                float3 localPos = character.InverseTransformPoint(world);
-                // HARDCODED: circle radius
-                ObstaclesArray[i] = (new float2(localPos.x, localPos.z),
-                                     obstacle.Radius,
-                                     new float2(obstacle.GetMinHeightWorld(), obstacle.GetMaxHeightWorld()));
+                CandidateObstacles[p].Clear();
             }
-            return ObstaclesArray;
-        }
-
-        public override NativeArray<(float2, float, float2)> GetNearbyObstacles(Transform character)
-        {
-            CandidateObstacles.Clear();
+            int candidateObstaclesCount = 0;
             float candidateThreshold = MaximumEllipseLength + MotionMatching.CrowdThreshold;
             for (int p = 0; p < PredictedPositions.Length; p++)
             {
@@ -271,27 +264,39 @@ namespace MotionMatching
                 for (int i = 0; i < Obstacles.Length; i++)
                 {
                     Obstacle obs = Obstacles[i];
-                    if (CandidateObstacles.Contains(obs)) continue; // already added
+                    if (CandidateObstacles[p].Contains(obs)) continue; // already added
                     if (math.distance(predPos, obs.GetProjWorldPosition()) < candidateThreshold + obs.Radius)
                     {
-                        CandidateObstacles.Add(obs);
+                        CandidateObstacles[p].Add(obs);
+                        candidateObstaclesCount += 1;
                     }
                 }
             }
 
-            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
-            ObstaclesArray = new NativeArray<(float2, float, float2)>(CandidateObstacles.Count, Allocator.TempJob);
-            for (int i = 0; i < CandidateObstacles.Count; i++)
+            if (ObstaclesArray.IsCreated || ObstaclesArrayCount.IsCreated)
             {
-                Obstacle obstacle = CandidateObstacles[i];
-                float3 world = obstacle.GetProjWorldPosition();
-                float3 localPos = character.InverseTransformPoint(world);
-                // HARDCODED: circle radius
-                ObstaclesArray[i] = (new float2(localPos.x, localPos.z), 
-                                     obstacle.Radius,
-                                     new float2(obstacle.GetMinHeightWorld(), obstacle.GetMaxHeightWorld()));
+                ObstaclesArray.Dispose();
+                ObstaclesArrayCount.Dispose();
             }
-            return ObstaclesArray;
+            ObstaclesArrayCount = new NativeArray<int>(CandidateObstacles.Count, Allocator.TempJob);
+            ObstaclesArray = new NativeArray<(float2, float, float2)>(candidateObstaclesCount, Allocator.TempJob);
+            int it = 0;
+            for (int p = 0; p < CandidateObstacles.Count; p++)
+            {
+                ObstaclesArrayCount[p] = CandidateObstacles[p].Count;
+                for (int i = 0; i < CandidateObstacles[p].Count; i++)
+                {
+                    Obstacle obstacle = CandidateObstacles[p][i];
+                    float3 world = obstacle.GetProjWorldPosition();
+                    float3 localPos = character.InverseTransformPoint(world);
+                    // HARDCODED: circle radius
+                    ObstaclesArray[it++] = (new float2(localPos.x, localPos.z),
+                                            obstacle.Radius,
+                                            new float2(obstacle.GetMinHeightWorld(), obstacle.GetMaxHeightWorld()));
+                }
+            }
+
+            return (ObstaclesArray, ObstaclesArrayCount);
         }
 
         public override void GetDynamicFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
@@ -332,6 +337,12 @@ namespace MotionMatching
             float3 start = SplineContainer.EvaluatePosition(0.0f);
             float3 delta = SplineContainer.EvaluatePosition(0.01f) - start;
             return math.normalize(new float3(delta.x, 0.0f, delta.z));
+        }
+
+        private void OnDestroy()
+        {
+            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
+            if (ObstaclesArrayCount.IsCreated) ObstaclesArrayCount.Dispose();
         }
 
 #if UNITY_EDITOR
