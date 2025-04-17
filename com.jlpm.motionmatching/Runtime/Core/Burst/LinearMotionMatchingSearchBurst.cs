@@ -463,7 +463,7 @@ namespace MotionMatching
                         break;
                     }
                 }
-                if (HeightOverlap(height1, Obstacles[obstacle].Item3))
+                if (HeightOverlap(height3, Obstacles[obstacle].Item3))
                 {
                     float penalization3 = ComputePenalization(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacle, CrowdThirdTrajectoryWeight, saveDebug);
                     debugTotalCrowdDistance += penalization3;
