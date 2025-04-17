@@ -20,7 +20,7 @@ namespace MotionMatching
         public float CrowdThreshold = 0.6f;
         public float CrowdSecondTrajectoryWeight = 0.4f;
         public float CrowdThirdTrajectoryWeight = 0.1f;
-        public int LargeStepSize = 8;
+        public DynamicAccelerationConsts DynamicAccelerationConsts;
 
         [Header("General")]
         public MotionMatchingCharacterController CharacterController;
@@ -73,6 +73,8 @@ namespace MotionMatching
         private NativeArray<float> LargeBoundingBoxMax;
         private NativeArray<float> SmallBoundingBoxMin;
         private NativeArray<float> SmallBoundingBoxMax;
+        // Dynamic Acceleration Structure
+        private NativeArray<int> AdaptativeFeaturesIndices;
         // Tags
         private NativeArray<bool> TagMask;
         // Foot Lock
@@ -109,6 +111,10 @@ namespace MotionMatching
                                      out LargeBoundingBoxMax,
                                      out SmallBoundingBoxMin,
                                      out SmallBoundingBoxMax);
+            if (DoCrowdSearch)
+            {
+                FeatureSet.GetDynamicAccelerationStructures(DynamicAccelerationConsts, out AdaptativeFeaturesIndices);
+            }
 
             // Skeleton
             SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
@@ -300,7 +306,7 @@ namespace MotionMatching
                             NumberDebugPoints = VisualDebugElements,
                             IsDebug = true,
                             DebugIndex = CurrentFrame,
-                            LargeStepSize = LargeStepSize,
+                            DynamicAccelerationConsts = DynamicAccelerationConsts,
                         };
                         jobCrowd.Schedule().Complete();
                     }
@@ -312,6 +318,7 @@ namespace MotionMatching
                             Features = FeatureSet.GetFeatures(),
                             FeatureWeights = FeaturesWeightsNativeArray,
                             QueryFeature = QueryFeature,
+                            AdaptativeFeaturesIndices = AdaptativeFeaturesIndices,
                             CrowdThreshold = CrowdThreshold,
                             CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
                             CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
@@ -328,7 +335,7 @@ namespace MotionMatching
                             NumberDebugPoints = VisualDebugElements,
                             IsDebug = true,
                             DebugIndex = CurrentFrame,
-                            LargeStepSize = LargeStepSize,
+                            DynamicAccelerationConsts = DynamicAccelerationConsts,
                         };
                         jobCrowd.Schedule().Complete();
                     }
@@ -352,11 +359,12 @@ namespace MotionMatching
                     }
                 }
                 float distanceFactor = closestObstacleDistance / CrowdThreshold; // 1.0f is the max distance, 0.0f is touching
-                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight * math.max(DynamicDirectionWeightFactor, distanceFactor), Time.deltaTime * 10.0f);
+                distanceFactor = math.log10(distanceFactor) + 1.0f;
+                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight * math.max(DynamicDirectionWeightFactor, distanceFactor), math.clamp(Time.deltaTime * 10.0f, 0.0f, 1.0f));
             }
             else
             {
-                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight, Time.deltaTime * 10.0f);
+                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight, math.clamp(Time.deltaTime * 100.0f, 0.0f, 1.0f));
             }
 
             // DEBUG
@@ -491,7 +499,7 @@ namespace MotionMatching
                             ObstaclePenalization = ObstaclePenalization,
                             NumberDebugPoints = VisualDebugElements,
                             IsDebug = false,
-                            LargeStepSize = LargeStepSize,
+                            DynamicAccelerationConsts = DynamicAccelerationConsts,
 
                         };
                         jobCrowd.Schedule().Complete();
@@ -504,6 +512,7 @@ namespace MotionMatching
                             Features = FeatureSet.GetFeatures(),
                             FeatureWeights = FeaturesWeightsNativeArray,
                             QueryFeature = QueryFeature,
+                            AdaptativeFeaturesIndices = AdaptativeFeaturesIndices,
                             CrowdThreshold = CrowdThreshold,
                             CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
                             CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
@@ -519,7 +528,7 @@ namespace MotionMatching
                             ObstaclePenalization = ObstaclePenalization,
                             NumberDebugPoints = VisualDebugElements,
                             IsDebug = false,
-                            LargeStepSize = LargeStepSize,
+                            DynamicAccelerationConsts = DynamicAccelerationConsts,
 
                         };
                         jobCrowd.Schedule().Complete();
@@ -905,6 +914,16 @@ namespace MotionMatching
         }
 
 #if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (DynamicAccelerationConsts.MinimumStepSize < 1)
+            {
+                DynamicAccelerationConsts.PercentageThreshold = 0.05f;
+                DynamicAccelerationConsts.MinimumStepSize = 8;
+                DynamicAccelerationConsts.LocalSearchRadius = 4;
+            }
+        }
+
         private void OnDrawGizmos()
         {
             // Skeleton

@@ -147,6 +147,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<float> FeatureWeights;
         [ReadOnly] public NativeArray<float> QueryFeature;
+        [ReadOnly] public NativeArray<int> AdaptativeFeaturesIndices;
         [ReadOnly] public float CrowdThreshold;
         [ReadOnly] public float CrowdSecondTrajectoryWeight;
         [ReadOnly] public float CrowdThirdTrajectoryWeight;
@@ -156,6 +157,7 @@ namespace MotionMatching
         [ReadOnly] public int NumberOfFeatures;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int FeatureStaticSize;
+        [ReadOnly] public DynamicAccelerationConsts DynamicAccelerationConsts;
 
         public NativeArray<int> BestIndex;
 
@@ -167,7 +169,6 @@ namespace MotionMatching
         public NativeArray<int> NumberDebugPoints;
         [ReadOnly] public bool IsDebug;
         [ReadOnly] public int DebugIndex;
-        [ReadOnly] public int LargeStepSize;
 
         private float StaticSqrDistance(int i)
         {
@@ -301,28 +302,25 @@ namespace MotionMatching
             }
             else
             {
-                // Check all elements in the cluster
                 float minDistance = float.MaxValue;
                 BestIndex[0] = -1;
 
-                for (int i = 0; i < Valid.Length - LargeStepSize; i += LargeStepSize)
+                for (int a = 0; a < AdaptativeFeaturesIndices.Length; a++)
                 {
-                    if (Valid[i])
+                    int i = AdaptativeFeaturesIndices[a];
+                    float staticSqrDistance = StaticSqrDistance(i);
+                    float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
+                    if (newMinDistance < minDistance)
                     {
-                        float staticSqrDistance = StaticSqrDistance(i);
-                        float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
-                        if (newMinDistance < minDistance)
+                        minDistance = newMinDistance;
+                        if (DynamicAccelerationConsts.LocalSearchRadius > 1)
                         {
-                            minDistance = newMinDistance;
-                            if (LargeStepSize > 1)
+                            for (int j = math.max(i - DynamicAccelerationConsts.LocalSearchRadius, 0); j < i + DynamicAccelerationConsts.LocalSearchRadius; j++)
                             {
-                                for (int j = math.max(i - LargeStepSize / 2, 0); j < i + LargeStepSize / 2; j++)
+                                if (i != j && Valid[j])
                                 {
-                                    if (i != j && Valid[j])
-                                    {
-                                        staticSqrDistance = StaticSqrDistance(j);
-                                        minDistance = FeatureCheck(j, minDistance, staticSqrDistance,false);
-                                    }
+                                    staticSqrDistance = StaticSqrDistance(j);
+                                    minDistance = FeatureCheck(j, minDistance, staticSqrDistance, false);
                                 }
                             }
                         }
@@ -348,6 +346,7 @@ namespace MotionMatching
         [ReadOnly] public int NumberOfFeatures;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int FeatureStaticSize;
+        [ReadOnly] public DynamicAccelerationConsts DynamicAccelerationConsts;
 
         public NativeArray<int> BestIndex;
 
@@ -359,7 +358,6 @@ namespace MotionMatching
         public NativeArray<int> NumberDebugPoints;
         [ReadOnly] public bool IsDebug;
         [ReadOnly] public int DebugIndex;
-        [ReadOnly] public int LargeStepSize;
 
         private float StaticSqrDistance(int i)
         {
@@ -515,7 +513,7 @@ namespace MotionMatching
                 float minDistance = float.MaxValue;
                 BestIndex[0] = -1;
 
-                for (int i = 0; i < Valid.Length - LargeStepSize; i += LargeStepSize)
+                for (int i = 0; i < Valid.Length - DynamicAccelerationConsts.LocalSearchRadius; i += DynamicAccelerationConsts.LocalSearchRadius)
                 {
                     if (Valid[i])
                     {
@@ -524,9 +522,9 @@ namespace MotionMatching
                         if (newMinDistance < minDistance)
                         {
                             minDistance = newMinDistance;
-                            if (LargeStepSize > 1)
+                            if (DynamicAccelerationConsts.LocalSearchRadius > 1)
                             {
-                                for (int j = math.max(i - LargeStepSize / 2, 0); j < i + LargeStepSize / 2; j++)
+                                for (int j = math.max(i - DynamicAccelerationConsts.LocalSearchRadius, 0); j < i + DynamicAccelerationConsts.LocalSearchRadius; j++)
                                 {
                                     if (i != j && Valid[j])
                                     {

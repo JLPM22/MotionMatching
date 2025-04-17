@@ -3,6 +3,7 @@ using Unity.Collections;
 using UnityEngine;
 using Unity.Mathematics;
 using Unity.Jobs;
+using System.Collections.Generic;
 
 namespace MotionMatching
 {
@@ -47,6 +48,10 @@ namespace MotionMatching
         private NativeArray<float> LargeBoundingBoxMax;
         private NativeArray<float> SmallBoundingBoxMin;
         private NativeArray<float> SmallBoundingBoxMax;
+
+        // Dynamic acceleration structures
+        private NativeArray<float> AdaptativeFeatures;
+        private NativeArray<int> AdaptativeFeaturesIndices; // Index to the real Features array
 
         public FeatureSet(MotionMatchingData mmData, int numberFeatureVectors)
         {
@@ -268,6 +273,29 @@ namespace MotionMatching
             largeBoundingBoxMax = LargeBoundingBoxMax;
             smallBoundingBoxMin = SmallBoundingBoxMin;
             smallBoundingBoxMax = SmallBoundingBoxMax;
+        }
+
+        public void GetDynamicAccelerationStructures(DynamicAccelerationConsts consts, out NativeArray<int> adaptativeFeaturesIndices)
+        {
+            if (AdaptativeFeaturesIndices == null || !AdaptativeFeaturesIndices.IsCreated)
+            {
+                // Build Dynamic Acceleration Structure
+                NativeList<int> adaptativeIndices = new(Allocator.Persistent);
+                var job = new DynamicAccelerationComputeAdaptativeIndices
+                {
+                    Features = GetFeatures(),
+                    Valid = GetValid(),
+                    FeatureSize = FeatureSize,
+                    PoseOffset = PoseOffset,
+                    DynamicAccelerationConsts = consts,
+                    FeatureStaticSize = FeatureStaticSize,
+                    AdaptativeIndices = adaptativeIndices,
+                };
+                job.Schedule().Complete();
+                AdaptativeFeaturesIndices = adaptativeIndices.AsArray();
+            }
+            Debug.Log(GetFeatures().Length / FeatureSize + " ----- " + AdaptativeFeaturesIndices.Length);
+            adaptativeFeaturesIndices = AdaptativeFeaturesIndices;
         }
 
         // Deserialize ---------------------------------------
@@ -810,6 +838,7 @@ namespace MotionMatching
             if (LargeBoundingBoxMax != null && LargeBoundingBoxMax.IsCreated) LargeBoundingBoxMax.Dispose();
             if (SmallBoundingBoxMin != null && SmallBoundingBoxMin.IsCreated) SmallBoundingBoxMin.Dispose();
             if (SmallBoundingBoxMax != null && SmallBoundingBoxMax.IsCreated) SmallBoundingBoxMax.Dispose();
+            if (AdaptativeFeaturesIndices != null && AdaptativeFeaturesIndices.IsCreated) AdaptativeFeaturesIndices.Dispose();
         }
     }
 }
