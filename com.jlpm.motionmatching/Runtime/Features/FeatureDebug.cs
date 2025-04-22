@@ -243,7 +243,7 @@ public class FeatureDebug : MonoBehaviour
         }
     }
 
-    private static float3 Get3DValuePositionOrDirectionFeature(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex, int predictionIndex, bool isDynamic)
+    public static float3 Get3DValuePositionOrDirectionFeature(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex, int predictionIndex, bool isDynamic)
     {
         int t = trajectoryFeatureIndex;
         int p = predictionIndex;

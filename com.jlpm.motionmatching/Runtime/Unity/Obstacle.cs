@@ -39,14 +39,23 @@ namespace MotionMatching
             return false;
         }
 
-        public Vector3 GetWorldPosition()
+        public Vector3 GetProjWorldPosition(int trajectoryIndex, bool forceCurrent = false)
         {
-            return transform.position;
-        }
-
-        public Vector3 GetProjWorldPosition()
-        {
-            return new Vector3(transform.position.x, 0, transform.position.z);
+            if (IsStatic || forceCurrent)
+            {
+                return new Vector3(transform.position.x, 0.0f, transform.position.z);
+            }
+            else
+            {
+                if (CrowdSplineCharacterController != null)
+                {
+                    return CrowdSplineCharacterController.MotionMatching.GetFutureTrajectoryPosition(trajectoryIndex);
+                }
+                else
+                {
+                    return CrowdCharacter.MotionMatching.GetFutureTrajectoryPosition(trajectoryIndex);
+                }
+            }
         }
 
         public float GetMinHeightWorld()

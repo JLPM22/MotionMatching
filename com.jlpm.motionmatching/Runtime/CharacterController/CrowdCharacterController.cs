@@ -72,7 +72,7 @@ namespace MotionMatching
         private Obstacle[] Obstacles;
         private NativeArray<(float2, float, float2)> ObstaclesArray;
         private NativeArray<int> ObstaclesArrayCount;
-        private List<List<Obstacle>> CandidateObstacles;
+        private List<List<(Obstacle, bool)>> CandidateObstacles;
         public float2 Steering { get; private set; }
         // --------------------------------------------------------------------------
 
@@ -105,10 +105,10 @@ namespace MotionMatching
             DesiredRotation = quaternion.LookRotation(transform.forward, transform.up);
             PredictedRotations = new quaternion[NumberPredictionRot];
             PredictedAngularVelocities = new float3[NumberPredictionRot];
-            CandidateObstacles = new List<List<Obstacle>>();
+            CandidateObstacles = new List<List<(Obstacle, bool)>>();
             for (int i = 0; i < NumberPredictionPos; ++i)
             {
-                CandidateObstacles.Add(new List<Obstacle>());
+                CandidateObstacles.Add(new List<(Obstacle, bool)>());
             }
             // Crowds
             OnObstaclesUpdated(ObstacleManager.Instance.GetObstacles());
@@ -422,10 +422,14 @@ namespace MotionMatching
                 for (int i = 0; i < Obstacles.Length; i++)
                 {
                     Obstacle obs = Obstacles[i];
-                    if (CandidateObstacles[p].Contains(obs)) continue; // already added
-                    if (math.distance(predPos, obs.GetProjWorldPosition()) < candidateThreshold + obs.Radius)
+                    if (math.distance(predPos, obs.GetProjWorldPosition(p)) < candidateThreshold + obs.Radius)
                     {
-                        CandidateObstacles[p].Add(obs);
+                        CandidateObstacles[p].Add((obs, false));
+                        candidateObstaclesCount += 1;
+                    }
+                    if (!obs.IsStatic && math.distance(predPos, obs.GetProjWorldPosition(p, forceCurrent: true)) < candidateThreshold + obs.Radius)
+                    {
+                        CandidateObstacles[p].Add((obs, true));
                         candidateObstaclesCount += 1;
                     }
                 }
@@ -439,13 +443,13 @@ namespace MotionMatching
             ObstaclesArrayCount = new NativeArray<int>(CandidateObstacles.Count, Allocator.TempJob);
             ObstaclesArray = new NativeArray<(float2, float, float2)>(candidateObstaclesCount, Allocator.TempJob);
             int it = 0;
-            for (int p = 0; p < CandidateObstacles.Count; p++)
+            for (int p = 0; p < PredictedPosition.Length; p++)
             {
                 ObstaclesArrayCount[p] = CandidateObstacles[p].Count;
                 for (int i = 0; i < CandidateObstacles[p].Count; i++)
                 {
-                    Obstacle obstacle = CandidateObstacles[p][i];
-                    float3 world = obstacle.GetProjWorldPosition();
+                    (Obstacle obstacle, bool forceCurrent) = CandidateObstacles[p][i];
+                    float3 world = obstacle.GetProjWorldPosition(p, forceCurrent: forceCurrent);
                     float3 localPos = character.InverseTransformPoint(world);
                     // HARDCODED: circle radius
                     ObstaclesArray[it++] = (new float2(localPos.x, localPos.z),
@@ -491,6 +495,11 @@ namespace MotionMatching
         public override float3 GetWorldInitDirection()
         {
             return transform.forward;
+        }
+
+        public float2 GetPredictedPosition(int index)
+        {
+            return PredictedPosition[index];
         }
 
         private void OnDestroy()

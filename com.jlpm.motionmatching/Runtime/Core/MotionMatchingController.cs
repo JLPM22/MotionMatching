@@ -10,6 +10,7 @@ namespace MotionMatching
 {
     using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
     using Debug = UnityEngine.Debug;
+    using static MotionMatching.MotionMatchingData;
 
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
@@ -902,6 +903,18 @@ namespace MotionMatching
         public Transform[] GetSkeletonTransforms()
         {
             return SkeletonTransforms;
+        }
+
+        public float3 GetFutureTrajectoryPosition(int trajectoryIndex)
+        {
+            float3 characterOrigin = SkeletonTransforms[0].position;
+            float3 characterForward = SkeletonTransforms[0].forward;
+            quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
+            // HARDCODED: trajectory features, etc.
+            int t = 0;
+            float3 value = FeatureDebug.Get3DValuePositionOrDirectionFeature(MMData.TrajectoryFeatures[t], FeatureSet, CurrentFrame, t, trajectoryIndex, isDynamic: false);
+            value = characterOrigin + math.mul(characterRot, value);
+            return value;
         }
 
         private void OnDestroy()
