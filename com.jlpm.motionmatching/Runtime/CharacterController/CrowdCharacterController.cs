@@ -70,9 +70,12 @@ namespace MotionMatching
         private int NumberPredictionRot { get { return TrajectoryRotPredictionFrames.Length; } }
         // Crowds ------------------------------------------------------------------
         private Obstacle[] Obstacles;
-        private NativeArray<(float2, float, float2)> ObstaclesArray;
-        private NativeArray<int> ObstaclesArrayCount;
-        private List<List<(Obstacle, bool)>> CandidateObstacles;
+        private NativeArray<(float2, float, float2)> ObstaclesCirclesArray;
+        private NativeArray<int> ObstaclesCirclesArrayCount;
+        private List<List<(Obstacle, bool)>> CandidateCirclesObstacles;
+        private NativeArray<(float2, float2, float2)> ObstaclesEllipsesArray;
+        private NativeArray<int> ObstaclesEllipsesArrayCount;
+        private List<List<(Obstacle, bool)>> CandidateEllipseObstacles;
         public float2 Steering { get; private set; }
         // --------------------------------------------------------------------------
 
@@ -105,10 +108,15 @@ namespace MotionMatching
             DesiredRotation = quaternion.LookRotation(transform.forward, transform.up);
             PredictedRotations = new quaternion[NumberPredictionRot];
             PredictedAngularVelocities = new float3[NumberPredictionRot];
-            CandidateObstacles = new List<List<(Obstacle, bool)>>();
+            CandidateCirclesObstacles = new List<List<(Obstacle, bool)>>();
             for (int i = 0; i < NumberPredictionPos; ++i)
             {
-                CandidateObstacles.Add(new List<(Obstacle, bool)>());
+                CandidateCirclesObstacles.Add(new List<(Obstacle, bool)>());
+            }
+            CandidateEllipseObstacles = new List<List<(Obstacle, bool)>>();
+            for (int i = 0; i < NumberPredictionPos; ++i)
+            {
+                CandidateEllipseObstacles.Add(new List<(Obstacle, bool)>());
             }
             // Crowds
             OnObstaclesUpdated(ObstacleManager.Instance.GetObstacles());
@@ -122,7 +130,6 @@ namespace MotionMatching
         private void OnDisable()
         {
             ObstacleManager.Instance.OnObstaclesUpdated -= OnObstaclesUpdated;
-            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
         }
 
         // Input a change in the movement direction
@@ -408,57 +415,95 @@ namespace MotionMatching
             }
         }
 
-        public override (NativeArray<(float2, float, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
+        public override (NativeArray<(float2, float, float2)>, NativeArray<int>, NativeArray<(float2, float2, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
         {
-            for (int p = 0; p < CandidateObstacles.Count; p++)
+            for (int p = 0; p < CandidateCirclesObstacles.Count; p++)
             {
-                CandidateObstacles[p].Clear();
+                CandidateCirclesObstacles[p].Clear();
             }
-            int candidateObstaclesCount = 0;
+            for (int p = 0; p < CandidateEllipseObstacles.Count; p++)
+            {
+                CandidateEllipseObstacles[p].Clear();
+            }
+            int candidateObstaclesCirclesCount = 0;
+            int candidateObstaclesEllipsesCount = 0;
             float candidateThreshold = MaximumEllipseLength + MotionMatching.CrowdThreshold;
             for (int p = 0; p < PredictedPosition.Length; p++)
             {
-                float3 predPos = new(PredictedPosition[p].x, 0.0f, PredictedPosition[p].y);
+                float3 predPos = MotionMatching.GetFutureTrajectoryPosition(p);
                 for (int i = 0; i < Obstacles.Length; i++)
                 {
                     Obstacle obs = Obstacles[i];
-                    if (math.distance(predPos, obs.GetProjWorldPosition(p)) < candidateThreshold + obs.Radius)
+                    (float3 obsPos, bool isEllipse, _) = obs.GetProjWorldPosition(p);
+                    if (isEllipse)
                     {
-                        CandidateObstacles[p].Add((obs, false));
-                        candidateObstaclesCount += 1;
+                        if (math.distance(predPos, obsPos) < candidateThreshold + MaximumEllipseLength)
+                        {
+                            CandidateEllipseObstacles[p].Add((obs, false));
+                            candidateObstaclesEllipsesCount += 1;
+                        }
+                        if (math.distance(predPos, obs.GetProjWorldPosition(p, forceCurrent: true).Item1) < candidateThreshold + obs.Radius)
+                        {
+                            CandidateCirclesObstacles[p].Add((obs, true));
+                            candidateObstaclesCirclesCount += 1;
+                        }
                     }
-                    if (!obs.IsStatic && math.distance(predPos, obs.GetProjWorldPosition(p, forceCurrent: true)) < candidateThreshold + obs.Radius)
+                    else
                     {
-                        CandidateObstacles[p].Add((obs, true));
-                        candidateObstaclesCount += 1;
+                        if (math.distance(predPos, obsPos) < candidateThreshold + obs.Radius)
+                        {
+                            CandidateCirclesObstacles[p].Add((obs, false));
+                            candidateObstaclesCirclesCount += 1;
+                        }
                     }
                 }
             }
 
-            if (ObstaclesArray.IsCreated || ObstaclesArrayCount.IsCreated)
+            if (ObstaclesCirclesArray.IsCreated || ObstaclesCirclesArrayCount.IsCreated ||
+                ObstaclesEllipsesArray.IsCreated || ObstaclesEllipsesArrayCount.IsCreated)
             {
-                ObstaclesArray.Dispose();
-                ObstaclesArrayCount.Dispose();
+                ObstaclesCirclesArray.Dispose();
+                ObstaclesCirclesArrayCount.Dispose();
+                ObstaclesEllipsesArray.Dispose();
+                ObstaclesEllipsesArrayCount.Dispose();
             }
-            ObstaclesArrayCount = new NativeArray<int>(CandidateObstacles.Count, Allocator.TempJob);
-            ObstaclesArray = new NativeArray<(float2, float, float2)>(candidateObstaclesCount, Allocator.TempJob);
-            int it = 0;
+            ObstaclesCirclesArrayCount = new NativeArray<int>(CandidateCirclesObstacles.Count, Allocator.TempJob);
+            ObstaclesCirclesArray = new NativeArray<(float2, float, float2)>(candidateObstaclesCirclesCount, Allocator.TempJob);
+            ObstaclesEllipsesArrayCount = new NativeArray<int>(CandidateEllipseObstacles.Count, Allocator.TempJob);
+            ObstaclesEllipsesArray = new NativeArray<(float2, float2, float2)>(candidateObstaclesEllipsesCount, Allocator.TempJob);
+            int itCircle = 0;
+            int itEllipse = 0;
             for (int p = 0; p < PredictedPosition.Length; p++)
             {
-                ObstaclesArrayCount[p] = CandidateObstacles[p].Count;
-                for (int i = 0; i < CandidateObstacles[p].Count; i++)
+                ObstaclesCirclesArrayCount[p] = CandidateCirclesObstacles[p].Count;
+                for (int i = 0; i < CandidateCirclesObstacles[p].Count; i++)
                 {
-                    (Obstacle obstacle, bool forceCurrent) = CandidateObstacles[p][i];
-                    float3 world = obstacle.GetProjWorldPosition(p, forceCurrent: forceCurrent);
+                    (Obstacle obstacle, bool forceCurrent) = CandidateCirclesObstacles[p][i];
+                    (float3 world, _, _) = obstacle.GetProjWorldPosition(p, forceCurrent: forceCurrent);
                     float3 localPos = character.InverseTransformPoint(world);
                     // HARDCODED: circle radius
-                    ObstaclesArray[it++] = (new float2(localPos.x, localPos.z),
-                                            obstacle.Radius,
-                                            new float2(obstacle.GetMinHeightWorld(), obstacle.GetMaxHeightWorld()));
+                    ObstaclesCirclesArray[itCircle++] = (new float2(localPos.x, localPos.z),
+                                                         obstacle.Radius,
+                                                         new float2(obstacle.GetMinHeightWorld(), obstacle.GetMaxHeightWorld()));
+                }
+                ObstaclesEllipsesArrayCount[p] = CandidateEllipseObstacles[p].Count;
+                for (int i = 0; i < CandidateEllipseObstacles[p].Count; i++)
+                {
+                    (Obstacle obstacle, bool forceCurrent) = CandidateEllipseObstacles[p][i];
+                    (float3 world, _, float4 ellipse) = obstacle.GetProjWorldPosition(p, forceCurrent: forceCurrent);
+                    float3 localPos = character.InverseTransformPoint(world);
+                    float3 primaryAxis = new(ellipse.x, 0.0f, ellipse.y);
+                    float3 secondaryAxis = new(ellipse.z, 0.0f, ellipse.w);
+                    primaryAxis = character.InverseTransformDirection(primaryAxis);
+                    secondaryAxis = character.InverseTransformDirection(secondaryAxis);
+                    // HARDCODED
+                    ObstaclesEllipsesArray[itEllipse++] = (new float2(localPos.x, localPos.z),
+                                                           new float2(primaryAxis.x, primaryAxis.z),
+                                                           new float2(secondaryAxis.x, secondaryAxis.z));
                 }
             }
 
-            return (ObstaclesArray, ObstaclesArrayCount);
+            return (ObstaclesCirclesArray, ObstaclesCirclesArrayCount, ObstaclesEllipsesArray, ObstaclesEllipsesArrayCount);
         }
 
         // TODO: maybe get dynamic feature could return something more generic that allows to send custom data like the obstacle arrays
@@ -504,8 +549,10 @@ namespace MotionMatching
 
         private void OnDestroy()
         {
-            if (ObstaclesArray.IsCreated) ObstaclesArray.Dispose();
-            if (ObstaclesArrayCount.IsCreated) ObstaclesArrayCount.Dispose();
+            if (ObstaclesCirclesArray.IsCreated) ObstaclesCirclesArray.Dispose();
+            if (ObstaclesCirclesArrayCount.IsCreated) ObstaclesCirclesArrayCount.Dispose();
+            if (ObstaclesEllipsesArray.IsCreated) ObstaclesEllipsesArray.Dispose();
+            if (ObstaclesEllipsesArrayCount.IsCreated) ObstaclesEllipsesArrayCount.Dispose();
         }
 
 #if UNITY_EDITOR

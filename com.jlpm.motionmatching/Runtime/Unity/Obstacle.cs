@@ -39,21 +39,25 @@ namespace MotionMatching
             return false;
         }
 
-        public Vector3 GetProjWorldPosition(int trajectoryIndex, bool forceCurrent = false)
+        public (float3, bool, float4) GetProjWorldPosition(int trajectoryIndex, bool forceCurrent = false)
         {
             if (IsStatic || forceCurrent)
             {
-                return new Vector3(transform.position.x, 0.0f, transform.position.z);
+                return (new float3(transform.position.x, 0.0f, transform.position.z), false, float4.zero);
             }
             else
             {
                 if (CrowdSplineCharacterController != null)
                 {
-                    return CrowdSplineCharacterController.MotionMatching.GetFutureTrajectoryPosition(trajectoryIndex);
+                    return (CrowdSplineCharacterController.MotionMatching.GetFutureTrajectoryPosition(trajectoryIndex),
+                            true,
+                            CrowdSplineCharacterController.MotionMatching.GetFutureEllipses(trajectoryIndex));
                 }
                 else
                 {
-                    return CrowdCharacter.MotionMatching.GetFutureTrajectoryPosition(trajectoryIndex);
+                    return (CrowdCharacter.MotionMatching.GetFutureTrajectoryPosition(trajectoryIndex),
+                            true,
+                            CrowdCharacter.MotionMatching.GetFutureEllipses(trajectoryIndex));
                 }
             }
         }

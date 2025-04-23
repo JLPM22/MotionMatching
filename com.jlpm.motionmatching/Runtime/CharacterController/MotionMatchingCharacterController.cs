@@ -67,7 +67,7 @@ namespace MotionMatching
         /// </summary>
         public virtual void GetDynamicFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output) { }
 
-        // HARDCODED
-        public abstract (NativeArray<(float2, float, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character);
+        // HARDCODED: first circles, then ellipses
+        public abstract (NativeArray<(float2, float, float2)>, NativeArray<int>, NativeArray<(float2, float2, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character);
     }
 }

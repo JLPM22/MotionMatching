@@ -279,8 +279,9 @@ namespace MotionMatching
             // DEBUG: at the end of the frame update, recompute features to display debug information
             if (DoCrowdSearch)
             {
-                (NativeArray<(float2, float, float2)> obstacles, NativeArray<int> obstaclesCount) = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
-                if (obstacles.Length > 0)
+                (NativeArray<(float2, float, float2)> obstaclesCircles, NativeArray<int> obstaclesCirclesCount,
+                 NativeArray<(float2, float2, float2)> obstaclesEllipses, NativeArray<int> obstaclesEllipsesCount) = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
+                if (obstaclesCircles.Length > 0 || obstaclesEllipses.Length > 0)
                 {
                     FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
                     if (MMData.DynamicFeatures.Count >= 2 && MMData.DynamicFeatures[1].Name == "FutureHeight")
@@ -297,8 +298,10 @@ namespace MotionMatching
                             CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
                             Mean = means,
                             Std = stds,
-                            ObstaclesCircles = obstacles,
-                            ObstaclesCount = obstaclesCount,
+                            ObstaclesCircles = obstaclesCircles,
+                            ObstaclesCirclesCount = obstaclesCirclesCount,
+                            ObstaclesEllipses = obstaclesEllipses,
+                            ObstaclesEllipsesCount = obstaclesEllipsesCount,
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,
@@ -327,8 +330,10 @@ namespace MotionMatching
                             CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
                             Mean = means,
                             Std = stds,
-                            ObstaclesCircles = obstacles,
-                            ObstaclesCount = obstaclesCount,
+                            ObstaclesCircles = obstaclesCircles,
+                            ObstaclesCirclesCount = obstaclesCirclesCount,
+                            ObstaclesEllipses = obstaclesEllipses,
+                            ObstaclesEllipsesCount = obstaclesEllipsesCount,
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,
@@ -452,8 +457,9 @@ namespace MotionMatching
             }
             else
             {
-                (NativeArray<(float2, float, float2)> obstacles, NativeArray<int> obstaclesCount) = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
-                if (obstacles.Length == 0 || !DoCrowdSearch)
+                (NativeArray<(float2, float, float2)> obstaclesCircles, NativeArray<int> obstaclesCirclesCount,
+                 NativeArray<(float2, float2, float2)> obstaclesEllipses, NativeArray<int> obstaclesEllipsesCount) = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
+                if ((obstaclesCircles.Length == 0 && obstaclesEllipses.Length == 0) || !DoCrowdSearch)
                 {
                     //swLocal.Start();
                     var job = new BVHMotionMatchingSearchBurst
@@ -494,8 +500,10 @@ namespace MotionMatching
                             CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
                             Mean = means,
                             Std = stds,
-                            ObstaclesCircles = obstacles,
-                            ObstaclesCount = obstaclesCount,
+                            ObstaclesCircles = obstaclesCircles,
+                            ObstaclesCirclesCount = obstaclesCirclesCount,
+                            ObstaclesEllipses = obstaclesEllipses,
+                            ObstaclesEllipsesCount = obstaclesEllipsesCount,
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,
@@ -524,8 +532,10 @@ namespace MotionMatching
                             CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
                             Mean = means,
                             Std = stds,
-                            ObstaclesCircles = obstacles,
-                            ObstaclesCount = obstaclesCount,
+                            ObstaclesCircles = obstaclesCircles,
+                            ObstaclesCirclesCount = obstaclesCirclesCount,
+                            ObstaclesEllipses = obstaclesEllipses,
+                            ObstaclesEllipsesCount = obstaclesEllipsesCount,
                             FeatureSize = FeatureSet.FeatureSize,
                             FeatureStaticSize = FeatureSet.FeatureStaticSize,
                             BestIndex = SearchResult,
@@ -910,11 +920,27 @@ namespace MotionMatching
             float3 characterOrigin = SkeletonTransforms[0].position;
             float3 characterForward = SkeletonTransforms[0].forward;
             quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
-            // HARDCODED: trajectory features, etc.
-            int t = 0;
+            // HARDCODED
+            int t = 0; // first trajectory feature
             float3 value = FeatureDebug.Get3DValuePositionOrDirectionFeature(MMData.TrajectoryFeatures[t], FeatureSet, CurrentFrame, t, trajectoryIndex, isDynamic: false);
             value = characterOrigin + math.mul(characterRot, value);
             return value;
+        }
+
+        public float4 GetFutureEllipses(int trajectoryIndex)
+        {
+            float3 characterForward = SkeletonTransforms[0].forward;
+            quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
+            // HARDCODED
+            int t = 0; // first dynamic feature
+            float4 value = FeatureSet.Get4DDynamicFeature(CurrentFrame, t, trajectoryIndex);
+            float primaryDistance = value.x;
+            float secondaryDistance = value.y;
+            float3 primaryAxisUnitCharacterSpace = new(value.z, 0.0f, value.w);
+            float3 primaryAxisUnitWorldSpace = math.mul(characterRot, primaryAxisUnitCharacterSpace);
+            float2 primaryAxisUnit = new(primaryAxisUnitWorldSpace.x, primaryAxisUnitWorldSpace.z);
+            float2 secondaryAxisUnit = new(-primaryAxisUnit.y, primaryAxisUnit.x);
+            return new float4(primaryAxisUnit * primaryDistance, secondaryAxisUnit * secondaryDistance);
         }
 
         private void OnDestroy()

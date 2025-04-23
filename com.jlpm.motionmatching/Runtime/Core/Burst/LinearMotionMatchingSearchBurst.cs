@@ -1,4 +1,4 @@
-//#define USE_FAST_DISTANCE
+#define USE_FAST_DISTANCE
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -155,8 +155,10 @@ namespace MotionMatching
         [ReadOnly] public float CrowdThirdTrajectoryWeight;
         [ReadOnly] public NativeArray<float> Mean;
         [ReadOnly] public NativeArray<float> Std;
-        [ReadOnly] public NativeArray<(float2, float, float2)> ObstaclesCircles;
-        [ReadOnly] public NativeArray<int> ObstaclesCount;
+        [ReadOnly] public NativeArray<(float2, float, float2)> ObstaclesCircles; // (position, radius, height)
+        [ReadOnly] public NativeArray<(float2, float2, float2)> ObstaclesEllipses;  // (position, primaryAxis, secondaryAxis)
+        [ReadOnly] public NativeArray<int> ObstaclesCirclesCount;
+        [ReadOnly] public NativeArray<int> ObstaclesEllipsesCount;
         [ReadOnly] public int NumberOfFeatures;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int FeatureStaticSize;
@@ -196,15 +198,15 @@ namespace MotionMatching
             return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, 1e-3f));
         }
 
-        private float ComputePenalizationCircles(float2 pos, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
+        private float ComputePenalizationCircles(float2 centerEllipse, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
         {
             const int maxIterationsRootFinder = 5;
             const float fastDistanceAngle = 30.0f;
 
 #if USE_FAST_DISTANCE
-            float distance = UtilitiesBurst.FastDistancePointToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, fastDistanceAngle);
+            float distance = UtilitiesBurst.FastDistancePointToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, ObstaclesCircles[obstacle].Item1, out float2 closest, fastDistanceAngle);
 #else
-            float distance = UtilitiesBurst.DistancePointToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, ObstaclesCircles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
+            float distance = UtilitiesBurst.DistancePointToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, ObstaclesCircles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
 #endif
             distance = math.max(distance - ObstaclesCircles[obstacle].Item2, UtilitiesBurst.INSIDE_ELLIPSE);
             float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
@@ -213,6 +215,38 @@ namespace MotionMatching
             {
                 PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest.x, 0.0f, closest.y);
                 PointsOnObstacle[NumberDebugPoints[0]] = new float3(ObstaclesCircles[obstacle].Item1.x, 0.0f, ObstaclesCircles[obstacle].Item1.y);
+                ObstacleDistance[NumberDebugPoints[0]] = distance;
+                ObstaclePenalization[NumberDebugPoints[0]] = penalization;
+                NumberDebugPoints[0] += 1;
+            }
+            return penalization;
+        }
+
+        private float ComputePenalizationEllipse(float2 centerEllipse, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
+        {
+            const int maxIterationsRootFinder = 5;
+            const float fastDistanceAngle = 30.0f;
+
+            float2 centerEllipse2 = ObstaclesEllipses[obstacle].Item1;
+            float2 primaryAxis2 = ObstaclesEllipses[obstacle].Item2;
+            float2 secondaryAxis2 = ObstaclesEllipses[obstacle].Item3;
+            float2 ellipse2 = new(math.length(primaryAxis2), math.length(secondaryAxis2));
+
+#if USE_FAST_DISTANCE
+            float distance = UtilitiesBurst.FastDistanceEllipseToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse,
+                                                                         centerEllipse2, primaryAxis2 / ellipse2.x, secondaryAxis2 / ellipse2.y, ellipse2,
+                                                                         out float2 closest1, out float2 closest2, fastDistanceAngle);
+#else
+            float distance = UtilitiesBurst.DistanceEllipseToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, 
+                                                                     centerEllipse2, primaryAxis2 / ellipse2.x, secondaryAxis2 / ellipse2.y, ellipse2,
+                                                                     out float2 closest1, out float2 closest2, fastDistanceAngle, maxIterationsRootFinder);
+#endif
+            float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
+            // DEBUG
+            if (saveDebug && distance < CrowdThreshold)
+            {
+                PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest1.x, 0.0f, closest1.y);
+                PointsOnObstacle[NumberDebugPoints[0]] = new float3(closest2.x, 0.0f, closest2.y);
                 ObstacleDistance[NumberDebugPoints[0]] = distance;
                 ObstaclePenalization[NumberDebugPoints[0]] = penalization;
                 NumberDebugPoints[0] += 1;
@@ -250,39 +284,75 @@ namespace MotionMatching
 
             float debugTotalCrowdDistance = 0.0f;
             // HARDCODED: works only when ObstaclesCount.Length == 3
-            int obstacleIt = 0;
-            for (int p = 0; p < ObstaclesCount[0]; p++)
+            int obstacleCircleIt = 0;
+            int obstacleEllipseIt = 0;
+            for (int p = 0; p < ObstaclesCirclesCount[0]; p++)
             {
-                float penalization1 = ComputePenalizationCircles(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleIt, 1.0f, saveDebug);
+                float penalization1 = ComputePenalizationCircles(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleCircleIt, 1.0f, saveDebug);
                 debugTotalCrowdDistance += penalization1;
                 sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
                 {
                     return minDistance;
                 }
-                obstacleIt += 1;
+                obstacleCircleIt += 1;
             }
-            for (int p = 0; p < ObstaclesCount[1]; p++)
+            for (int p = 0; p < ObstaclesEllipsesCount[0]; p++)
+            {
+                float penalization1 = ComputePenalizationEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleEllipseIt, 1.0f, saveDebug);
+                debugTotalCrowdDistance += penalization1;
+                sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
+                {
+                    return minDistance;
+                }
+                obstacleEllipseIt += 1;
+            }
+
+            for (int p = 0; p < ObstaclesCirclesCount[1]; p++)
             { 
-                float penalization2 = ComputePenalizationCircles(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleIt, CrowdSecondTrajectoryWeight, saveDebug);
+                float penalization2 = ComputePenalizationCircles(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleCircleIt, CrowdSecondTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization2;
                 sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
                 {
                     return minDistance;
                 }
-                obstacleIt += 1;
+                obstacleCircleIt += 1;
             }
-            for (int p = 0; p < ObstaclesCount[2]; p++)
+            for (int p = 0; p < ObstaclesEllipsesCount[1]; p++)
+            {
+                float penalization2 = ComputePenalizationEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleEllipseIt, CrowdSecondTrajectoryWeight, saveDebug);
+                debugTotalCrowdDistance += penalization2;
+                sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
+                {
+                    return minDistance;
+                }
+                obstacleEllipseIt += 1;
+            }
+
+            for (int p = 0; p < ObstaclesCirclesCount[2]; p++)
             { 
-                float penalization3 = ComputePenalizationCircles(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleIt, CrowdThirdTrajectoryWeight, saveDebug);
+                float penalization3 = ComputePenalizationCircles(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleCircleIt, CrowdThirdTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization3;
                 sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
                 {
                     return minDistance;
                 }
-                obstacleIt += 1;
+                obstacleCircleIt += 1;
+            }
+            for (int p = 0; p < ObstaclesEllipsesCount[2]; p++)
+            {
+                float penalization3 = ComputePenalizationEllipse(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleEllipseIt, CrowdThirdTrajectoryWeight, saveDebug);
+                debugTotalCrowdDistance += penalization3;
+                sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
+                {
+                    return minDistance;
+                }
+                obstacleEllipseIt += 1;
             }
 
             if (sqrDistance < minDistance)
@@ -362,8 +432,10 @@ namespace MotionMatching
         [ReadOnly] public float CrowdThirdTrajectoryWeight;
         [ReadOnly] public NativeArray<float> Mean;
         [ReadOnly] public NativeArray<float> Std;
-        [ReadOnly] public NativeArray<(float2, float, float2)> ObstaclesCircles;
-        [ReadOnly] public NativeArray<int> ObstaclesCount;
+        [ReadOnly] public NativeArray<(float2, float, float2)> ObstaclesCircles; // (position, radius, height)
+        [ReadOnly] public NativeArray<(float2, float2, float2)> ObstaclesEllipses;  // (position, primaryAxis, secondaryAxis)
+        [ReadOnly] public NativeArray<int> ObstaclesCirclesCount;
+        [ReadOnly] public NativeArray<int> ObstaclesEllipsesCount;
         [ReadOnly] public int NumberOfFeatures;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int FeatureStaticSize;
@@ -403,15 +475,15 @@ namespace MotionMatching
             return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, 1e-3f));
         }
 
-        private float ComputePenalizationCircles(float2 pos, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
+        private float ComputePenalizationCircles(float2 centerEllipse, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
         {
             const int maxIterationsRootFinder = 5;
             const float fastDistanceAngle = 30.0f;
 
 #if USE_FAST_DISTANCE
-            float distance = UtilitiesBurst.FastDistancePointToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, fastDistanceAngle);
+            float distance = UtilitiesBurst.FastDistancePointToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, ObstaclesCircles[obstacle].Item1, out float2 closest, fastDistanceAngle);
 #else
-            float distance = UtilitiesBurst.DistancePointToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, ObstaclesCircles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
+            float distance = UtilitiesBurst.DistancePointToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, ObstaclesCircles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
 #endif
             distance = math.max(distance - ObstaclesCircles[obstacle].Item2, UtilitiesBurst.INSIDE_ELLIPSE);
             float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
@@ -420,6 +492,38 @@ namespace MotionMatching
             {
                 PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest.x, 0.0f, closest.y);
                 PointsOnObstacle[NumberDebugPoints[0]] = new float3(ObstaclesCircles[obstacle].Item1.x, 0.0f, ObstaclesCircles[obstacle].Item1.y);
+                ObstacleDistance[NumberDebugPoints[0]] = distance;
+                ObstaclePenalization[NumberDebugPoints[0]] = penalization;
+                NumberDebugPoints[0] += 1;
+            }
+            return penalization;
+        }
+
+        private float ComputePenalizationEllipse(float2 centerEllipse, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
+        {
+            const int maxIterationsRootFinder = 5;
+            const float fastDistanceAngle = 30.0f;
+
+            float2 centerEllipse2 = ObstaclesEllipses[obstacle].Item1;
+            float2 primaryAxis2 = ObstaclesEllipses[obstacle].Item2;
+            float2 secondaryAxis2 = ObstaclesEllipses[obstacle].Item3;
+            float2 ellipse2 = new(math.length(primaryAxis2), math.length(secondaryAxis2));
+
+#if USE_FAST_DISTANCE
+            float distance = UtilitiesBurst.FastDistanceEllipseToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse,
+                                                                         centerEllipse2, primaryAxis2 / ellipse2.x, secondaryAxis2 / ellipse2.y, ellipse2,
+                                                                         out float2 closest1, out float2 closest2, fastDistanceAngle);
+#else
+            float distance = UtilitiesBurst.DistanceEllipseToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse,
+                                                                     centerEllipse2, primaryAxis2 / ellipse2.x, secondaryAxis2 / ellipse2.y, ellipse2,
+                                                                     out float2 closest1, out float2 closest2, fastDistanceAngle, maxIterationsRootFinder);
+#endif
+            float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
+            // DEBUG
+            if (saveDebug && distance < CrowdThreshold)
+            {
+                PointsOnEllipse[NumberDebugPoints[0]] = new float3(closest1.x, 0.0f, closest1.y);
+                PointsOnObstacle[NumberDebugPoints[0]] = new float3(closest2.x, 0.0f, closest2.y);
                 ObstacleDistance[NumberDebugPoints[0]] = distance;
                 ObstaclePenalization[NumberDebugPoints[0]] = penalization;
                 NumberDebugPoints[0] += 1;
@@ -466,12 +570,13 @@ namespace MotionMatching
 
             float debugTotalCrowdDistance = 0.0f;
             // HARDCODED: works only when ObstaclesCount.Length == 3
-            int obstacleIt = 0;
-            for (int p = 0; p < ObstaclesCount[0]; p++)
+            int obstacleCircleIt = 0;
+            int obstacleEllipseIt = 0;
+            for (int p = 0; p < ObstaclesCirclesCount[0]; p++)
             {
-                if (HeightOverlap(height1, ObstaclesCircles[obstacleIt].Item3))
+                if (HeightOverlap(height1, ObstaclesCircles[obstacleCircleIt].Item3))
                 {
-                    float penalization1 = ComputePenalizationCircles(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleIt, 1.0f, saveDebug);
+                    float penalization1 = ComputePenalizationCircles(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleCircleIt, 1.0f, saveDebug);
                     debugTotalCrowdDistance += penalization1;
                     sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
@@ -479,13 +584,25 @@ namespace MotionMatching
                         return minDistance;
                     }
                 }
-                obstacleIt += 1;
+                obstacleCircleIt += 1;
             }
-            for (int p = 0; p < ObstaclesCount[1]; p++)
+            for (int p = 0; p < ObstaclesEllipsesCount[0]; p++)
             {
-                if (HeightOverlap(height2, ObstaclesCircles[obstacleIt].Item3))
+                float penalization1 = ComputePenalizationEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleEllipseIt, 1.0f, saveDebug);
+                debugTotalCrowdDistance += penalization1;
+                sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
                 {
-                    float penalization2 = ComputePenalizationCircles(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleIt, CrowdSecondTrajectoryWeight, saveDebug);
+                    return minDistance;
+                }
+                obstacleEllipseIt += 1;
+            }
+
+            for (int p = 0; p < ObstaclesCirclesCount[1]; p++)
+            {
+                if (HeightOverlap(height2, ObstaclesCircles[obstacleCircleIt].Item3))
+                {
+                    float penalization2 = ComputePenalizationCircles(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleCircleIt, CrowdSecondTrajectoryWeight, saveDebug);
                     debugTotalCrowdDistance += penalization2;
                     sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
@@ -493,13 +610,25 @@ namespace MotionMatching
                         return minDistance;
                     }
                 }
-                obstacleIt += 1;
+                obstacleCircleIt += 1;
             }
-            for (int p = 0; p < ObstaclesCount[2]; p++)
+            for (int p = 0; p < ObstaclesEllipsesCount[1]; p++)
             {
-                if (HeightOverlap(height3, ObstaclesCircles[obstacleIt].Item3))
+                float penalization2 = ComputePenalizationEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleEllipseIt, CrowdSecondTrajectoryWeight, saveDebug);
+                debugTotalCrowdDistance += penalization2;
+                sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
                 {
-                    float penalization3 = ComputePenalizationCircles(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleIt, CrowdThirdTrajectoryWeight, saveDebug);
+                    return minDistance;
+                }
+                obstacleEllipseIt += 1;
+            }
+
+            for (int p = 0; p < ObstaclesCirclesCount[2]; p++)
+            {
+                if (HeightOverlap(height3, ObstaclesCircles[obstacleCircleIt].Item3))
+                {
+                    float penalization3 = ComputePenalizationCircles(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleCircleIt, CrowdThirdTrajectoryWeight, saveDebug);
                     debugTotalCrowdDistance += penalization3;
                     sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
@@ -507,7 +636,18 @@ namespace MotionMatching
                         return minDistance;
                     }
                 }
-                obstacleIt += 1;
+                obstacleCircleIt += 1;
+            }
+            for (int p = 0; p < ObstaclesEllipsesCount[2]; p++)
+            {
+                float penalization3 = ComputePenalizationEllipse(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleEllipseIt, CrowdThirdTrajectoryWeight, saveDebug);
+                debugTotalCrowdDistance += penalization3;
+                sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
+                if (!saveDebug && sqrDistance > minDistance)
+                {
+                    return minDistance;
+                }
+                obstacleEllipseIt += 1;
             }
 
             if (sqrDistance < minDistance)

@@ -242,7 +242,7 @@ namespace MotionMatching
             }
         }
 
-        public override (NativeArray<(float2, float, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
+        public override (NativeArray<(float2, float, float2)>, NativeArray<int>, NativeArray<(float2, float2, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
         {
             throw new System.NotImplementedException();
         }
