@@ -197,9 +197,11 @@ namespace MotionMatching
         private float ComputePenalization(float2 pos, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
         {
             const int maxIterationsRootFinder = 5;
+            const float fastDistanceAngle = 30.0f;
 
-            float distance = UtilitiesBurst.DistanceToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
-            distance = math.max(distance - Obstacles[obstacle].Item2, 1e-9f);
+            //float distance = UtilitiesBurst.FastDistancePointToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, fastDistanceAngle);
+            float distance = UtilitiesBurst.DistancePointToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
+            distance = math.max(distance - Obstacles[obstacle].Item2, UtilitiesBurst.INSIDE_ELLIPSE);
             float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
             // DEBUG
             if (saveDebug && distance < CrowdThreshold)
@@ -399,9 +401,11 @@ namespace MotionMatching
         private float ComputePenalization(float2 pos, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
         {
             const int maxIterationsRootFinder = 5;
+            const float fastDistanceAngle = 30.0f;
 
-            float distance = UtilitiesBurst.DistanceToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
-            distance = math.max(distance - Obstacles[obstacle].Item2, 1e-9f);
+            //float distance = UtilitiesBurst.FastDistancePointToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, fastDistanceAngle);
+            float distance = UtilitiesBurst.DistancePointToEllipse(pos, primaryAxisUnit, secondaryAxisUnit, ellipse, Obstacles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
+            distance = math.max(distance - Obstacles[obstacle].Item2, UtilitiesBurst.INSIDE_ELLIPSE);
             float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
             // DEBUG
             if (saveDebug && distance < CrowdThreshold)

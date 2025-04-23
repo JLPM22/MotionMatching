@@ -5,6 +5,8 @@ using UnityEngine;
 [BurstCompile]
 public static class UtilitiesBurst
 {
+    public static readonly float INSIDE_ELLIPSE = 1e-9f;
+
     // Source: https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
     [BurstCompile]
     private static float GetRoot(in float r0, in float z0, in float z1, in float g, in int maxIterations = 149)
@@ -105,9 +107,9 @@ public static class UtilitiesBurst
     // 'closest' is the ellipse point (in world space) closest to the point 'p'
     // Returns distance to the circumference of the ellipse, 0 when inside
     [BurstCompile]
-    public static float DistanceToEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit,
-                                          in float2 ellipse, in float2 query, out float2 closest,
-                                          in int maxIterations = 149)
+    public static float DistancePointToEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit,
+                                               in float2 ellipse, in float2 query, out float2 closest,
+                                               in int maxIterations = 149)
     {
         Debug.Assert(ellipse.x > 0.0 && ellipse.y > 0.0);
 
@@ -156,10 +158,124 @@ public static class UtilitiesBurst
 
         if (p.x < e.x && p.y < e.y) // check if inside
         {
-            distance = 1e-9f;
+            distance = INSIDE_ELLIPSE;
         }
 
         return distance;
+    }
+
+    /// <summary>
+    /// Generates a point on the circumference of an ellipse at a specified angle in degrees.
+    /// </summary>
+    /// <param name="centerEllipse">The center of the ellipse in world space.</param>
+    /// <param name="primaryAxisUnit">The normalized direction of the primary axis.</param>
+    /// <param name="secondaryAxisUnit">The normalized direction of the secondary axis.</param>
+    /// <param name="ellipseExtents">A float2 where x is the extent along the primary axis and y is the extent along the secondary axis.</param>
+    /// <param name="angleInDegrees">The angle in degrees (0 to 360) at which to generate the point, measured from the primary axis.</param>
+    /// <returns>The point on the ellipse circumference in world space at the specified angle.</returns>
+    public static float2 GeneratePointOnEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit,
+                                                in float2 ellipseExtents, float angleInDegrees)
+    {
+        // 1. Convert angle from degrees to radians
+        float angleInRadians = angleInDegrees * Mathf.Deg2Rad;
+
+        // 2. Calculate point on a hypothetical unrotated ellipse at the given angle
+        // The parametric equations for an unrotated ellipse aligned with x and y axes are:
+        // x = a * cos(theta)
+        // y = b * sin(theta)
+        // In our case, 'a' is ellipseExtents.x and 'b' is ellipseExtents.y
+        float2 pointOnUnrotatedEllipse = new float2(
+            ellipseExtents.x * math.cos(angleInRadians),
+            ellipseExtents.y * math.sin(angleInRadians)
+        );
+
+        // 3. Rotate and translate the point based on the ellipse's orientation and center
+        // We can use the primary and secondary axis units as basis vectors for rotation.
+        // The point on the rotated ellipse is the center plus the contribution along
+        // the primary and secondary axes based on the calculated unrotated point.
+        float2 pointOnRotatedEllipse = centerEllipse +
+                                       primaryAxisUnit * pointOnUnrotatedEllipse.x +
+                                       secondaryAxisUnit * pointOnUnrotatedEllipse.y;
+
+        return pointOnRotatedEllipse;
+    }
+
+    // 'ellipse' are the extents of the ellipse axis
+    // 'p' is the query point in world space
+    // 'closest' is the ellipse point (in world space) closest to the point 'p'
+    // Returns distance to the circumference of the ellipse, 0 when inside
+    [BurstCompile]
+    public static float FastDistancePointToEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit,
+                                                   in float2 ellipse, in float2 query, out float2 closest,
+                                                   in float angle = 30.0f)
+    {
+        Debug.Assert(ellipse.x > 0.0 && ellipse.y > 0.0);
+
+        float minDistance = float.MaxValue;
+        float2 minV = float2.zero;
+        closest = float2.zero;
+        for (float a = 0.0f; a <= 360.0f; a += angle)
+        {
+            float2 p = GeneratePointOnEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, a);
+            float2 v = p - query;
+            float d = math.length(v);
+            if (d < minDistance)
+            {
+                minDistance = d;
+                closest = p;
+                minV = v;
+            }
+        }
+        if (math.dot(minV / minDistance, math.normalize(centerEllipse - query)) < 0.0f ||
+            math.distance(centerEllipse, query) < minDistance) // check if inside
+        {
+            return INSIDE_ELLIPSE;
+        }
+        return minDistance;
+    }
+
+    [BurstCompile]
+    public static float DistanceEllipseToEllipse(in float2 centerEllipse1, in float2 primaryAxisUnit1, in float2 secondaryAxisUnit1, in float2 ellipse1,
+                                             in float2 centerEllipse2, in float2 primaryAxisUnit2, in float2 secondaryAxisUnit2, in float2 ellipse2,
+                                             out float2 closest1, out float2 closest2, in float angle = 30.0f, in int maxIterations = 149)
+    {
+        float minDistance = float.MaxValue;
+        closest1 = float2.zero;
+        closest2 = float2.zero;
+        for (float a = 0.0f; a <= 360.0f; a += angle)
+        {
+            float2 p = GeneratePointOnEllipse(centerEllipse2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, a);
+            float d = DistancePointToEllipse(centerEllipse1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, p, out float2 candidateClosest, maxIterations: maxIterations);
+            if (d < minDistance)
+            {
+                minDistance = d;
+                closest1 = candidateClosest;
+                closest2 = p;
+            }
+        }
+        return minDistance;
+    }
+
+    [BurstCompile]
+    public static float FastDistanceEllipseToEllipse(in float2 centerEllipse1, in float2 primaryAxisUnit1, in float2 secondaryAxisUnit1, in float2 ellipse1,
+                                                     in float2 centerEllipse2, in float2 primaryAxisUnit2, in float2 secondaryAxisUnit2, in float2 ellipse2,
+                                                     out float2 closest1, out float2 closest2, in float angle = 30.0f)
+    {
+        float minDistance = float.MaxValue;
+        closest1 = float2.zero;
+        closest2 = float2.zero;
+        for (float a = 0.0f; a <= 360.0f; a += angle)
+        {
+            float2 p = GeneratePointOnEllipse(centerEllipse2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, a);
+            float d = FastDistancePointToEllipse(centerEllipse1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, p, out float2 candidateClosest, angle: angle);
+            if (d < minDistance)
+            {
+                minDistance = d;
+                closest1 = candidateClosest;
+                closest2 = p;
+            }
+        }
+        return minDistance;
     }
 
 }
