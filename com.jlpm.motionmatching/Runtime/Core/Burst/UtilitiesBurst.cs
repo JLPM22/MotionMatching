@@ -173,8 +173,9 @@ public static class UtilitiesBurst
     /// <param name="ellipseExtents">A float2 where x is the extent along the primary axis and y is the extent along the secondary axis.</param>
     /// <param name="angleInDegrees">The angle in degrees (0 to 360) at which to generate the point, measured from the primary axis.</param>
     /// <returns>The point on the ellipse circumference in world space at the specified angle.</returns>
-    public static float2 GeneratePointOnEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit,
-                                                in float2 ellipseExtents, float angleInDegrees)
+    [BurstCompile]
+    public static void GeneratePointOnEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit,
+                                              in float2 ellipseExtents, in float angleInDegrees, out float2 result)
     {
         // 1. Convert angle from degrees to radians
         float angleInRadians = angleInDegrees * Mathf.Deg2Rad;
@@ -197,7 +198,7 @@ public static class UtilitiesBurst
                                        primaryAxisUnit * pointOnUnrotatedEllipse.x +
                                        secondaryAxisUnit * pointOnUnrotatedEllipse.y;
 
-        return pointOnRotatedEllipse;
+        result = pointOnRotatedEllipse;
     }
 
     // 'ellipse' are the extents of the ellipse axis
@@ -216,7 +217,7 @@ public static class UtilitiesBurst
         closest = float2.zero;
         for (float a = 0.0f; a <= 360.0f; a += angle)
         {
-            float2 p = GeneratePointOnEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, a);
+            GeneratePointOnEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, a, out float2 p);
             float2 v = p - query;
             float d = math.length(v);
             if (d < minDistance)
@@ -244,7 +245,7 @@ public static class UtilitiesBurst
         closest2 = float2.zero;
         for (float a = 0.0f; a <= 360.0f; a += angle)
         {
-            float2 p = GeneratePointOnEllipse(centerEllipse2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, a);
+            GeneratePointOnEllipse(centerEllipse2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, a, out float2 p);
             float d = DistancePointToEllipse(centerEllipse1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, p, out float2 candidateClosest, maxIterations: maxIterations);
             if (d < minDistance)
             {
@@ -266,7 +267,7 @@ public static class UtilitiesBurst
         closest2 = float2.zero;
         for (float a = 0.0f; a <= 360.0f; a += angle)
         {
-            float2 p = GeneratePointOnEllipse(centerEllipse2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, a);
+            GeneratePointOnEllipse(centerEllipse2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, a, out float2 p);
             float d = FastDistancePointToEllipse(centerEllipse1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, p, out float2 candidateClosest, angle: angle);
             if (d < minDistance)
             {
