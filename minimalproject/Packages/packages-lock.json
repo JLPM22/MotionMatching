@@ -10,6 +10,15 @@
         "com.unity.splines": "2.7.2"
       }
     },
+    "com.sperlich.shapeswrapper": {
+      "version": "https://github.com/MrPifo/UnityShapesWrapper.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.render-pipelines.universal": "17.0.3"
+      },
+      "hash": "f967dedafce8e0b136ae8b388006a2e4d38f31f8"
+    },
     "com.unity.burst": {
       "version": "1.8.19",
       "depth": 1,
@@ -142,8 +151,8 @@
       "depth": 1,
       "source": "registry",
       "dependencies": {
-        "com.unity.settings-manager": "1.0.3",
-        "com.unity.mathematics": "1.2.1"
+        "com.unity.mathematics": "1.2.1",
+        "com.unity.settings-manager": "1.0.3"
       },
       "url": "https://packages.unity.com"
     },

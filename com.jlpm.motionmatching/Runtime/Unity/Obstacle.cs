@@ -1,4 +1,5 @@
 using MotionMatching;
+using Sperlich.Drawing;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -110,6 +111,7 @@ namespace MotionMatching
             Vector3 position = transform.position;
             GizmosExtensions.DrawWireCircle(new Vector3(position.x, GetMinHeightWorld(), position.z), Radius, Quaternion.identity);
             GizmosExtensions.DrawWireCircle(new Vector3(position.x, GetMaxHeightWorld(), position.z), Radius, Quaternion.identity);
+            //Draw.Disc(new Vector3(position.x, GetMinHeightWorld(), position.z), Radius * MotionMatchingController.GIZMOS_MULTIPLIER, new Color(0.2f, 0.2f, 0.2f));
         }
     }
 }

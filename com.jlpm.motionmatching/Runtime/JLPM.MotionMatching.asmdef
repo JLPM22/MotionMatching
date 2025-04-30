@@ -6,7 +6,8 @@
         "Unity.Mathematics",
         "Unity.InputSystem",
         "Unity.Splines",
-        "Unity.Collections"
+        "Unity.Collections",
+        "Sperlich.SDraw"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

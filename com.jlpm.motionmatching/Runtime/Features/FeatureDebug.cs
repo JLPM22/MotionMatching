@@ -5,6 +5,7 @@ using UnityEngine;
 using MotionMatching;
 using Unity.Mathematics;
 using static MotionMatching.MotionMatchingData;
+using Sperlich.Drawing;
 
 /// <summary>
 /// Import a BVH, create PoseSet and FeatureSet and visualize it using Gizmos.
@@ -204,7 +205,7 @@ public class FeatureDebug : MonoBehaviour
         // Pose Features ---------------------------------------------------------------------------
         if (debugPose)
         {
-            Gizmos.color = Color.cyan;
+            Gizmos.color = new Color(0.0f, 0.8f, 0.8f);
             for (int p = 0; p < mmData.PoseFeatures.Count; p++)
             {
                 var poseFeature = mmData.PoseFeatures[p];
@@ -213,7 +214,8 @@ public class FeatureDebug : MonoBehaviour
                 {
                     case PoseFeature.Type.Position:
                         value = characterOrigin + math.mul(characterRot, value);
-                        Gizmos.DrawSphere(value, spheresRadius);
+                        //Gizmos.DrawSphere(value, spheresRadius);
+                        Draw.Sphere(value, spheresRadius * MotionMatchingController.GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
                         break;
                     case PoseFeature.Type.Velocity:
                         value = math.mul(characterRot, value);
@@ -221,7 +223,7 @@ public class FeatureDebug : MonoBehaviour
                         {
                             skeleton.Find(poseFeature.Bone, out Skeleton.Joint joint);
                             float3 jointPos = joints[joint.Index].position;
-                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.1f, 0.25f * math.length(value) * 0.1f, thickness: 3);
+                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.1f * MotionMatchingController.GIZMOS_MULTIPLIER, 0.25f * math.length(value) * 0.1f * MotionMatchingController.GIZMOS_MULTIPLIER, thickness: 2 * MotionMatchingController.GIZMOS_MULTIPLIER, useDepth: false);
                         }
                         break;
                 }
@@ -297,7 +299,8 @@ public class FeatureDebug : MonoBehaviour
     {
         int t = trajectoryFeatureIndex;
         int p = predictionIndex;
-        Gizmos.color = trajectoryColor * (1.25f - (float)p / trajectoryFeature.FramesPrediction.Length);
+        //Gizmos.color = trajectoryColor * (1.25f - (float)p / trajectoryFeature.FramesPrediction.Length);
+        Gizmos.color = trajectoryColor + (new Color(1.0f, 1.0f, 1.0f) - trajectoryColor) * ((float)p / trajectoryFeature.FramesPrediction.Length);
         if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Position ||
             trajectoryFeature.FeatureType == TrajectoryFeature.Type.Direction)
         {
@@ -306,7 +309,8 @@ public class FeatureDebug : MonoBehaviour
             {
                 case TrajectoryFeature.Type.Position:
                     value = characterOrigin + math.mul(characterRot, value);
-                    Gizmos.DrawSphere(value, spheresRadius);
+                    //Gizmos.DrawSphere(value, spheresRadius);
+                    Draw.Sphere(value, spheresRadius * 2.0f, Gizmos.color, useDepth: true);
                     break;
                 case TrajectoryFeature.Type.Direction:
                     float3 jointPos;
@@ -320,7 +324,8 @@ public class FeatureDebug : MonoBehaviour
                         jointPos = joints[joint.Index].position;
                     }
                     value = math.mul(characterRot, value);
-                    GizmosExtensions.DrawArrow(jointPos, jointPos + value, 0.1f, thickness: 3);
+                    //GizmosExtensions.DrawArrow(jointPos, jointPos + value, 0.1f, thickness: 3);
+                    GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.2f * MotionMatchingController.GIZMOS_MULTIPLIER, 0.075f * MotionMatchingController.GIZMOS_MULTIPLIER, thickness: 2 * MotionMatchingController.GIZMOS_MULTIPLIER);
                     break;
             }
         }

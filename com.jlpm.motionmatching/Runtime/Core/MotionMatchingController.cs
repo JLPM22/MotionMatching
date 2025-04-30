@@ -5,6 +5,8 @@ using Unity.Collections;
 using Unity.Jobs;
 using UnityEditor;
 using System.Diagnostics;
+using Sperlich.Drawing;
+using UnityEngine.InputSystem.HID;
 
 namespace MotionMatching
 {
@@ -15,6 +17,8 @@ namespace MotionMatching
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
+        public static readonly float GIZMOS_MULTIPLIER = 2.0f;
+
         public event Action OnSkeletonTransformUpdated;
 
         public bool DoCrowdSearch = true; // HARDCODED
@@ -980,7 +984,13 @@ namespace MotionMatching
                 for (int i = 2; i < SkeletonTransforms.Length; i++) // skip Simulation Bone
                 {
                     Transform t = SkeletonTransforms[i];
-                    GizmosExtensions.DrawLine(t.parent.position, t.position, 6);
+                    //GizmosExtensions.DrawLine(t.parent.position, t.position, 6.0f);
+                    if (i == 2)
+                    {
+                        Draw.Sphere(t.parent.position, SpheresRadius * 0.5f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
+                    }
+                    Draw.Sphere(t.position, SpheresRadius * 0.5f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
+                    Draw.Line(t.parent.position, t.position, 2.0f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
                 }
             }
 
@@ -1007,7 +1017,8 @@ namespace MotionMatching
                     NativeArray<float3> worldPos = new(PoseSet.Skeleton.Joints.Count, Allocator.Temp);
                     for (int p = 0; p < feature.FramesPrediction.Length; p++)
                     {
-                        Gizmos.color = Color.red * (1.25f - (float)p / feature.FramesPrediction.Length);
+                        //Gizmos.color = Color.red * (1.25f - (float)p / feature.FramesPrediction.Length);
+                        Gizmos.color = Color.red + Color.cyan * ((float)p / feature.FramesPrediction.Length);
                         int frame = currentFrame + feature.FramesPrediction[p];
                         PoseSet.GetPose(frame, out PoseVector futurePose);
                         PoseSet.GetWorldPositions(futurePose, worldPos, InverseAnimationSpaceOriginRot, AnimationSpaceOriginPos, MMTransformOriginRot, MMTransformOriginPose);
@@ -1015,7 +1026,13 @@ namespace MotionMatching
                         {
                             float3 child = worldPos[i];
                             float3 parent = worldPos[PoseSet.Skeleton.Joints[i].ParentIndex];
-                            GizmosExtensions.DrawLine(parent, child, 3);
+                            //GizmosExtensions.DrawLine(parent, child, 3);
+                            if (i == 2)
+                            {
+                                Draw.Sphere(parent, SpheresRadius * 0.5f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+                            }
+                            Draw.Sphere(child, SpheresRadius * 0.5f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+                            Draw.Line(parent, child, 2.0f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
                         }
                     }
                     worldPos.Dispose();
@@ -1025,8 +1042,10 @@ namespace MotionMatching
             if (DebugCurrent)
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
-                Gizmos.DrawSphere(characterOrigin, SpheresRadius);
-                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 3);
+                //Gizmos.DrawSphere(characterOrigin, SpheresRadius);
+                Draw.Sphere(characterOrigin, SpheresRadius * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+                //GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 3);
+                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 2 * GIZMOS_MULTIPLIER);
             }
 
             if (DebugContacts)
@@ -1056,16 +1075,18 @@ namespace MotionMatching
                     float3 dir = math.normalize(PointsOnObstacle[i] - PointsOnEllipse[i]);
                     float3 pointOnDisk = PointsOnEllipse[i] + dir * ObstacleDistances[i];
                     Gizmos.color = new Color(1.0f, 0.5f, 0.0f);
-                    Gizmos.DrawSphere(PointsOnEllipse[i], SpheresRadius);
-                    Gizmos.DrawLine(PointsOnEllipse[i], pointOnDisk);
-                    Gizmos.color = Color.red;
-                    Gizmos.DrawSphere(pointOnDisk, SpheresRadius);
-                    GUI.color = Color.red;
-                    Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 2.0f, ObstaclePenalization[i].ToString("0.00"));
-                    GUI.color = new Color(1.0f, 0.5f, 0.0f);
-                    Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 3.0f, ObstacleDistances[i].ToString("0.0000"));
+                    Draw.Sphere(PointsOnEllipse[i], SpheresRadius * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+                    //Gizmos.DrawSphere(PointsOnEllipse[i], SpheresRadius);
+                    Draw.Line(PointsOnEllipse[i], pointOnDisk, 2.0f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+                    //Gizmos.DrawLine(PointsOnEllipse[i], pointOnDisk);
+                    Draw.Sphere(pointOnDisk, SpheresRadius * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+                    //Gizmos.DrawSphere(pointOnDisk, SpheresRadius);
+                    //GUI.color = Color.red;
+                    //Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 2.0f, ObstaclePenalization[i].ToString("0.00"));
+                    //GUI.color = new Color(1.0f, 0.5f, 0.0f);
+                    //Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 3.0f, ObstacleDistances[i].ToString("0.0000"));
                 }
-                Handles.Label(characterOrigin + math.up() * 2.0f, VisualDebugElements[0].ToString(), SingleLineStyle);
+                //Handles.Label(characterOrigin + math.up() * 2.0f, VisualDebugElements[0].ToString(), SingleLineStyle);
             }
         }
 #endif
