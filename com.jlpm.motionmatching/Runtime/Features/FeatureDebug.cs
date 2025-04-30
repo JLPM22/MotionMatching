@@ -345,7 +345,7 @@ public class FeatureDebug : MonoBehaviour
         {
             Feature3DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature3DExtractor;
             float3 value = isDynamic ? set.Get3DDynamicFeature(currentFrame, t, p) : set.Get3DTrajectoryFeature(currentFrame, t, p, true);
-            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton);
+            featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero);
         }
         else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom4D)
         {

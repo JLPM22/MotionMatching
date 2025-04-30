@@ -267,20 +267,22 @@ namespace MotionMatching
             float2 pos3 = new(Features[featureIndex + 4] * Std[4] + Mean[4],
                               Features[featureIndex + 5] * Std[5] + Mean[5]);
 
-            float4 ellipse1 = new(Features[featureIndex + FeatureStaticSize + 0], Features[featureIndex + FeatureStaticSize + 1],
-                                  Features[featureIndex + FeatureStaticSize + 2], Features[featureIndex + FeatureStaticSize + 3]);
-            float4 ellipse2 = new(Features[featureIndex + FeatureStaticSize + 4], Features[featureIndex + FeatureStaticSize + 5],
-                                  Features[featureIndex + FeatureStaticSize + 6], Features[featureIndex + FeatureStaticSize + 7]);
-            float4 ellipse3 = new(Features[featureIndex + FeatureStaticSize + 8], Features[featureIndex + FeatureStaticSize + 9],
-                                  Features[featureIndex + FeatureStaticSize + 10], Features[featureIndex + FeatureStaticSize + 11]);
+            int featureStaticIndex = featureIndex + FeatureStaticSize;
+            float3 ellipseFeatures1 = new(Features[featureStaticIndex + 0], Features[featureStaticIndex + 1], Features[featureStaticIndex + 2]);
+            float3 ellipseFeatures2 = new(Features[featureStaticIndex + 3], Features[featureStaticIndex + 4], Features[featureStaticIndex + 5]);
+            float3 ellipseFeatures3 = new(Features[featureStaticIndex + 6], Features[featureStaticIndex + 7], Features[featureStaticIndex + 8]);
 
-            float2 primaryAxisUnit1 = new(ellipse1.z, ellipse1.w);
-            float2 primaryAxisUnit2 = new(ellipse2.z, ellipse2.w);
-            float2 primaryAxisUnit3 = new(ellipse3.z, ellipse3.w);
+            float2 primaryAxisUnit1 = math.normalize(ellipseFeatures1.xy);
+            float2 primaryAxisUnit2 = math.normalize(ellipseFeatures2.xy);
+            float2 primaryAxisUnit3 = math.normalize(ellipseFeatures3.xy);
 
             float2 secondaryAxisUnit1 = new(-primaryAxisUnit1.y, primaryAxisUnit1.x);
             float2 secondaryAxisUnit2 = new(-primaryAxisUnit2.y, primaryAxisUnit2.x);
             float2 secondaryAxisUnit3 = new(-primaryAxisUnit3.y, primaryAxisUnit3.x);
+
+            float2 ellipse1 = new(math.length(ellipseFeatures1.xy), ellipseFeatures1.z);
+            float2 ellipse2 = new(math.length(ellipseFeatures2.xy), ellipseFeatures2.z);
+            float2 ellipse3 = new(math.length(ellipseFeatures3.xy), ellipseFeatures3.z);
 
             float debugTotalCrowdDistance = 0.0f;
             // HARDCODED: works only when ObstaclesCount.Length == 3
@@ -288,7 +290,7 @@ namespace MotionMatching
             int obstacleEllipseIt = 0;
             for (int p = 0; p < ObstaclesCirclesCount[0]; p++)
             {
-                float penalization1 = ComputePenalizationCircles(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleCircleIt, 1.0f, saveDebug);
+                float penalization1 = ComputePenalizationCircles(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, obstacleCircleIt, 1.0f, saveDebug);
                 debugTotalCrowdDistance += penalization1;
                 sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
@@ -299,7 +301,7 @@ namespace MotionMatching
             }
             for (int p = 0; p < ObstaclesEllipsesCount[0]; p++)
             {
-                float penalization1 = ComputePenalizationEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleEllipseIt, 1.0f, saveDebug);
+                float penalization1 = ComputePenalizationEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, obstacleEllipseIt, 1.0f, saveDebug);
                 debugTotalCrowdDistance += penalization1;
                 sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
@@ -311,7 +313,7 @@ namespace MotionMatching
 
             for (int p = 0; p < ObstaclesCirclesCount[1]; p++)
             { 
-                float penalization2 = ComputePenalizationCircles(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleCircleIt, CrowdSecondTrajectoryWeight, saveDebug);
+                float penalization2 = ComputePenalizationCircles(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, obstacleCircleIt, CrowdSecondTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization2;
                 sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
@@ -322,7 +324,7 @@ namespace MotionMatching
             }
             for (int p = 0; p < ObstaclesEllipsesCount[1]; p++)
             {
-                float penalization2 = ComputePenalizationEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleEllipseIt, CrowdSecondTrajectoryWeight, saveDebug);
+                float penalization2 = ComputePenalizationEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, obstacleEllipseIt, CrowdSecondTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization2;
                 sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
@@ -334,7 +336,7 @@ namespace MotionMatching
 
             for (int p = 0; p < ObstaclesCirclesCount[2]; p++)
             { 
-                float penalization3 = ComputePenalizationCircles(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleCircleIt, CrowdThirdTrajectoryWeight, saveDebug);
+                float penalization3 = ComputePenalizationCircles(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3, obstacleCircleIt, CrowdThirdTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization3;
                 sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
@@ -345,7 +347,7 @@ namespace MotionMatching
             }
             for (int p = 0; p < ObstaclesEllipsesCount[2]; p++)
             {
-                float penalization3 = ComputePenalizationEllipse(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleEllipseIt, CrowdThirdTrajectoryWeight, saveDebug);
+                float penalization3 = ComputePenalizationEllipse(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3, obstacleEllipseIt, CrowdThirdTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization3;
                 sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
@@ -549,24 +551,26 @@ namespace MotionMatching
             float2 pos3 = new(Features[featureIndex + 4] * Std[4] + Mean[4],
                               Features[featureIndex + 5] * Std[5] + Mean[5]);
 
-            float4 ellipse1 = new(Features[featureIndex + FeatureStaticSize + 0], Features[featureIndex + FeatureStaticSize + 1],
-                                  Features[featureIndex + FeatureStaticSize + 2], Features[featureIndex + FeatureStaticSize + 3]);
-            float4 ellipse2 = new(Features[featureIndex + FeatureStaticSize + 4], Features[featureIndex + FeatureStaticSize + 5],
-                                  Features[featureIndex + FeatureStaticSize + 6], Features[featureIndex + FeatureStaticSize + 7]);
-            float4 ellipse3 = new(Features[featureIndex + FeatureStaticSize + 8], Features[featureIndex + FeatureStaticSize + 9],
-                                  Features[featureIndex + FeatureStaticSize + 10], Features[featureIndex + FeatureStaticSize + 11]);
+            int featureStaticIndex = featureIndex + FeatureStaticSize;
+            float3 ellipseFeatures1 = new(Features[featureStaticIndex + 0], Features[featureStaticIndex + 1], Features[featureStaticIndex + 2]);
+            float3 ellipseFeatures2 = new(Features[featureStaticIndex + 3], Features[featureStaticIndex + 4], Features[featureStaticIndex + 5]);
+            float3 ellipseFeatures3 = new(Features[featureStaticIndex + 6], Features[featureStaticIndex + 7], Features[featureStaticIndex + 8]);
 
-            float2 primaryAxisUnit1 = new(ellipse1.z, ellipse1.w);
-            float2 primaryAxisUnit2 = new(ellipse2.z, ellipse2.w);
-            float2 primaryAxisUnit3 = new(ellipse3.z, ellipse3.w);
+            float2 primaryAxisUnit1 = math.normalize(ellipseFeatures1.xy);
+            float2 primaryAxisUnit2 = math.normalize(ellipseFeatures2.xy);
+            float2 primaryAxisUnit3 = math.normalize(ellipseFeatures3.xy);
 
             float2 secondaryAxisUnit1 = new(-primaryAxisUnit1.y, primaryAxisUnit1.x);
             float2 secondaryAxisUnit2 = new(-primaryAxisUnit2.y, primaryAxisUnit2.x);
             float2 secondaryAxisUnit3 = new(-primaryAxisUnit3.y, primaryAxisUnit3.x);
 
-            float2 height1 = new(Features[featureIndex + FeatureStaticSize + 12], Features[featureIndex + FeatureStaticSize + 13]);
-            float2 height2 = new(Features[featureIndex + FeatureStaticSize + 14], Features[featureIndex + FeatureStaticSize + 15]);
-            float2 height3 = new(Features[featureIndex + FeatureStaticSize + 16], Features[featureIndex + FeatureStaticSize + 17]);
+            float2 ellipse1 = new(math.length(ellipseFeatures1.xy), ellipseFeatures1.z);
+            float2 ellipse2 = new(math.length(ellipseFeatures2.xy), ellipseFeatures2.z);
+            float2 ellipse3 = new(math.length(ellipseFeatures3.xy), ellipseFeatures3.z);
+
+            float2 height1 = new(Features[featureStaticIndex + 9], Features[featureStaticIndex + 10]);
+            float2 height2 = new(Features[featureStaticIndex + 11], Features[featureStaticIndex + 12]);
+            float2 height3 = new(Features[featureStaticIndex + 13], Features[featureStaticIndex + 14]);
 
             float debugTotalCrowdDistance = 0.0f;
             // HARDCODED: works only when ObstaclesCount.Length == 3
@@ -576,7 +580,7 @@ namespace MotionMatching
             {
                 if (HeightOverlap(height1, ObstaclesCircles[obstacleCircleIt].Item3))
                 {
-                    float penalization1 = ComputePenalizationCircles(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleCircleIt, 1.0f, saveDebug);
+                    float penalization1 = ComputePenalizationCircles(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, obstacleCircleIt, 1.0f, saveDebug);
                     debugTotalCrowdDistance += penalization1;
                     sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
@@ -588,7 +592,7 @@ namespace MotionMatching
             }
             for (int p = 0; p < ObstaclesEllipsesCount[0]; p++)
             {
-                float penalization1 = ComputePenalizationEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1.xy, obstacleEllipseIt, 1.0f, saveDebug);
+                float penalization1 = ComputePenalizationEllipse(pos1, primaryAxisUnit1, secondaryAxisUnit1, ellipse1, obstacleEllipseIt, 1.0f, saveDebug);
                 debugTotalCrowdDistance += penalization1;
                 sqrDistance += penalization1 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
@@ -602,7 +606,7 @@ namespace MotionMatching
             {
                 if (HeightOverlap(height2, ObstaclesCircles[obstacleCircleIt].Item3))
                 {
-                    float penalization2 = ComputePenalizationCircles(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleCircleIt, CrowdSecondTrajectoryWeight, saveDebug);
+                    float penalization2 = ComputePenalizationCircles(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, obstacleCircleIt, CrowdSecondTrajectoryWeight, saveDebug);
                     debugTotalCrowdDistance += penalization2;
                     sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
@@ -614,7 +618,7 @@ namespace MotionMatching
             }
             for (int p = 0; p < ObstaclesEllipsesCount[1]; p++)
             {
-                float penalization2 = ComputePenalizationEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2.xy, obstacleEllipseIt, CrowdSecondTrajectoryWeight, saveDebug);
+                float penalization2 = ComputePenalizationEllipse(pos2, primaryAxisUnit2, secondaryAxisUnit2, ellipse2, obstacleEllipseIt, CrowdSecondTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization2;
                 sqrDistance += penalization2 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)
@@ -628,7 +632,7 @@ namespace MotionMatching
             {
                 if (HeightOverlap(height3, ObstaclesCircles[obstacleCircleIt].Item3))
                 {
-                    float penalization3 = ComputePenalizationCircles(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleCircleIt, CrowdThirdTrajectoryWeight, saveDebug);
+                    float penalization3 = ComputePenalizationCircles(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3, obstacleCircleIt, CrowdThirdTrajectoryWeight, saveDebug);
                     debugTotalCrowdDistance += penalization3;
                     sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
                     if (!saveDebug && sqrDistance > minDistance)
@@ -640,7 +644,7 @@ namespace MotionMatching
             }
             for (int p = 0; p < ObstaclesEllipsesCount[2]; p++)
             {
-                float penalization3 = ComputePenalizationEllipse(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3.xy, obstacleEllipseIt, CrowdThirdTrajectoryWeight, saveDebug);
+                float penalization3 = ComputePenalizationEllipse(pos3, primaryAxisUnit3, secondaryAxisUnit3, ellipse3, obstacleEllipseIt, CrowdThirdTrajectoryWeight, saveDebug);
                 debugTotalCrowdDistance += penalization3;
                 sqrDistance += penalization3 * FeatureWeights[FeatureStaticSize];
                 if (!saveDebug && sqrDistance > minDistance)

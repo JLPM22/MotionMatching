@@ -680,7 +680,7 @@ namespace MotionMatching
                             isStartFeature = false;
                             extractor3D.StartExtracting(poseSet.Skeleton);
                         }
-                        float3 value3D = extractor3D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                        float3 value3D = extractor3D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
                         Features[predictionOffset + 0] = value3D.x;
                         Features[predictionOffset + 1] = value3D.y;
                         Features[predictionOffset + 2] = value3D.z;

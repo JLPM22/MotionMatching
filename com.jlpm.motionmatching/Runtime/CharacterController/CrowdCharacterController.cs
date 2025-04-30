@@ -515,7 +515,6 @@ namespace MotionMatching
                 output[0] = 0.0f;
                 output[1] = 0.0f;
                 output[2] = 0.0f;
-                output[3] = 0.0f;
             }
             else if (feature.Name == "FutureHeight")
             {
