@@ -11,13 +11,11 @@ namespace MotionMatching
     {
         public float PercentageThreshold; // [0.0f, 1.0f]
         public int MinimumStepSize;
-        public int LocalSearchRadius;
 
-        public DynamicAccelerationConsts(float percentageThreshold, int minimumStepSize, int localSearchRadius)
+        public DynamicAccelerationConsts(float percentageThreshold, int minimumStepSize)
         {
             PercentageThreshold = percentageThreshold;
             MinimumStepSize = minimumStepSize;
-            LocalSearchRadius = localSearchRadius;
         }
     }
 

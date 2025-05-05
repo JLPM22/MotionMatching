@@ -195,7 +195,7 @@ namespace MotionMatching
             {
                 return 0.0f;
             }
-            return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, 1e-3f));
+            return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, UtilitiesBurst.INSIDE_ELLIPSE));
         }
 
         private float ComputePenalizationCircles(float2 centerEllipse, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
@@ -285,7 +285,6 @@ namespace MotionMatching
             float2 ellipse3 = new(math.length(ellipseFeatures3.xy), ellipseFeatures3.z);
 
             float debugTotalCrowdDistance = 0.0f;
-            // HARDCODED: works only when ObstaclesCount.Length == 3
             int obstacleCircleIt = 0;
             int obstacleEllipseIt = 0;
             for (int p = 0; p < ObstaclesCirclesCount[0]; p++)
@@ -366,6 +365,36 @@ namespace MotionMatching
             return minDistance;
         }
 
+        public float Search(int aStart, int aEnd, float minDistance)
+        {
+            for (int a = aStart; a < aEnd; a++)
+            {
+                int i = AdaptativeFeaturesIndices[a];
+                float staticSqrDistance = StaticSqrDistance(i);
+                if (staticSqrDistance < minDistance)
+                {
+                    float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
+                    if (newMinDistance < minDistance)
+                    {
+                        BestIndex[1] = a;
+                        minDistance = newMinDistance;
+                        int jStart = (AdaptativeFeaturesIndices[math.max(0, a - 1)] + i) / 2;
+                        int jEnd = (AdaptativeFeaturesIndices[math.min(AdaptativeFeaturesIndices.Length - 1, a + 1)] + i) / 2;
+                        for (int j = jStart; j < jEnd; j++)
+                        {
+                            if (j != i && Valid[j])
+                            {
+                                staticSqrDistance = StaticSqrDistance(j);
+                                minDistance = FeatureCheck(j, minDistance, staticSqrDistance, false);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return minDistance;
+        }
+
         // Features
         // 0, 1 -> Position 0
         // 2, 3 -> Position 1
@@ -396,27 +425,9 @@ namespace MotionMatching
                 float minDistance = float.MaxValue;
                 BestIndex[0] = -1;
 
-                for (int a = 0; a < AdaptativeFeaturesIndices.Length; a++)
-                {
-                    int i = AdaptativeFeaturesIndices[a];
-                    float staticSqrDistance = StaticSqrDistance(i);
-                    float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
-                    if (newMinDistance < minDistance)
-                    {
-                        minDistance = newMinDistance;
-                        if (DynamicAccelerationConsts.LocalSearchRadius > 1)
-                        {
-                            for (int j = math.max(i - DynamicAccelerationConsts.LocalSearchRadius, 0); j < i + DynamicAccelerationConsts.LocalSearchRadius; j++)
-                            {
-                                if (i != j && Valid[j])
-                                {
-                                    staticSqrDistance = StaticSqrDistance(j);
-                                    minDistance = FeatureCheck(j, minDistance, staticSqrDistance, false);
-                                }
-                            }
-                        }
-                    }
-                }
+                int aStart = math.max(0, BestIndex[1] - (int)math.floor(AdaptativeFeaturesIndices.Length * 0.01f));
+                minDistance = Search(aStart, AdaptativeFeaturesIndices.Length, minDistance);
+                minDistance = Search(0, math.max(0, aStart), minDistance);
             }
         }
     }
@@ -474,7 +485,7 @@ namespace MotionMatching
             {
                 return 0.0f;
             }
-            return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, 1e-3f));
+            return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, UtilitiesBurst.INSIDE_ELLIPSE));
         }
 
         private float ComputePenalizationCircles(float2 centerEllipse, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
@@ -573,7 +584,6 @@ namespace MotionMatching
             float2 height3 = new(Features[featureStaticIndex + 13], Features[featureStaticIndex + 14]);
 
             float debugTotalCrowdDistance = 0.0f;
-            // HARDCODED: works only when ObstaclesCount.Length == 3
             int obstacleCircleIt = 0;
             int obstacleEllipseIt = 0;
             for (int p = 0; p < ObstaclesCirclesCount[0]; p++)
@@ -663,22 +673,36 @@ namespace MotionMatching
             return minDistance;
         }
 
-        // Features
-        // 0, 1 -> Position 0
-        // 2, 3 -> Position 1
-        // 4, 5 -> Position 2
-        // ---
-        // 6, 7   -> Direction 0
-        // 8, 9   -> Direction 1
-        // 10, 11 -> Direction 2
-        // ---
-        // ... Pose Features
-        // ---
-        // FeatureStaticSize +
-        // 0, 1, 2, 3   -> Ellipse 0
-        // 4, 5, 6, 7   -> Ellipse 1
-        // 8, 9, 10, 11 -> Ellipse 2
-        // --
+        public float Search(int aStart, int aEnd, float minDistance)
+        {
+            for (int a = aStart; a < aEnd; a++)
+            {
+                int i = AdaptativeFeaturesIndices[a];
+                float staticSqrDistance = StaticSqrDistance(i);
+                if (staticSqrDistance < minDistance)
+                {
+                    float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
+                    if (newMinDistance < minDistance)
+                    {
+                        BestIndex[1] = a;
+                        minDistance = newMinDistance;
+                        int jStart = (AdaptativeFeaturesIndices[math.max(0, a - 1)] + i) / 2;
+                        int jEnd = (AdaptativeFeaturesIndices[math.min(AdaptativeFeaturesIndices.Length - 1, a + 1)] + i) / 2;
+                        for (int j = jStart; j < jEnd; j++)
+                        {
+                            if (j != i && Valid[j])
+                            {
+                                staticSqrDistance = StaticSqrDistance(j);
+                                minDistance = FeatureCheck(j, minDistance, staticSqrDistance, false);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return minDistance;
+        }
+
         public void Execute()
         {
             // DEBUG
@@ -693,27 +717,9 @@ namespace MotionMatching
                 float minDistance = float.MaxValue;
                 BestIndex[0] = -1;
 
-                for (int a = 0; a < AdaptativeFeaturesIndices.Length; a++)
-                {
-                    int i = AdaptativeFeaturesIndices[a];
-                    float staticSqrDistance = StaticSqrDistance(i);
-                    float newMinDistance = FeatureCheck(i, minDistance, staticSqrDistance, false);
-                    if (newMinDistance < minDistance)
-                    {
-                        minDistance = newMinDistance;
-                        if (DynamicAccelerationConsts.LocalSearchRadius > 1)
-                        {
-                            for (int j = math.max(i - DynamicAccelerationConsts.LocalSearchRadius, 0); j < i + DynamicAccelerationConsts.LocalSearchRadius; j++)
-                            {
-                                if (i != j && Valid[j])
-                                {
-                                    staticSqrDistance = StaticSqrDistance(j);
-                                    minDistance = FeatureCheck(j, minDistance, staticSqrDistance, false);
-                                }
-                            }
-                        }
-                    }
-                }
+                int aStart = math.max(0, BestIndex[1] - (int)math.floor(AdaptativeFeaturesIndices.Length * 0.01f));
+                minDistance = Search(aStart, AdaptativeFeaturesIndices.Length, minDistance);
+                minDistance = Search(0, math.max(0, aStart), minDistance);
             }
         }
     }

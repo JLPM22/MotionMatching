@@ -153,7 +153,9 @@ namespace MotionMatching
             }
 
             // Other initialization
-            SearchResult = new NativeArray<int>(1, Allocator.Persistent);
+            SearchResult = new NativeArray<int>(2, Allocator.Persistent);
+            SearchResult[0] = 0;
+            SearchResult[1] = 0;
             int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count + MMData.DynamicFeatures.Count;
             if (FeatureWeights == null || FeatureWeights.Length != numberFeatures)
             {
@@ -372,6 +374,7 @@ namespace MotionMatching
                     }
                 }
                 float distanceFactor = closestObstacleDistance / CrowdThreshold; // 1.0f is the max distance, 0.0f is touching
+                Debug.Assert(distanceFactor <= 1.0f, "Distance factor should be between 0.0f and 1.0f. If it is not, the obstacle is too close to the character."); ;
                 distanceFactor = math.log10(distanceFactor) + 1.0f;
                 FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight * math.max(DynamicDirectionWeightFactor, distanceFactor), math.clamp(Time.deltaTime * 10.0f, 0.0f, 1.0f));
             }
@@ -969,7 +972,6 @@ namespace MotionMatching
             {
                 DynamicAccelerationConsts.PercentageThreshold = 0.05f;
                 DynamicAccelerationConsts.MinimumStepSize = 8;
-                DynamicAccelerationConsts.LocalSearchRadius = 4;
             }
         }
 
