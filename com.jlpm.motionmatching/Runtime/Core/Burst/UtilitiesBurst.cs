@@ -5,7 +5,8 @@ using UnityEngine;
 [BurstCompile]
 public static class UtilitiesBurst
 {
-    public static readonly float INSIDE_ELLIPSE = 1e-9f;
+    public static readonly float MIN_INSIDE_ELLIPSE = 1e-6f;
+    public static readonly float MAX_INSIDE_ELLIPSE = 1e-12f;
 
     // Source: https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
     [BurstCompile]
@@ -158,7 +159,7 @@ public static class UtilitiesBurst
 
         if (p.x < e.x && p.y < e.y) // check if inside
         {
-            distance = INSIDE_ELLIPSE;
+            distance = math.lerp(MIN_INSIDE_ELLIPSE, MAX_INSIDE_ELLIPSE, distance / e.x);
         }
 
         return distance;
@@ -230,7 +231,7 @@ public static class UtilitiesBurst
         if (math.dot(minV / minDistance, math.normalize(centerEllipse - query)) < 0.0f ||
             math.distance(centerEllipse, query) < minDistance) // check if inside
         {
-            return INSIDE_ELLIPSE;
+            return math.lerp(MIN_INSIDE_ELLIPSE, MAX_INSIDE_ELLIPSE, minDistance / math.max(ellipse.x, ellipse.y));
         }
         return minDistance;
     }

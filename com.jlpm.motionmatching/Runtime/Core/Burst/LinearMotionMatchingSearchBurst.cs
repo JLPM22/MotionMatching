@@ -195,7 +195,7 @@ namespace MotionMatching
             {
                 return 0.0f;
             }
-            return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, UtilitiesBurst.INSIDE_ELLIPSE));
+            return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, UtilitiesBurst.MAX_INSIDE_ELLIPSE));
         }
 
         private float ComputePenalizationCircles(float2 centerEllipse, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
@@ -208,7 +208,7 @@ namespace MotionMatching
 #else
             float distance = UtilitiesBurst.DistancePointToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, ObstaclesCircles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
 #endif
-            distance = math.max(distance - ObstaclesCircles[obstacle].Item2, UtilitiesBurst.INSIDE_ELLIPSE);
+            distance = math.max(distance - ObstaclesCircles[obstacle].Item2, UtilitiesBurst.MAX_INSIDE_ELLIPSE);
             float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
             // DEBUG
             if (saveDebug && distance < CrowdThreshold)
@@ -502,7 +502,7 @@ namespace MotionMatching
             {
                 return 0.0f;
             }
-            return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, UtilitiesBurst.INSIDE_ELLIPSE));
+            return -math.pow((threshold - distance), 4.0f) * math.log(math.max(distance / threshold, UtilitiesBurst.MAX_INSIDE_ELLIPSE));
         }
 
         private float ComputePenalizationCircles(float2 centerEllipse, float2 primaryAxisUnit, float2 secondaryAxisUnit, float2 ellipse, int obstacle, float penalizationFactor, bool saveDebug)
@@ -515,7 +515,7 @@ namespace MotionMatching
 #else
             float distance = UtilitiesBurst.DistancePointToEllipse(centerEllipse, primaryAxisUnit, secondaryAxisUnit, ellipse, ObstaclesCircles[obstacle].Item1, out float2 closest, maxIterationsRootFinder);
 #endif
-            distance = math.max(distance - ObstaclesCircles[obstacle].Item2, UtilitiesBurst.INSIDE_ELLIPSE);
+            distance = math.max(distance - ObstaclesCircles[obstacle].Item2, UtilitiesBurst.MAX_INSIDE_ELLIPSE);
             float penalization = DistanceFunction(distance, CrowdThreshold) * penalizationFactor;
             // DEBUG
             if (saveDebug && distance < CrowdThreshold)
