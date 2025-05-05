@@ -365,8 +365,24 @@ namespace MotionMatching
             return minDistance;
         }
 
+        // TODO: properly evaluate performance + motion diversity
+        //public int VarianceJump(int i, int j, float bestSqrDistance)
+        //{
+        //    const float factor = 1.0f;
+        //    float sqrDistance = 0.0f;
+        //    for (int k = 0; k < FeatureSize; ++k)
+        //    {
+        //        float diff = Features[i * FeatureSize + k] - Features[j * FeatureSize + k];
+        //        sqrDistance += diff * diff * FeatureWeights[k];
+        //    }
+        //    int jump = math.max(1, (int)math.floor(math.sqrt(sqrDistance / bestSqrDistance) * factor));
+        //    return jump;
+        //}
+
         public float Search(int aStart, int aEnd, float minDistance)
         {
+            //int jump = 1;
+            // a++ replace with a += jump
             for (int a = aStart; a < aEnd; a++)
             {
                 int i = AdaptativeFeaturesIndices[a];
@@ -390,6 +406,7 @@ namespace MotionMatching
                         }
                     }
                 }
+                //jump = VarianceJump(i, BestIndex[0], minDistance);
             }
 
             return minDistance;

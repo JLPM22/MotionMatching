@@ -1,3 +1,5 @@
+//#define USE_GIZMOS_SHAPES
+
 using System;
 using UnityEngine;
 using Unity.Mathematics;
@@ -6,7 +8,6 @@ using Unity.Jobs;
 using UnityEditor;
 using System.Diagnostics;
 using Sperlich.Drawing;
-using UnityEngine.InputSystem.HID;
 
 namespace MotionMatching
 {
@@ -986,13 +987,20 @@ namespace MotionMatching
                 for (int i = 2; i < SkeletonTransforms.Length; i++) // skip Simulation Bone
                 {
                     Transform t = SkeletonTransforms[i];
-                    //GizmosExtensions.DrawLine(t.parent.position, t.position, 6.0f);
                     if (i == 2)
                     {
+#if USE_GIZMOS_SHAPES
                         Draw.Sphere(t.parent.position, SpheresRadius * 0.5f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
+#endif
                     }
+#if USE_GIZMOS_SHAPES
                     Draw.Sphere(t.position, SpheresRadius * 0.5f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
+#endif
+#if USE_GIZMOS_SHAPES
                     Draw.Line(t.parent.position, t.position, 2.0f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
+#else
+                    GizmosExtensions.DrawLine(t.parent.position, t.position, 6.0f);
+#endif
                 }
             }
 
@@ -1028,13 +1036,20 @@ namespace MotionMatching
                         {
                             float3 child = worldPos[i];
                             float3 parent = worldPos[PoseSet.Skeleton.Joints[i].ParentIndex];
-                            //GizmosExtensions.DrawLine(parent, child, 3);
                             if (i == 2)
                             {
+#if USE_GIZMOS_SHAPES
                                 Draw.Sphere(parent, SpheresRadius * 0.5f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+#endif
                             }
+#if USE_GIZMOS_SHAPES
                             Draw.Sphere(child, SpheresRadius * 0.5f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+#endif
+#if USE_GIZMOS_SHAPES
                             Draw.Line(parent, child, 2.0f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+#else
+                            GizmosExtensions.DrawLine(parent, child, 3);
+#endif
                         }
                     }
                     worldPos.Dispose();
@@ -1044,8 +1059,11 @@ namespace MotionMatching
             if (DebugCurrent)
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
-                //Gizmos.DrawSphere(characterOrigin, SpheresRadius);
+#if USE_GIZMOS_SHAPES
                 Draw.Sphere(characterOrigin, SpheresRadius * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
+#else
+                Gizmos.DrawSphere(characterOrigin, SpheresRadius);
+#endif
                 //GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 3);
                 GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 2 * GIZMOS_MULTIPLIER);
             }
@@ -1077,12 +1095,15 @@ namespace MotionMatching
                     float3 dir = math.normalize(PointsOnObstacle[i] - PointsOnEllipse[i]);
                     float3 pointOnDisk = PointsOnEllipse[i] + dir * ObstacleDistances[i];
                     Gizmos.color = new Color(1.0f, 0.5f, 0.0f);
+#if USE_GIZMOS_SHAPES
                     Draw.Sphere(PointsOnEllipse[i], SpheresRadius * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
-                    //Gizmos.DrawSphere(PointsOnEllipse[i], SpheresRadius);
                     Draw.Line(PointsOnEllipse[i], pointOnDisk, 2.0f * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
-                    //Gizmos.DrawLine(PointsOnEllipse[i], pointOnDisk);
                     Draw.Sphere(pointOnDisk, SpheresRadius * GIZMOS_MULTIPLIER, Gizmos.color, useDepth: true);
-                    //Gizmos.DrawSphere(pointOnDisk, SpheresRadius);
+#else
+                    Gizmos.DrawSphere(PointsOnEllipse[i], SpheresRadius);
+                    Gizmos.DrawLine(PointsOnEllipse[i], pointOnDisk);
+                    Gizmos.DrawSphere(pointOnDisk, SpheresRadius);
+#endif
                     //GUI.color = Color.red;
                     //Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 2.0f, ObstaclePenalization[i].ToString("0.00"));
                     //GUI.color = new Color(1.0f, 0.5f, 0.0f);
@@ -1092,5 +1113,5 @@ namespace MotionMatching
             }
         }
 #endif
-    }
-}
+                }
+            }

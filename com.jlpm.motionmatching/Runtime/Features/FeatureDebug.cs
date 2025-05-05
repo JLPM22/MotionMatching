@@ -1,3 +1,5 @@
+//#define USE_GIZMOS_SHAPES
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -214,8 +216,11 @@ public class FeatureDebug : MonoBehaviour
                 {
                     case PoseFeature.Type.Position:
                         value = characterOrigin + math.mul(characterRot, value);
-                        //Gizmos.DrawSphere(value, spheresRadius);
+#if USE_GIZMOS_SHAPES
                         Draw.Sphere(value, spheresRadius * MotionMatchingController.GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
+#else
+                        Gizmos.DrawSphere(value, spheresRadius);
+#endif
                         break;
                     case PoseFeature.Type.Velocity:
                         value = math.mul(characterRot, value);
@@ -309,8 +314,11 @@ public class FeatureDebug : MonoBehaviour
             {
                 case TrajectoryFeature.Type.Position:
                     value = characterOrigin + math.mul(characterRot, value);
-                    //Gizmos.DrawSphere(value, spheresRadius);
+#if USE_GIZMOS_SHAPES
                     Draw.Sphere(value, spheresRadius * 2.0f, Gizmos.color, useDepth: true);
+#else
+                    Gizmos.DrawSphere(value, spheresRadius);
+#endif
                     break;
                 case TrajectoryFeature.Type.Direction:
                     float3 jointPos;
