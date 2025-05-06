@@ -541,6 +541,10 @@ namespace MotionMatching
         {
             return transform.forward;
         }
+        public override float GetTargetSpeed()
+        {
+            return math.length(PredictedVelocity[^1]);
+        }
 
         public float2 GetPredictedPosition(int index)
         {

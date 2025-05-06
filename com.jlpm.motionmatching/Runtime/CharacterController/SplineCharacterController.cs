@@ -131,6 +131,10 @@ namespace MotionMatching
         {
             return math.normalize(new float3(transform.forward.x, 0, transform.forward.z));
         }
+        public override float GetTargetSpeed()
+        {
+            return Speed;
+        }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()

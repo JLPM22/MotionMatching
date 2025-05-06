@@ -6,7 +6,7 @@ using UnityEngine;
 public static class UtilitiesBurst
 {
     public static readonly float MIN_INSIDE_ELLIPSE = 1e-6f;
-    public static readonly float MAX_INSIDE_ELLIPSE = 1e-12f;
+    public static readonly float MAX_INSIDE_ELLIPSE = 1e-9f;
 
     // Source: https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
     [BurstCompile]

@@ -308,6 +308,11 @@ namespace MotionMatching
             return transform.forward;
         }
 
+        public override float GetTargetSpeed()
+        {
+            return math.length(PredictedVelocity[^1]);
+        }
+
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {

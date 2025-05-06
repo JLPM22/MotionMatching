@@ -54,6 +54,11 @@ namespace MotionMatching
         public abstract float3 GetWorldInitDirection();
 
         /// <summary>
+        /// Return the target speed of the character, which may be different from the current speed.
+        /// </summary>
+        public abstract float GetTargetSpeed();
+
+        /// <summary>
         /// Get the prediction in character space of a trajectory feature.
         /// e.g., suppose that the feature is the projected position of the character at frames 20, 40 and 60 in the future:
         ///       then, since the projected position is 2D (2 floats), thus, output[0] and output[1] should be filled with the X and Z coordinates.

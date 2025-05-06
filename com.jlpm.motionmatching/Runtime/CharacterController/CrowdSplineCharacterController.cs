@@ -386,6 +386,10 @@ namespace MotionMatching
             float3 delta = SplineContainer.EvaluatePosition(0.01f) - start;
             return math.normalize(new float3(delta.x, 0.0f, delta.z));
         }
+        public override float GetTargetSpeed()
+        {
+            return math.length(Speed);
+        }
 
         public float2 GetPredictedPosition(int index)
         {

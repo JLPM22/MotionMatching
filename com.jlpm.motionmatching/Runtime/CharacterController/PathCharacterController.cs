@@ -19,6 +19,7 @@ namespace MotionMatching
         private float2 CurrentDirection;
         private float2[] PredictedPositions;
         private float2[] PredictedDirections;
+        private float TargetVelocity;
 
         // Features -----------------------------------------------------------------
         private int TrajectoryPosFeatureIndex;
@@ -89,17 +90,18 @@ namespace MotionMatching
             while (remainingTime > 0)
             {
                 KeyPoint current = Path[currentKeypoint];
+                TargetVelocity = current.Velocity;
                 KeyPoint next = Path[(currentKeypoint + 1) % Path.Length];
                 float2 dir = next.Position - current.Position;
                 float2 dirNorm = math.normalize(dir);
                 float2 currentPos = current.Position + dir * currentKeyPointT;
-                float timeToNext = math.distance(currentPos, next.Position) / current.Velocity; // Time needed to get to the next keypoint
+                float timeToNext = math.distance(currentPos, next.Position) / TargetVelocity; // Time needed to get to the next keypoint
                 float dt = math.min(remainingTime, timeToNext);
                 remainingTime -= dt;
                 if (remainingTime <= 0)
                 {
                     // Move
-                    currentPos += dirNorm * current.Velocity * dt;
+                    currentPos += dirNorm * TargetVelocity * dt;
                     currentKeyPointT = math.distance(current.Position, currentPos) / math.distance(current.Position, next.Position);
                     nextPos = currentPos;
                     nextDir = dirNorm;
@@ -166,6 +168,10 @@ namespace MotionMatching
         {
             float2 dir = Path.Length > 0 ? Path[1].Position - Path[0].Position : new float2(0, 1);
             return math.normalize(new float3(dir.x, 0, dir.y));
+        }
+        public override float GetTargetSpeed()
+        {
+            return TargetVelocity;
         }
 
         [System.Serializable]

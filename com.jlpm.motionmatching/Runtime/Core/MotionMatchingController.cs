@@ -27,6 +27,7 @@ namespace MotionMatching
         public float CrowdSecondTrajectoryWeight = 0.4f;
         public float CrowdThirdTrajectoryWeight = 0.1f;
         public DynamicAccelerationConsts DynamicAccelerationConsts;
+        public bool IsNPC = false; // Adds some optimizations at the expense of less responsiveness.
 
         [Header("General")]
         public MotionMatchingCharacterController CharacterController;
@@ -41,6 +42,7 @@ namespace MotionMatching
         [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Tooltip("How important is the current pose")][Range(0.0f, 1.0f)] public float Quality = 1.0f;
         [Range(0.0f, 1.0f)] public float DynamicDirectionWeightFactor = 0.01f; // HARDCODED: this could maybe be an additional scriptable object that the user can provide to control the behaviour of Motion Matching
+        [Tooltip("Scale the interaction features by the target speed of the character controller multiplied by this factor")] public float Anticipation = 2.0f; // HARDCODED: I think that for a general implementation this does not generalize that well
         [HideInInspector] public float[] FeatureWeights;
         [Header("Debug")]
         public float SpheresRadius = 0.1f;
@@ -103,6 +105,10 @@ namespace MotionMatching
         private float StartDirectionWeight;
         private int EvalAgentID; // DEBUG
         private GUIStyle SingleLineStyle = new(); // DEBUG
+        private int NPCid;
+        private int MaxNPCs;
+        private bool NPCFirst;
+        private static int NPCCounter = 0;
 
         private void Awake()
         {
@@ -225,13 +231,24 @@ namespace MotionMatching
 
             SingleLineStyle.wordWrap = false;
             SingleLineStyle.normal.textColor = Color.red;
+
+            if (IsNPC)
+            {
+                MaxNPCs = (int)math.round(SearchTime * DatabaseFrameRate);
+                NPCid = NPCCounter;
+                NPCCounter = (NPCCounter + 1) % MaxNPCs;
+            }
         }
 
         private void OnEnable()
         {
-            SearchTimeLeft = 0;
             CharacterController.OnUpdated += OnCharacterControllerUpdated;
             CharacterController.OnInputChangedQuickly += OnInputChangedQuickly;
+
+            if (IsNPC)
+            {
+                NPCFirst = true;
+            }
         }
 
         private void OnDisable()
@@ -247,10 +264,12 @@ namespace MotionMatching
             stopwatch.Restart();
 
             PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Total");
-            if (SearchTimeLeft <= 0)
+            if ((!IsNPC && SearchTimeLeft <= 0) || (IsNPC && Time.frameCount % MaxNPCs == NPCid) || NPCFirst)
             {
+                NPCFirst = false;
                 // Motion Matching
                 PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Search");
+                Debug.Log("Do Search");
                 int bestFrame = SearchMotionMatching();
                 PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
                 const int ignoreSurrounding = 20; // ignore near frames
@@ -522,7 +541,6 @@ namespace MotionMatching
                             NumberDebugPoints = VisualDebugElements,
                             IsDebug = false,
                             DynamicAccelerationConsts = DynamicAccelerationConsts,
-
                         };
                         jobCrowd.Schedule().Complete();
                     }
@@ -554,7 +572,6 @@ namespace MotionMatching
                             NumberDebugPoints = VisualDebugElements,
                             IsDebug = false,
                             DynamicAccelerationConsts = DynamicAccelerationConsts,
-
                         };
                         jobCrowd.Schedule().Complete();
                     }
@@ -894,7 +911,8 @@ namespace MotionMatching
             {
                 TrajectoryFeature feature = MMData.DynamicFeatures[i];
                 int featureSize = feature.GetSize();
-                float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count];
+                float baseWeight = FeatureWeights[i + MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count];
+                float weight = math.max(baseWeight * Anticipation * CharacterController.GetTargetSpeed(), baseWeight * 0.1f);
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
                     for (int f = 0; f < featureSize; f++)
