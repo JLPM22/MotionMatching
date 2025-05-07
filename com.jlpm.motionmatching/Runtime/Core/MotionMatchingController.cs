@@ -269,7 +269,6 @@ namespace MotionMatching
                 NPCFirst = false;
                 // Motion Matching
                 PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Search");
-                Debug.Log("Do Search");
                 int bestFrame = SearchMotionMatching();
                 PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
                 const int ignoreSurrounding = 20; // ignore near frames
