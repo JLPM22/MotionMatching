@@ -11,8 +11,20 @@ namespace MotionMatching
         public bool IsStatic = false;
         public float2 Height = new(0, 1); // Height in Y axis (min, max)
         // Used for steering coordination, can be left null if not used
-        public CrowdSplineCharacterController CrowdSplineCharacterController;
-        public CrowdCharacterController CrowdCharacter;
+        private CrowdSplineCharacterController CrowdSplineCharacterController;
+        private CrowdCharacterController CrowdCharacter;
+
+        private void Awake()
+        {
+            if (!IsStatic)
+            {
+                CrowdSplineCharacterController = transform.parent.GetComponentInChildren<CrowdSplineCharacterController>();
+                CrowdCharacter = transform.parent.GetComponentInChildren<CrowdCharacterController>();
+            }
+
+            Debug.Assert(IsStatic || (CrowdSplineCharacterController != null || CrowdCharacter != null),
+                         "Obstacle is not static but no CrowdSplineCharacterController or CrowdCharacterController is assigned. Please make sure a CharacterController is a component in any of the children of this component's parent transform.");
+        }
 
         private void OnEnable()
         {

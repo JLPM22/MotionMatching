@@ -911,7 +911,7 @@ namespace MotionMatching
                 TrajectoryFeature feature = MMData.DynamicFeatures[i];
                 int featureSize = feature.GetSize();
                 float baseWeight = FeatureWeights[i + MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count];
-                float weight = math.max(baseWeight * Anticipation * CharacterController.GetTargetSpeed(), baseWeight * 0.1f);
+                float weight = math.max(baseWeight * Anticipation * CharacterController.GetTargetSpeed(), baseWeight * 0.5f);
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
                     for (int f = 0; f < featureSize; f++)
