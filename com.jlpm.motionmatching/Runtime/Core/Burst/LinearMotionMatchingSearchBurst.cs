@@ -1,4 +1,4 @@
-#define USE_FAST_DISTANCE
+//#define USE_FAST_DISTANCE
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -366,24 +366,23 @@ namespace MotionMatching
         }
 
         // TODO: properly evaluate performance + motion diversity
-        //public int VarianceJump(int i, int j, float bestSqrDistance)
-        //{
-        //    const float factor = 1.0f;
-        //    float sqrDistance = 0.0f;
-        //    for (int k = 0; k < FeatureSize; ++k)
-        //    {
-        //        float diff = Features[i * FeatureSize + k] - Features[j * FeatureSize + k];
-        //        sqrDistance += diff * diff * FeatureWeights[k];
-        //    }
-        //    int jump = math.max(1, (int)math.floor(math.sqrt(sqrDistance / bestSqrDistance) * factor));
-        //    return jump;
-        //}
-
-        public float Search(int aStart, int aEnd, float minDistance)
+        public int VarianceJump(int i, int j, float bestSqrDistance, DynamicAccelerationConsts consts)
         {
-            //int jump = 1;
-            // a++ replace with a += jump
-            for (int a = aStart; a < aEnd; a++)
+            float factor = consts.VarianceFactor; // increase this value to increase the jump size
+            float sqrDistance = 0.0f;
+            for (int k = 0; k < FeatureSize; ++k)
+            {
+                float diff = Features[i * FeatureSize + k] - Features[j * FeatureSize + k];
+                sqrDistance += diff * diff * FeatureWeights[k];
+            }
+            int jump = math.max(1, (int)math.floor(math.sqrt(sqrDistance / bestSqrDistance) * factor));
+            return jump;
+        }
+
+        public float Search(int aStart, int aEnd, float minDistance, DynamicAccelerationConsts consts)
+        {
+            int jump = 1;
+            for (int a = aStart; a < aEnd; a += jump)
             {
                 int i = AdaptativeFeaturesIndices[a];
                 float staticSqrDistance = StaticSqrDistance(i);
@@ -406,7 +405,14 @@ namespace MotionMatching
                         }
                     }
                 }
-                //jump = VarianceJump(i, BestIndex[0], minDistance);
+                if (consts.VarianceFactor > 1.0f)
+                {
+                    jump = VarianceJump(i, BestIndex[0], minDistance, consts);
+                }
+                else
+                {
+                    jump = 1;
+                }
             }
 
             return minDistance;
@@ -443,8 +449,8 @@ namespace MotionMatching
                 BestIndex[0] = -1;
 
                 int aStart = math.max(0, BestIndex[1] - (int)math.floor(AdaptativeFeaturesIndices.Length * 0.01f));
-                minDistance = Search(aStart, AdaptativeFeaturesIndices.Length, minDistance);
-                minDistance = Search(0, math.max(0, aStart), minDistance);
+                minDistance = Search(aStart, AdaptativeFeaturesIndices.Length, minDistance, DynamicAccelerationConsts);
+                minDistance = Search(0, math.max(0, aStart), minDistance, DynamicAccelerationConsts);
             }
         }
     }

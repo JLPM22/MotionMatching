@@ -224,10 +224,6 @@ namespace MotionMatching
             }
         }
 
-        public float3 GetCurrentPosition()
-        {
-            return new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
-        }
         public quaternion GetCurrentRotation()
         {
             Quaternion rot = Quaternion.LookRotation(new Vector3(CurrentDirection.x, 0, CurrentDirection.y));
@@ -386,6 +382,10 @@ namespace MotionMatching
             float3 delta = SplineContainer.EvaluatePosition(0.01f) - start;
             return math.normalize(new float3(delta.x, 0.0f, delta.z));
         }
+        public override float3 GetPosition()
+        {
+            return new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
+        }
         public override float GetTargetSpeed()
         {
             return math.length(Speed);
@@ -416,7 +416,7 @@ namespace MotionMatching
             // Draw Current Position And Direction
             if (!Application.isPlaying) return;
             Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
-            Vector3 currentPos = (Vector3)GetCurrentPosition() + Vector3.up * heightOffset * 2;
+            Vector3 currentPos = (Vector3)GetPosition() + Vector3.up * heightOffset * 2;
             Gizmos.DrawSphere(currentPos, 0.1f);
             GizmosExtensions.DrawLine(currentPos, currentPos + (Quaternion)GetCurrentRotation() * Vector3.forward, 12);
 

@@ -45,13 +45,17 @@ namespace MotionMatching
         protected abstract void OnUpdate();
 
         /// <summary>
-        /// Return the initial world position of the character.
+        /// Return the initial world position of the character controller.
         /// </summary>
         public abstract float3 GetWorldInitPosition();
         /// <summary>
-        /// Return the initial world direction of the character.
+        /// Return the initial world direction of the character controller.
         /// </summary>
         public abstract float3 GetWorldInitDirection();
+        /// <summary>
+        /// Return the current world position of the character controller.
+        /// </summary>
+        public abstract float3 GetPosition();
 
         /// <summary>
         /// Return the target speed of the character, which may be different from the current speed.

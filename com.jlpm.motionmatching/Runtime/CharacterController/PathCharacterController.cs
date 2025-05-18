@@ -118,10 +118,6 @@ namespace MotionMatching
             nextKeyPointTime = currentKeyPointT;
         }
 
-        public float3 GetCurrentPosition()
-        {
-            return transform.position + new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
-        }
         public quaternion GetCurrentRotation()
         {
             Quaternion rot = Quaternion.LookRotation(new Vector3(CurrentDirection.x, 0, CurrentDirection.y));
@@ -169,6 +165,11 @@ namespace MotionMatching
             float2 dir = Path.Length > 0 ? Path[1].Position - Path[0].Position : new float2(0, 1);
             return math.normalize(new float3(dir.x, 0, dir.y));
         }
+        public override float3 GetPosition()
+        {
+            return transform.position + new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
+        }
+
         public override float GetTargetSpeed()
         {
             return TargetVelocity;
@@ -231,7 +232,7 @@ namespace MotionMatching
             // Draw Current Position And Direction
             if (!Application.isPlaying) return;
             Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
-            Vector3 currentPos = (Vector3)GetCurrentPosition() + Vector3.up * heightOffset * 2;
+            Vector3 currentPos = (Vector3)GetPosition() + Vector3.up * heightOffset * 2;
             Gizmos.DrawSphere(currentPos, 0.1f);
             GizmosExtensions.DrawLine(currentPos, currentPos + (Quaternion)GetCurrentRotation() * Vector3.forward, 12);
             // Draw Prediction

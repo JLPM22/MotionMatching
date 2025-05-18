@@ -9,13 +9,15 @@ namespace MotionMatching
     [System.Serializable]
     public struct DynamicAccelerationConsts
     {
-        public float PercentageThreshold; // [0.0f, 1.0f]
-        public int MinimumStepSize;
+        public float PercentageThreshold; // [0.0f, 1.0f] Percentage of the range to consider as a threshold for the adaptative indices
+        public int MinimumStepSize; // Minimum number of frames between two adaptative indices
+        public float VarianceFactor; // Increase the jumps when the variance is high
 
-        public DynamicAccelerationConsts(float percentageThreshold, int minimumStepSize)
+        public DynamicAccelerationConsts(float percentageThreshold, int minimumStepSize, float varianceFactor)
         {
             PercentageThreshold = percentageThreshold;
             MinimumStepSize = minimumStepSize;
+            VarianceFactor = varianceFactor;
         }
     }
 

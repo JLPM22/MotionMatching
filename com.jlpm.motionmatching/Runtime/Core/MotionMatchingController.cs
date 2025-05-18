@@ -8,6 +8,7 @@ using Unity.Jobs;
 using UnityEditor;
 using System.Diagnostics;
 using Sperlich.Drawing;
+using System.Collections.Generic;
 
 namespace MotionMatching
 {
@@ -109,6 +110,7 @@ namespace MotionMatching
         private int MaxNPCs;
         private bool NPCFirst;
         private static int NPCCounter = 0;
+        private List<int> UsedPosesIndices = new(); // DEBUG
 
         private void Awake()
         {
@@ -298,6 +300,8 @@ namespace MotionMatching
             CurrentFrameTime += DatabaseFrameRate * deltaTime; // DatabaseFrameRate / (1.0f / deltaTime)
             CurrentFrame = (int)math.floor(CurrentFrameTime);
 
+            UsedPosesIndices.Add(CurrentFrame); // DEBUG
+
             UpdateTransformAndSkeleton(CurrentFrame);
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
 
@@ -413,7 +417,10 @@ namespace MotionMatching
             if (EvaluationManager.Instance != null && SearchTimeLeft == SearchTime)
             {
                 stopwatch.Stop();
-                EvaluationManager.Instance.RegisterAgentPerformance(EvalAgentID, (float)stopwatch.Elapsed.TotalMilliseconds);
+                float3 currentAgentPos = transform.position;
+                float3 currentCharacterControllerPos = CharacterController.GetPosition();
+                EvaluationManager.Instance.RegisterAgentPerformance(EvalAgentID, (float)stopwatch.Elapsed.TotalMilliseconds, UsedPosesIndices, math.distance(currentAgentPos, currentCharacterControllerPos), this);
+                UsedPosesIndices.Clear();
             }
         }
 
@@ -986,10 +993,17 @@ namespace MotionMatching
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            if (DynamicAccelerationConsts.MinimumStepSize < 1)
+            if (DynamicAccelerationConsts.PercentageThreshold < 0.001f)
             {
                 DynamicAccelerationConsts.PercentageThreshold = 0.05f;
+            }
+            if (DynamicAccelerationConsts.MinimumStepSize < 1)
+            {
                 DynamicAccelerationConsts.MinimumStepSize = 8;
+            }
+            if (DynamicAccelerationConsts.VarianceFactor < 1.0f)
+            {
+                DynamicAccelerationConsts.VarianceFactor = 1.0f;
             }
         }
 
