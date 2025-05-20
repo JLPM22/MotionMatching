@@ -96,6 +96,7 @@ namespace MotionMatching
                 }
             }
             PoseSet.ConvertTagsToNativeArrays();
+            Debug.Log("Numer of poses: " + PoseSet.NumberPoses);
         }
 
         public FeatureSet GetOrImportFeatureSet()

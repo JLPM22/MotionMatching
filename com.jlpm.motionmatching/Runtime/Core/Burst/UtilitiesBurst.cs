@@ -110,9 +110,19 @@ public static class UtilitiesBurst
     [BurstCompile]
     public static float DistancePointToEllipse(in float2 centerEllipse, in float2 primaryAxisUnit, in float2 secondaryAxisUnit,
                                                in float2 ellipse, in float2 query, out float2 closest,
-                                               in int maxIterations = 149)
+                                               in int maxIterations = 149, bool ignoreCircleDebug=false)
     {
         Debug.Assert(ellipse.x > 0.0 && ellipse.y > 0.0);
+
+        // UNCOMMENT THIS TO MAKE THIS CIRCLE CHECK ---
+        //if (!ignoreCircleDebug)
+        //{
+        //    float circleRadius = math.max(ellipse.x, ellipse.y);
+        //    float distanceCircle = math.distance(query, centerEllipse) - circleRadius;
+        //    closest = centerEllipse + math.normalize(query - centerEllipse) * circleRadius;
+        //    return distanceCircle;
+        //}
+        // END CIRCLE CHECK ---------------------------
 
         float2 p = query;
         float2 e = ellipse;

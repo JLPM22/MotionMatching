@@ -112,7 +112,8 @@ public class EvaluationManager : MonoBehaviour
                     secondaryAxis,
                     new float2(maxPrimaryDistance, maxSecondaryDistance),
                     new float2(obstacle.transform.position.x, obstacle.transform.position.z),
-                    out _
+                    out _,
+                    ignoreCircleDebug: true
                     );
                 distance -= obstacle.Radius;
                 if (distance > UtilitiesBurst.MIN_INSIDE_ELLIPSE)
@@ -157,7 +158,8 @@ public class EvaluationManager : MonoBehaviour
                     secondaryAxis,
                     new float2(maxPrimaryDistance, maxSecondaryDistance),
                     new float2(obstacle.transform.position.x, obstacle.transform.position.z),
-                    out _
+                    out _,
+                    ignoreCircleDebug: true
                     );
                 distance -= obstacle.Radius;
                 if (distance <= UtilitiesBurst.MIN_INSIDE_ELLIPSE)
