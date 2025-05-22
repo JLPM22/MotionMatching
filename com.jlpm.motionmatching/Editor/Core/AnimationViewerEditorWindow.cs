@@ -1285,7 +1285,7 @@ namespace MotionMatching
                 {
                     t.SetParent(Skeleton[joint.ParentIndex], false);
                 }
-                t.localPosition = joint.LocalOffset;
+                t.localPosition = joint.LocalOffset * AnimationData.UnitScale;
                 Skeleton[j] = t;
                 // Visual
                 Transform visual = (new GameObject()).transform;
@@ -1354,7 +1354,7 @@ namespace MotionMatching
             {
                 // Update skeleton
                 BVHAnimation.Frame frame = animation.Frames[CurrentFrame];
-                Skeleton[0].position = frame.RootMotion;
+                Skeleton[0].position = frame.RootMotion * AnimationData.UnitScale;
                 for (int i = 0; i < Skeleton.Length; i++)
                 {
                     Skeleton[i].localRotation = frame.LocalRotations[i];
