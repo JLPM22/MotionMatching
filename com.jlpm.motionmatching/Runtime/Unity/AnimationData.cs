@@ -105,6 +105,7 @@ namespace MotionMatching
             data.UnitScale = EditorGUILayout.FloatField("Unit Scale", data.UnitScale);
             if (GUILayout.Button("m")) data.UnitScale = 1.0f;
             if (GUILayout.Button("cm")) data.UnitScale = 0.01f;
+            if (GUILayout.Button("mm")) data.UnitScale = 0.001f;
             EditorGUILayout.EndHorizontal();
             // Tags
             TagsFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(TagsFoldout, "Tags");
