@@ -1,6 +1,6 @@
 {
   "name": "com.jlpm.motionmatching",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "displayName": "Motion Matching",
   "description": "Motion Matching implementation for Unity",
   "unity": "2020.1",
