@@ -293,6 +293,7 @@ namespace MotionMatching
                 // Advance
                 SearchTimeLeft -= deltaTime;
             }
+
             // Always advance one (bestFrame from motion matching is the best match to the current frame, but we want to move to the next frame)
             // Ideally the applications runs at 1.0f/FrameTime fps (to match the database) however, as this may not happen, we may need to skip some frames
             // from the database, e.g., if 1.0f/FrameTime = 60 and our game runes at 30, we need to advance 2 frames at each update
@@ -1144,5 +1145,5 @@ namespace MotionMatching
             }
         }
 #endif
-                }
-            }
+    }
+}
