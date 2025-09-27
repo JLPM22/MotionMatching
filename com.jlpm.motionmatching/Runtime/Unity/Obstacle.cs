@@ -1,5 +1,3 @@
-using MotionMatching;
-using Sperlich.Drawing;
 using Unity.Mathematics;
 using UnityEngine;
 

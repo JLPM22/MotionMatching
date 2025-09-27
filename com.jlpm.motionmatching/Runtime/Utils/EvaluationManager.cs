@@ -20,7 +20,7 @@ public class EvaluationManager : MonoBehaviour
     private readonly Dictionary<int, List<float>> AgentTrajectoryError = new();
     private readonly Dictionary<int, (MotionMatchingController, List<float>)> AgentCollisionTime = new();
     private readonly Dictionary<int, float2> PreviousAgentPosition = new();
-    private int NextAgentID = 0; 
+    private int NextAgentID = 0;
     private readonly CultureInfo CultureInfo = new("en-US");
 
     private void Awake()
@@ -204,7 +204,7 @@ public class EvaluationManager : MonoBehaviour
         float2 secondaryAxis = new(-primaryAxis.y, primaryAxis.x);
 
         Gizmos.color = Color.yellow;
-        GizmosExtensions.DrawWireEllipse(posOffset, primaryAxis * ellipsePrimaryMagnitude, secondaryAxis * CurrentEllipse[0].z, Quaternion.identity, segments: 20 * Mathf.FloorToInt(MotionMatchingController.GIZMOS_MULTIPLIER), thickness: 1.5f * MotionMatchingController.GIZMOS_MULTIPLIER);
+        GizmosExtensions.DrawWireEllipse(posOffset, primaryAxis * ellipsePrimaryMagnitude, secondaryAxis * CurrentEllipse[0].z, Quaternion.identity, segments: 40, thickness: 3.0f);
 
     }
 }

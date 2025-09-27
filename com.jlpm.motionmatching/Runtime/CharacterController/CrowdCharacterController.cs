@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
-using Sperlich.Drawing;
 
 namespace MotionMatching
 {
@@ -301,7 +300,7 @@ namespace MotionMatching
             MotionMatching.SetRotAdjustment(adjustmentRotation);
         }
 
-        public static float2 ComputeSteering(float2 currentPos, float3 currentForward, Obstacle[] obstacles, 
+        public static float2 ComputeSteering(float2 currentPos, float3 currentForward, Obstacle[] obstacles,
                                              float lookAhead, float force, float fovAngle = 30.0f, int numRays = 20,
                                              bool debug = false)
         {
@@ -570,9 +569,8 @@ namespace MotionMatching
             {
                 // Draw Current Position & Velocity
                 Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
-                //Gizmos.DrawSphere(transformPos, radius);
-                Draw.Sphere(transformPos, radius * MotionMatchingController.GIZMOS_MULTIPLIER, Gizmos.color);
-                GizmosExtensions.DrawArrow(transformPos, transformPos + ((Quaternion)GetCurrentRotation() * Vector3.forward) * vectorReduction, 0.1f * MotionMatchingController.GIZMOS_MULTIPLIER, thickness: 2 * MotionMatchingController.GIZMOS_MULTIPLIER);
+                Gizmos.DrawSphere(transformPos, radius);
+                GizmosExtensions.DrawArrow(transformPos, transformPos + ((Quaternion)GetCurrentRotation() * Vector3.forward) * vectorReduction, 0.1f, thickness: 2);
             }
 
             if (PredictedPosition == null || PredictedRotations == null) return;
@@ -586,16 +584,15 @@ namespace MotionMatching
                     float3 predictedPos = new(PredictedPosition[i].x, verticalOffset, PredictedPosition[i].y);
                     float2 predictedDir = GetWorldSpaceDirectionPrediction(i);
                     float3 predictedDir3D = new(predictedDir.x, 0.0f, predictedDir.y);
-                    //Gizmos.DrawSphere(predictedPos, radius);
-                    Draw.Sphere(predictedPos, radius * MotionMatchingController.GIZMOS_MULTIPLIER, Gizmos.color);
-                    GizmosExtensions.DrawArrow(predictedPos, predictedPos + predictedDir3D * vectorReduction, 0.1f * MotionMatchingController.GIZMOS_MULTIPLIER, thickness: 2 * MotionMatchingController.GIZMOS_MULTIPLIER);
+                    Gizmos.DrawSphere(predictedPos, radius);
+                    GizmosExtensions.DrawArrow(predictedPos, predictedPos + predictedDir3D * vectorReduction, 0.1f, thickness: 2);
                 }
 
                 // Draw Steering
                 if (DoSteering && math.lengthsq(Steering) > 0.0001f)
                 {
                     Gizmos.color = new Color(0.1f, 0.8f, 0.1f, 1.0f);
-                    GizmosExtensions.DrawArrow(transformPos, transformPos + new Vector3(Steering.x, 0.0f, Steering.y) * vectorReduction, 0.1f * MotionMatchingController.GIZMOS_MULTIPLIER, thickness: 2 * MotionMatchingController.GIZMOS_MULTIPLIER);
+                    GizmosExtensions.DrawArrow(transformPos, transformPos + new Vector3(Steering.x, 0.0f, Steering.y) * vectorReduction, 0.1f, thickness: 2);
                 }
             }
 

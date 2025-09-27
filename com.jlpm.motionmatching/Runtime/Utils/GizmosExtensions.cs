@@ -1,6 +1,3 @@
-//#define USE_GIZMOS_SHAPES
-
-using Sperlich.Drawing;
 using System;
 using Unity.Mathematics;
 using UnityEditor;
@@ -15,11 +12,7 @@ namespace MotionMatching
         {
             if (Camera.current == null) return;
             float d = Mathf.Min(Vector3.Distance(Camera.current.transform.position, startPosition), Vector3.Distance(Camera.current.transform.position, endPosition));
-#if USE_GIZMOS_SHAPES
-            Draw.Line(startPosition, endPosition, thickness * Mathf.Min(1.0f, (3.0f / d)), Gizmos.color, useDepth: useDepth);
-#else
             Handles.DrawBezier(startPosition, endPosition, startPosition, endPosition, Gizmos.color, null, thickness * Mathf.Min(1.0f, (3.0f / d)));
-#endif
         }
 
         /// <summary>
@@ -225,31 +218,17 @@ namespace MotionMatching
             var old = Gizmos.matrix;
             Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
 
-#if USE_GIZMOS_SHAPES
-            Vector3 from = Gizmos.matrix.MultiplyPoint(CalculateEllipsePoint(primaryAxis, secondaryAxis, 0));
-#else
             Vector3 from = CalculateEllipsePoint(primaryAxis, secondaryAxis, 0);
-#endif
             var step = Mathf.Max(Mathf.RoundToInt(360f / segments), 1);
 
             for (int i = step; i <= 360; i += step)
             {
-#if USE_GIZMOS_SHAPES
-                Vector3 to = Gizmos.matrix.MultiplyPoint(CalculateEllipsePoint(primaryAxis, secondaryAxis, i));
-                Draw.Line(from, to, thickness, Gizmos.color);
-#else
                 Vector3 to = CalculateEllipsePoint(primaryAxis, secondaryAxis, i);
                 Gizmos.DrawLine(from, to);
-#endif
                 from = to;
             }
             // Close the ellipse loop
-#if USE_GIZMOS_SHAPES
-            Draw.Line(from, Gizmos.matrix.MultiplyPoint(CalculateEllipsePoint(primaryAxis, secondaryAxis, 0)), thickness, Gizmos.color);
-#else
             Gizmos.DrawLine(from, CalculateEllipsePoint(primaryAxis, secondaryAxis, 0));
-#endif
-
 
             Gizmos.matrix = old;
         }

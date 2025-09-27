@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "com.jlpm.motionmatching": "file:../../com.jlpm.motionmatching",
-    "com.sperlich.shapeswrapper": "https://github.com/MrPifo/UnityShapesWrapper.git",
     "com.unity.ide.visualstudio": "2.0.23",
     "com.unity.inputsystem": "1.13.1",
     "com.unity.render-pipelines.universal": "17.0.3",

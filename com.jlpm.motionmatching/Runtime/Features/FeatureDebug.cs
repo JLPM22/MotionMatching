@@ -1,5 +1,3 @@
-//#define USE_GIZMOS_SHAPES
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,7 +5,6 @@ using UnityEngine;
 using MotionMatching;
 using Unity.Mathematics;
 using static MotionMatching.MotionMatchingData;
-using Sperlich.Drawing;
 
 /// <summary>
 /// Import a BVH, create PoseSet and FeatureSet and visualize it using Gizmos.
@@ -199,7 +196,7 @@ public class FeatureDebug : MonoBehaviour
                 var trajectoryFeature = mmData.TrajectoryFeatures[t];
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
                 {
-                    DrawTrajectoryPoint(trajectoryFeature, set, currentFrame, t, p, trajectoryColor, characterOrigin, characterForward, 
+                    DrawTrajectoryPoint(trajectoryFeature, set, currentFrame, t, p, trajectoryColor, characterOrigin, characterForward,
                                         characterRot, spheresRadius, joints, skeleton, isDynamic: false);
                 }
             }
@@ -216,11 +213,7 @@ public class FeatureDebug : MonoBehaviour
                 {
                     case PoseFeature.Type.Position:
                         value = characterOrigin + math.mul(characterRot, value);
-#if USE_GIZMOS_SHAPES
-                        Draw.Sphere(value, spheresRadius * MotionMatchingController.GIZMOS_MULTIPLIER, Gizmos.color, useDepth: false);
-#else
                         Gizmos.DrawSphere(value, spheresRadius);
-#endif
                         break;
                     case PoseFeature.Type.Velocity:
                         value = math.mul(characterRot, value);
@@ -228,7 +221,7 @@ public class FeatureDebug : MonoBehaviour
                         {
                             skeleton.Find(poseFeature.Bone, out Skeleton.Joint joint);
                             float3 jointPos = joints[joint.Index].position;
-                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.1f * MotionMatchingController.GIZMOS_MULTIPLIER, 0.25f * math.length(value) * 0.1f * MotionMatchingController.GIZMOS_MULTIPLIER, thickness: 2 * MotionMatchingController.GIZMOS_MULTIPLIER, useDepth: false);
+                            GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.2f, 0.25f * math.length(value) * 0.2f, thickness: 4, useDepth: false);
                         }
                         break;
                 }
@@ -254,7 +247,7 @@ public class FeatureDebug : MonoBehaviour
     {
         int t = trajectoryFeatureIndex;
         int p = predictionIndex;
-        
+
         float3 value;
         if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
         {
@@ -298,7 +291,7 @@ public class FeatureDebug : MonoBehaviour
         return value;
     }
 
-    private static void DrawTrajectoryPoint(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex, 
+    private static void DrawTrajectoryPoint(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex,
                                             int predictionIndex, Color trajectoryColor, float3 characterOrigin, float3 characterForward,
                                             quaternion characterRot, float spheresRadius, Transform[] joints, Skeleton skeleton, bool isDynamic)
     {
@@ -314,11 +307,7 @@ public class FeatureDebug : MonoBehaviour
             {
                 case TrajectoryFeature.Type.Position:
                     value = characterOrigin + math.mul(characterRot, value);
-#if USE_GIZMOS_SHAPES
-                    Draw.Sphere(value, spheresRadius * 2.0f, Gizmos.color, useDepth: true);
-#else
                     Gizmos.DrawSphere(value, spheresRadius);
-#endif
                     break;
                 case TrajectoryFeature.Type.Direction:
                     float3 jointPos;
@@ -333,7 +322,7 @@ public class FeatureDebug : MonoBehaviour
                     }
                     value = math.mul(characterRot, value);
                     //GizmosExtensions.DrawArrow(jointPos, jointPos + value, 0.1f, thickness: 3);
-                    GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.2f * MotionMatchingController.GIZMOS_MULTIPLIER, 0.075f * MotionMatchingController.GIZMOS_MULTIPLIER, thickness: 2 * MotionMatchingController.GIZMOS_MULTIPLIER);
+                    GizmosExtensions.DrawArrow(jointPos, jointPos + value * 0.4f, 0.15f, thickness: 4);
                     break;
             }
         }
