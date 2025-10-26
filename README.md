@@ -63,18 +63,37 @@ Your contributions and suggestions are always welcome as we continue to develop 
 
 ## Projects using this package
 
+- [Environment-aware Motion Matching (SIGGRAPH Asia 2025)](https://upc-virvig.github.io/Environment-aware-Motion-Matching/)
 - [Motion Matching for VR](https://upc-virvig.github.io/MMVR/)
-- [XR4ED](https://xr4ed.eu/)
 - [Exploring the Role of Expected Collision Feedback in Crowded Virtual Environments](https://doi.org/10.1109/VR58804.2024.00068)
 - [Ragdoll Matching](https://webthesis.biblio.polito.it/30986/)
 - [Social Crowd Simulation](https://dl.acm.org/doi/10.1145/3677388.3696337)
 - [Improving Motion matching for VR](https://purehost.bath.ac.uk/ws/portalfiles/portal/303538262/poster_9.pdf)
+- [XR4ED](https://xr4ed.eu/)
 
 ## Citation
 
-If you find this package beneficial, kindly attribute it to this repository or cite the author's master thesis using the following citation:
+If you find this package beneficial, please cite the SIGGRAPH Asia 2025 paper — it's the recommended citation. The master's thesis is kept below for background and extra details.
 
-```plaintext
+Preferred citation (recommended):
+
+```bibtex
+@article{2025:ponton:emm,
+  author = {Ponton, Jose Luis and Andrews, Sheldon and Andujar, Carlos and Pelechano, Nuria},
+  title = {Environment-aware Motion Matching},
+  year = {2025},
+  publisher = {Association for Computing Machinery},
+  booktitle = {SIGGRAPH Asia 2025},
+  address = {New York, NY, USA},
+  issn = {0730-0301},
+  doi = {10.1145/3763334},
+  journal = {ACM Trans. Graph.},
+}
+```
+
+Also for background:
+
+```bibtex
 @mastersthesis{ponton2022mm,
   author  = {Ponton, Jose Luis},
   title   = {Motion Matching for Character Animation and Virtual Reality Avatars in Unity},
