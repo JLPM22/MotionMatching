@@ -9,7 +9,7 @@ namespace MotionMatching
 {
     using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
 
-    public class CrowdSplineCharacterController : MotionMatchingCharacterController
+    public class CrowdSplineCharacterController : MotionMatchingCharacterController, IObstacleAwareCharacterControler
     {
         public string TrajectoryPositionFeatureName = "FuturePosition";
         public string TrajectoryDirectionFeatureName = "FutureDirection";
@@ -23,7 +23,7 @@ namespace MotionMatching
         [Tooltip("If UpdateOnlyWhenCharacterMoving is true, the character will only move if the distance to the next point is greater than this value")]
         public float DistanceToMove = 1.0f;
         [Tooltip("If UpdateOnlyWhenCharacterMoving is true and DistanceToMove was not reached, the character will resume moving if the distance to the next point is greater than this value")]
-        public float DistanceResumeMoving = 0.75f; 
+        public float DistanceResumeMoving = 0.75f;
         public bool DoSteering = false;
         public float SteeringLookAhead = 4.0f;
         public float SteeringForce = 2.0f;
@@ -253,7 +253,13 @@ namespace MotionMatching
             }
         }
 
-        public override (NativeArray<(float2, float, float2)>, NativeArray<int>, NativeArray<(float2, float2, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
+
+        public (
+            NativeArray<(float2, float, float2)>,
+            NativeArray<int>,
+            NativeArray<(float2, float2, float2)>,
+            NativeArray<int>
+        ) GetNearbyObstacles(Transform character, float obstacleDistanceThreshold)
         {
             for (int p = 0; p < CandidateCirclesObstacles.Count; p++)
             {
@@ -265,10 +271,10 @@ namespace MotionMatching
             }
             int candidateObstaclesCirclesCount = 0;
             int candidateObstaclesEllipsesCount = 0;
-            float candidateThreshold = MaximumEllipseLength + MotionMatching.CrowdThreshold;
+            float candidateThreshold = MaximumEllipseLength + obstacleDistanceThreshold;
             for (int p = 0; p < PredictedPositions.Length; p++)
             {
-                float3 predPos = MotionMatching.GetFutureTrajectoryPosition(p);
+                float3 predPos = MotionMatching.GetMainPositionFeature(p);
                 for (int i = 0; i < Obstacles.Length; i++)
                 {
                     Obstacle obs = Obstacles[i];
@@ -319,7 +325,6 @@ namespace MotionMatching
                     (Obstacle obstacle, bool forceCurrent) = CandidateCirclesObstacles[p][i];
                     (float3 world, _, _) = obstacle.GetProjWorldPosition(p, forceCurrent: forceCurrent);
                     float3 localPos = character.InverseTransformPoint(world);
-                    // HARDCODED: circle radius
                     ObstaclesCirclesArray[itCircle++] = (new float2(localPos.x, localPos.z),
                                                          obstacle.Radius,
                                                          new float2(obstacle.GetMinHeightWorld(), obstacle.GetMaxHeightWorld()));
@@ -334,7 +339,6 @@ namespace MotionMatching
                     float3 secondaryAxis = new(ellipse.z, 0.0f, ellipse.w);
                     primaryAxis = character.InverseTransformDirection(primaryAxis);
                     secondaryAxis = character.InverseTransformDirection(secondaryAxis);
-                    // HARDCODED
                     ObstaclesEllipsesArray[itEllipse++] = (new float2(localPos.x, localPos.z),
                                                            new float2(primaryAxis.x, primaryAxis.z),
                                                            new float2(secondaryAxis.x, secondaryAxis.z));
@@ -344,7 +348,7 @@ namespace MotionMatching
             return (ObstaclesCirclesArray, ObstaclesCirclesArrayCount, ObstaclesEllipsesArray, ObstaclesEllipsesArrayCount);
         }
 
-        public override void GetDynamicFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
+        public override void GetEnvironmentFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
             if (feature.Name == "FutureEllipse")
             {

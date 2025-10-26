@@ -567,6 +567,10 @@ MonoBehaviour:
   Play: 1
   SpheresRadius: 0.05
   LockFPS: 1
+  DebugTrajectory: 1
+  DebugPose: 1
+  DebugDynamic: 1
+  DebugContacts: 1
   CurrentFrame: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

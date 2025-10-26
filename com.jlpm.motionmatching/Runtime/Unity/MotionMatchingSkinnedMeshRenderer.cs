@@ -164,7 +164,7 @@ namespace MotionMatching
             quaternion sourceLookAt = quaternion.LookRotation(sourceWorldForward, sourceWorldUp);
             HipsCorrection = math.mul(sourceLookAt, math.inverse(targetLookAt));
             // Store Transforms
-            Transform[] mmBones = MotionMatching.GetSkeletonTransforms();
+            Transform[] mmBones = MotionMatching.SkeletonTransforms;
             Dictionary<string, Transform> boneDict = new Dictionary<string, Transform>();
             foreach (Transform bone in mmBones)
             {
@@ -259,7 +259,7 @@ namespace MotionMatching
             float3 targetHipsPosition = TargetBones[0].position;
             if (RootPositionsMask)
             {
-                targetHipsPosition = MotionMatching.GetSkeletonTransforms()[1].position;
+                targetHipsPosition = MotionMatching.SkeletonTransforms[1].position;
             }
             if (BlendPoses && PreviousHipsPositionMask != RootPositionsMask)
             {

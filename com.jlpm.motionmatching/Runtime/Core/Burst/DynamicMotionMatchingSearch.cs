@@ -7,13 +7,13 @@ using Unity.Mathematics;
 namespace MotionMatching
 {
     [System.Serializable]
-    public struct DynamicAccelerationConsts
+    public struct EnvironmentAccelerationConsts
     {
         public float PercentageThreshold; // [0.0f, 1.0f] Percentage of the range to consider as a threshold for the adaptative indices
         public int MinimumStepSize; // Minimum number of frames between two adaptative indices
         public float VarianceFactor; // Increase the jumps when the variance is high
 
-        public DynamicAccelerationConsts(float percentageThreshold, int minimumStepSize, float varianceFactor)
+        public EnvironmentAccelerationConsts(float percentageThreshold, int minimumStepSize, float varianceFactor)
         {
             PercentageThreshold = percentageThreshold;
             MinimumStepSize = minimumStepSize;
@@ -22,21 +22,21 @@ namespace MotionMatching
     }
 
     [BurstCompile]
-    public struct DynamicAccelerationComputeAdaptativeIndices : IJob
+    public struct EnvironmentAccelerationComputeAdaptativeIndices : IJob
     {
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public NativeArray<bool> Valid;
         [ReadOnly] public int FeatureSize;
         [ReadOnly] public int PoseOffset;
         [ReadOnly] public int FeatureStaticSize;
-        [ReadOnly] public DynamicAccelerationConsts DynamicAccelerationConsts;
+        [ReadOnly] public EnvironmentAccelerationConsts EnvironmentAccelerationConsts;
 
         [WriteOnly] public NativeList<int> AdaptativeIndices;
 
         public void Execute()
         {
-            float PercentageThreshold = DynamicAccelerationConsts.PercentageThreshold;
-            int MinimumStepSize = DynamicAccelerationConsts.MinimumStepSize;
+            float PercentageThreshold = EnvironmentAccelerationConsts.PercentageThreshold;
+            int MinimumStepSize = EnvironmentAccelerationConsts.MinimumStepSize;
             int numberFrames = (int)(Features.Length / FeatureSize);
 
             // Compute distribution of each feature to find the adaptative threshold

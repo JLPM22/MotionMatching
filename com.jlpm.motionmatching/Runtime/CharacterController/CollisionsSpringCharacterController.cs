@@ -10,7 +10,7 @@ namespace MotionMatching
     // Adjustment between Character Controller and Motion Matching Character Entity
     /* https://theorangeduck.com/page/code-vs-data-driven-displacement */
 
-    public class CollisionsSpringCharacterController : MotionMatchingCharacterController
+    public class CollisionsSpringCharacterController : MotionMatchingCharacterController, IPlayerInputCharacterController
     {
         public MotionMatchingSkinnedMeshRenderer MMSkinnedMeshRenderer;
 
@@ -394,11 +394,6 @@ namespace MotionMatching
                     GizmosExtensions.DrawWireCircle(transformPos, MaxDistanceMMAndCharacterController, quaternion.identity);
                 }
             }
-        }
-
-        public override (NativeArray<(float2, float, float2)>, NativeArray<int>, NativeArray<(float2, float2, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
-        {
-            throw new NotImplementedException();
         }
 #endif
     }

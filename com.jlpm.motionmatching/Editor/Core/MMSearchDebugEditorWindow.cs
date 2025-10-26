@@ -35,13 +35,13 @@ namespace MotionMatching
                 return;
             }
             MotionMatchingData mmData = mmController.MMData;
-            FeatureSet featureSet = mmController.GetFeatureSet();
+            FeatureSet featureSet = mmController.FeatureSet;
 
             GUI.enabled = false;
-            EditorGUILayout.IntField("Last Frame", mmController.GetLastFrame());
+            EditorGUILayout.IntField("Last Frame", mmController.LastMMSearchFrame);
             GUI.enabled = true;
-            int currentFrame = EditorGUILayout.IntField("Current Frame", mmController.GetCurrentFrame());
-            if (currentFrame != mmController.GetCurrentFrame()) mmController.SetCurrentFrame(currentFrame);
+            int currentFrame = EditorGUILayout.IntField("Current Frame", mmController.CurrentFrame);
+            if (currentFrame != mmController.CurrentFrame) mmController.SetCurrentFrame(currentFrame);
 
             NativeArray<float> currentFeature = new NativeArray<float>(featureSet.FeatureSize, Allocator.Temp);
             featureSet.GetFeature(currentFeature, currentFrame);
@@ -53,7 +53,7 @@ namespace MotionMatching
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 
-            NativeArray<float> queryFeature = mmController.GetQueryFeature();
+            NativeArray<float> queryFeature = mmController.QueryFeature;
             GroupQuery = EditorGUILayout.BeginFoldoutHeaderGroup(GroupQuery, "Query");
             if (GroupQuery)
             {

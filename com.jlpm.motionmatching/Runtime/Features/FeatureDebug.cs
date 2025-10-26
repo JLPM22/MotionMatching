@@ -17,7 +17,7 @@ public class FeatureDebug : MonoBehaviour
     public bool LockFPS = true;
     public bool DebugTrajectory = true;
     public bool DebugPose = true;
-    public bool DebugDynamic = true;
+    public bool DebugEnvironment = true;
     public bool DebugContacts = true;
 
     private PoseSet PoseSet;
@@ -157,13 +157,13 @@ public class FeatureDebug : MonoBehaviour
         if (FeatureSet == null) return;
 
         DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
-                          SkeletonTransforms, PoseSet.Skeleton, Color.blue, debugPose: DebugPose, debugTrajectory: DebugTrajectory, debugDynamic: DebugDynamic);
+                          SkeletonTransforms, PoseSet.Skeleton, Color.blue, debugPose: DebugPose, debugTrajectory: DebugTrajectory, debugEnvironment: DebugEnvironment);
     }
 
     private static List<float3> PositionFeatures = new();
     public static void DrawFeatureGizmos(FeatureSet set, MotionMatchingData mmData, float spheresRadius, int currentFrame,
                                          float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton,
-                                         Color trajectoryColor, bool debugPose = true, bool debugTrajectory = true, bool debugDynamic = true)
+                                         Color trajectoryColor, bool debugPose = true, bool debugTrajectory = true, bool debugEnvironment = true)
     {
         if (!set.IsValidFeature(currentFrame)) return;
 
@@ -182,7 +182,7 @@ public class FeatureDebug : MonoBehaviour
                 Debug.Assert(trajectoryFeature.FeatureType == TrajectoryFeature.Type.Position, "The main position feature should be of type Position");
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
                 {
-                    float3 value = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, p, isDynamic: false);
+                    float3 value = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, p, isEnvironment: false);
                     value = characterOrigin + math.mul(characterRot, value);
                     PositionFeatures.Add(value);
                 }
@@ -197,7 +197,7 @@ public class FeatureDebug : MonoBehaviour
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; p++)
                 {
                     DrawTrajectoryPoint(trajectoryFeature, set, currentFrame, t, p, trajectoryColor, characterOrigin, characterForward,
-                                        characterRot, spheresRadius, joints, skeleton, isDynamic: false);
+                                        characterRot, spheresRadius, joints, skeleton, isEnvironment: false);
                 }
             }
         }
@@ -228,22 +228,22 @@ public class FeatureDebug : MonoBehaviour
             }
         }
 
-        // Dynamic Features ---------------------------------------------------------------------------
-        if (debugDynamic)
+        // Environment Features ---------------------------------------------------------------------------
+        if (debugEnvironment)
         {
-            for (int t = 0; t < mmData.DynamicFeatures.Count; t++)
+            for (int t = 0; t < mmData.EnvironmentFeatures.Count; t++)
             {
-                var dynamicFeature = mmData.DynamicFeatures[t];
-                for (int p = 0; p < dynamicFeature.FramesPrediction.Length; p++)
+                var environmentFeature = mmData.EnvironmentFeatures[t];
+                for (int p = 0; p < environmentFeature.FramesPrediction.Length; p++)
                 {
-                    DrawTrajectoryPoint(dynamicFeature, set, currentFrame, t, p, trajectoryColor, characterOrigin, characterForward,
-                                        characterRot, spheresRadius, joints, skeleton, isDynamic: true);
+                    DrawTrajectoryPoint(environmentFeature, set, currentFrame, t, p, trajectoryColor, characterOrigin, characterForward,
+                                        characterRot, spheresRadius, joints, skeleton, isEnvironment: true);
                 }
             }
         }
     }
 
-    public static float3 Get3DValuePositionOrDirectionFeature(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex, int predictionIndex, bool isDynamic)
+    public static float3 Get3DValuePositionOrDirectionFeature(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex, int predictionIndex, bool isEnvironment)
     {
         int t = trajectoryFeatureIndex;
         int p = predictionIndex;
@@ -251,36 +251,36 @@ public class FeatureDebug : MonoBehaviour
         float3 value;
         if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
         {
-            value = isDynamic ? set.Get3DDynamicFeature(currentFrame, t, p) : set.Get3DTrajectoryFeature(currentFrame, t, p, true);
+            value = isEnvironment ? set.Get3DEnvironmentFeature(currentFrame, t, p) : set.Get3DTrajectoryFeature(currentFrame, t, p, true);
         }
         else if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroY)
         {
-            float2 value2D = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+            float2 value2D = isEnvironment ? set.Get2DEnvironmentFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
             value = new float3(value2D.x, value2D.y, 0);
         }
         else if (!trajectoryFeature.ZeroX && !trajectoryFeature.ZeroZ)
         {
-            float2 value2D = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+            float2 value2D = isEnvironment ? set.Get2DEnvironmentFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
             value = new float3(value2D.x, 0.0f, value2D.y);
         }
         else if (!trajectoryFeature.ZeroY && !trajectoryFeature.ZeroZ)
         {
-            float2 value2D = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+            float2 value2D = isEnvironment ? set.Get2DEnvironmentFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
             value = new float3(0.0f, value2D.x, value2D.y);
         }
         else if (!trajectoryFeature.ZeroX)
         {
-            float value1D = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+            float value1D = isEnvironment ? set.Get1DEnvironmentFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
             value = new float3(value1D, 0.0f, 0.0f);
         }
         else if (!trajectoryFeature.ZeroY)
         {
-            float value1D = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+            float value1D = isEnvironment ? set.Get1DEnvironmentFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
             value = new float3(0.0f, value1D, 0.0f);
         }
         else if (!trajectoryFeature.ZeroZ)
         {
-            float value1D = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+            float value1D = isEnvironment ? set.Get1DEnvironmentFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
             value = new float3(0.0f, 0.0f, value1D);
         }
         else
@@ -293,7 +293,7 @@ public class FeatureDebug : MonoBehaviour
 
     private static void DrawTrajectoryPoint(TrajectoryFeature trajectoryFeature, FeatureSet set, int currentFrame, int trajectoryFeatureIndex,
                                             int predictionIndex, Color trajectoryColor, float3 characterOrigin, float3 characterForward,
-                                            quaternion characterRot, float spheresRadius, Transform[] joints, Skeleton skeleton, bool isDynamic)
+                                            quaternion characterRot, float spheresRadius, Transform[] joints, Skeleton skeleton, bool isEnvironment)
     {
         int t = trajectoryFeatureIndex;
         int p = predictionIndex;
@@ -302,7 +302,7 @@ public class FeatureDebug : MonoBehaviour
         if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Position ||
             trajectoryFeature.FeatureType == TrajectoryFeature.Type.Direction)
         {
-            float3 value = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, p, isDynamic);
+            float3 value = Get3DValuePositionOrDirectionFeature(trajectoryFeature, set, currentFrame, t, p, isEnvironment);
             switch (trajectoryFeature.FeatureType)
             {
                 case TrajectoryFeature.Type.Position:
@@ -329,25 +329,25 @@ public class FeatureDebug : MonoBehaviour
         else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom1D)
         {
             Feature1DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature1DExtractor;
-            float value = isDynamic ? set.Get1DDynamicFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
+            float value = isEnvironment ? set.Get1DEnvironmentFeature(currentFrame, t, p) : set.Get1DTrajectoryFeature(currentFrame, t, p, true);
             featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero);
         }
         else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom2D)
         {
             Feature2DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature2DExtractor;
-            float2 value = isDynamic ? set.Get2DDynamicFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
+            float2 value = isEnvironment ? set.Get2DEnvironmentFeature(currentFrame, t, p) : set.Get2DTrajectoryFeature(currentFrame, t, p, true);
             featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero);
         }
         else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom3D)
         {
             Feature3DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature3DExtractor;
-            float3 value = isDynamic ? set.Get3DDynamicFeature(currentFrame, t, p) : set.Get3DTrajectoryFeature(currentFrame, t, p, true);
+            float3 value = isEnvironment ? set.Get3DEnvironmentFeature(currentFrame, t, p) : set.Get3DTrajectoryFeature(currentFrame, t, p, true);
             featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero);
         }
         else if (trajectoryFeature.FeatureType == TrajectoryFeature.Type.Custom4D)
         {
             Feature4DExtractor featureExtractor = trajectoryFeature.FeatureExtractor as Feature4DExtractor;
-            float4 value = isDynamic ? set.Get4DDynamicFeature(currentFrame, t, p) : set.Get4DTrajectoryFeature(currentFrame, t, p, true);
+            float4 value = isEnvironment ? set.Get4DEnvironmentFeature(currentFrame, t, p) : set.Get4DTrajectoryFeature(currentFrame, t, p, true);
             featureExtractor.DrawGizmos(value, spheresRadius, characterOrigin, characterForward, joints, skeleton, PositionFeatures.Count > 0 ? PositionFeatures[p] : float3.zero);
         }
     }

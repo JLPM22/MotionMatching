@@ -77,6 +77,7 @@ namespace MotionMatching
                                                                                  data.AnimationDataTPose, typeof(AnimationData), false);
 
             // Hips Local Vectors --------
+            EditorGUILayout.Separator();
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Hips Local Vectors", EditorStyles.boldLabel);
             if (GUILayout.Button("Auto-Set Hips Vectors", GUILayout.Width(150)))
@@ -265,9 +266,9 @@ namespace MotionMatching
             if (DynamicFeaturesSelectorFoldout)
             {
                 EditorGUI.indentLevel++;
-                for (int i = 0; i < data.DynamicFeatures.Count; i++)
+                for (int i = 0; i < data.EnvironmentFeatures.Count; i++)
                 {
-                    MotionMatchingData.TrajectoryFeature dynamicFeature = data.DynamicFeatures[i];
+                    MotionMatchingData.TrajectoryFeature dynamicFeature = data.EnvironmentFeatures[i];
                     // Header
                     EditorGUILayout.BeginVertical(GUI.skin.box);
                     EditorGUILayout.BeginHorizontal();
@@ -275,7 +276,7 @@ namespace MotionMatching
                     GUILayout.FlexibleSpace();
                     if (GUILayout.Button("x"))
                     {
-                        data.DynamicFeatures.RemoveAt(i--);
+                        data.EnvironmentFeatures.RemoveAt(i--);
                     }
                     EditorGUILayout.EndHorizontal();
                     // Name
@@ -289,7 +290,7 @@ namespace MotionMatching
                 }
                 if (GUILayout.Button("Add Dynamic Feature"))
                 {
-                    data.DynamicFeatures.Add(new MotionMatchingData.TrajectoryFeature());
+                    data.EnvironmentFeatures.Add(new MotionMatchingData.TrajectoryFeature());
                 }
                 EditorGUI.indentLevel--;
             }

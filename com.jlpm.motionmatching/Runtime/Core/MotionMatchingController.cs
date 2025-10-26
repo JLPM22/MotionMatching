@@ -18,27 +18,18 @@ namespace MotionMatching
     {
         public event Action OnSkeletonTransformUpdated;
 
-        public bool DoCrowdSearch = true; // HARDCODED
-        public float CrowdThreshold = 0.6f;
-        public float CrowdSecondTrajectoryWeight = 0.4f;
-        public float CrowdThirdTrajectoryWeight = 0.1f;
-        public DynamicAccelerationConsts DynamicAccelerationConsts;
-        public bool IsNPC = false; // Adds some optimizations at the expense of less responsiveness.
-
         [Header("General")]
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
+        public MotionMatchingSearch Search;
         public bool LockFPS = true;
         public float SearchTime = 10.0f / 60.0f; // Motion Matching search every SearchTime seconds
-        public bool UseBVHSearch = true; // Use Bounding Volume Hierarchy acceleration structure for the search.
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         public bool FootLock = true; // Should lock the feet to the ground when contact information is true
         public float FootUnlockDistance = 0.2f; // Distance from actual pose to IK target to unlock the feet
         [Range(0.0f, 1.0f)] public float InertializeHalfLife = 0.1f; // Time needed to move half of the distance between the source to the target pose
         [Tooltip("How important is the trajectory (future positions + future directions)")][Range(0.0f, 1.0f)] public float Responsiveness = 1.0f;
         [Tooltip("How important is the current pose")][Range(0.0f, 1.0f)] public float Quality = 1.0f;
-        [Range(0.0f, 1.0f)] public float DynamicDirectionWeightFactor = 0.01f; // HARDCODED: this could maybe be an additional scriptable object that the user can provide to control the behaviour of Motion Matching
-        [Tooltip("Scale the interaction features by the target speed of the character controller multiplied by this factor")] public float Anticipation = 2.0f; // HARDCODED: I think that for a general implementation this does not generalize that well
         [HideInInspector] public float[] FeatureWeights;
         [Header("Debug")]
         public float SpheresRadius = 0.1f;
@@ -47,8 +38,8 @@ namespace MotionMatching
         public bool DebugCurrent = true;
         public bool DebugPose = true;
         public bool DebugTrajectory = true;
-        public bool DebugDynamic = true;
-        public bool DebugDistanceToObstacles = true;
+        public bool DebugEnvironment = true;
+        public bool DebugSearch = true;
         public bool DebugContacts = true;
         public bool DebugGUI = true;
 
@@ -56,31 +47,22 @@ namespace MotionMatching
         public float3 AngularVelocity { get; private set; }
         public float DatabaseFrameTime { get; private set; }
         public int DatabaseFrameRate { get; private set; }
+        public PoseSet PoseSet { get; private set; }
+        public FeatureSet FeatureSet { get; private set; }
+        public float SearchTimeLeft { get; private set; }
+        public Transform[] SkeletonTransforms { get; private set; }
+        public NativeArray<float> QueryFeature { get; private set; }
+        public NativeArray<float> FeaturesWeightsNativeArray { get; private set; }
+        public int CurrentFrame { get; private set; } // Current frame index in the pose/feature set
+        public int LastMMSearchFrame { get; private set; } // Frame before the last Motion Matching Search
+        public NativeArray<bool> TagMask { get; private set; }
 
-        private PoseSet PoseSet;
-        private FeatureSet FeatureSet;
-        private Transform[] SkeletonTransforms;
         private float3 AnimationSpaceOriginPos;
         private quaternion InverseAnimationSpaceOriginRot;
         private float3 MMTransformOriginPose; // Position of the transform right after motion matching search
         private quaternion MMTransformOriginRot; // Rotation of the transform right after motion matching search
-        private int LastMMSearchFrame; // Frame before the last Motion Matching Search
-        private int CurrentFrame; // Current frame index in the pose/feature set
         private float CurrentFrameTime; // Current frame index as float to keep track of variable frame rate
-        private float SearchTimeLeft;
-        private NativeArray<float> QueryFeature;
-        private NativeArray<int> SearchResult;
-        private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
-        // BVH Acceleration Structure
-        private NativeArray<float> LargeBoundingBoxMin;
-        private NativeArray<float> LargeBoundingBoxMax;
-        private NativeArray<float> SmallBoundingBoxMin;
-        private NativeArray<float> SmallBoundingBoxMax;
-        // Dynamic Acceleration Structure
-        private NativeArray<int> AdaptativeFeaturesIndices;
-        // Tags
-        private NativeArray<bool> TagMask;
         // Foot Lock
         private bool IsLeftFootContact, IsRightFootContact;
         private float3 LeftToesContactTarget, RightToesContactTarget; // Target position of the toes
@@ -89,41 +71,14 @@ namespace MotionMatching
         private float3 LeftLowerLegLocalForward, RightLowerLegLocalForward;
         private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
-        // Crowds
-        private NativeArray<float3> PointsOnEllipse; // DEBUG
-        private NativeArray<float3> PointsOnObstacle; // DEBUG
-        private NativeArray<float> ObstacleDistances; // DEBUG
-        private NativeArray<float> ObstaclePenalization; // DEBUG
-        private NativeArray<int> VisualDebugElements; // DEBUG
-        // HARDCODED
-        private NativeArray<float> means;
-        private NativeArray<float> stds;
-        private float StartDirectionWeight;
-        private int EvalAgentID; // DEBUG
-        private GUIStyle SingleLineStyle = new(); // DEBUG
-        private int NPCid;
-        private int MaxNPCs;
-        private bool NPCFirst;
-        private static int NPCCounter = 0;
-        private List<int> UsedPosesIndices = new(); // DEBUG
+        // Other
+        private bool IsDestroyed = false;
+        private MotionMatchingSearch SearchInstance;
 
         private void Awake()
         {
-            Debug.Assert(!UseBVHSearch, "Do not use BVH Search for this project yet.");
-
-            // PoseSet
             PoseSet = MMData.GetOrImportPoseSet();
-
-            // FeatureSet
             FeatureSet = MMData.GetOrImportFeatureSet();
-            FeatureSet.GetBVHBuffers(out LargeBoundingBoxMin,
-                                     out LargeBoundingBoxMax,
-                                     out SmallBoundingBoxMin,
-                                     out SmallBoundingBoxMax);
-            if (DoCrowdSearch)
-            {
-                FeatureSet.GetDynamicAccelerationStructures(DynamicAccelerationConsts, out AdaptativeFeaturesIndices);
-            }
 
             // Skeleton
             SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
@@ -157,10 +112,7 @@ namespace MotionMatching
             }
 
             // Other initialization
-            SearchResult = new NativeArray<int>(2, Allocator.Persistent);
-            SearchResult[0] = 0;
-            SearchResult[1] = 0;
-            int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count + MMData.DynamicFeatures.Count;
+            int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count + MMData.EnvironmentFeatures.Count;
             if (FeatureWeights == null || FeatureWeights.Length != numberFeatures)
             {
                 float[] newWeights = new float[numberFeatures];
@@ -171,22 +123,9 @@ namespace MotionMatching
             FeaturesWeightsNativeArray = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
             QueryFeature = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
 
-            // Search first Frame valid (to start with a valid pose)
-            for (int i = 0; i < FeatureSet.NumberFeatureVectors; i++)
-            {
-                if (FeatureSet.IsValidFeature(i))
-                {
-                    LastMMSearchFrame = i;
-                    CurrentFrame = i;
-                    UpdateAnimationSpaceOrigin();
-                    break;
-                }
-            }
-
             // Tags
-            // DEBUG: tags were removed from the Burst Search functions
-            //TagMask = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
-            //DisableQueryTag();
+            TagMask = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
+            DisableQueryTag();
 
             // Foot Lock
             if (!PoseSet.Skeleton.Find(HumanBodyBones.LeftToes, out Skeleton.Joint leftToesJoint)) Debug.LogError("[Motion Matching] LeftToes not found");
@@ -209,43 +148,30 @@ namespace MotionMatching
             RightLowerLegLocalForward = MMData.GetLocalForward(RightLowerLegIndex);
 
             // Init Pose
-            SkeletonTransforms[0].position = CharacterController.GetWorldInitPosition();
-            SkeletonTransforms[0].rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
+            SkeletonTransforms[0].SetPositionAndRotation(CharacterController.GetWorldInitPosition(),
+                                                         quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up));
 
-            // Crowds
-            PointsOnEllipse = new NativeArray<float3>(1000, Allocator.Persistent); // some large number
-            PointsOnObstacle = new NativeArray<float3>(1000, Allocator.Persistent); // some large number
-            ObstacleDistances = new NativeArray<float>(1000, Allocator.Persistent); // some large number
-            ObstaclePenalization = new NativeArray<float>(1000, Allocator.Persistent); // some large number
-            VisualDebugElements = new NativeArray<int>(1, Allocator.Persistent);
-            means = new(FeatureSet.GetMeans(), Allocator.Persistent);
-            stds = new(FeatureSet.GetStandardDeviations(), Allocator.Persistent);
-            Debug.Assert(MMData.TrajectoryFeatures[1].Name == "FutureDirection");
-            StartDirectionWeight = FeatureWeights[1];
-
-            if (EvaluationManager.Instance != null)
-                EvalAgentID = EvaluationManager.Instance.GetAgentID(); // DEBUG
-
-            SingleLineStyle.wordWrap = false;
-            SingleLineStyle.normal.textColor = Color.red;
-
-            if (IsNPC)
+            // Search first Frame valid (to start with a valid pose)
+            for (int i = 0; i < FeatureSet.NumberFeatureVectors; i++)
             {
-                MaxNPCs = (int)math.round(SearchTime * DatabaseFrameRate);
-                NPCid = NPCCounter;
-                NPCCounter = (NPCCounter + 1) % MaxNPCs;
+                if (FeatureSet.IsValidFeature(i) && TagMask[i])
+                {
+                    LastMMSearchFrame = i;
+                    CurrentFrame = i;
+                    UpdateAnimationSpaceOrigin();
+                    break;
+                }
             }
+
+            // Search Strategy
+            SearchInstance = Instantiate<MotionMatchingSearch>(Search);
+            SearchInstance.Initialize(this);
         }
 
         private void OnEnable()
         {
             CharacterController.OnUpdated += OnCharacterControllerUpdated;
             CharacterController.OnInputChangedQuickly += OnInputChangedQuickly;
-
-            if (IsNPC)
-            {
-                NPCFirst = true;
-            }
         }
 
         private void OnDisable()
@@ -256,18 +182,17 @@ namespace MotionMatching
 
         private void OnCharacterControllerUpdated(float deltaTime)
         {
-            // DEBUG
-            Stopwatch stopwatch = new();
-            stopwatch.Restart();
-
             PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Total");
-            if ((!IsNPC && SearchTimeLeft <= 0) || (IsNPC && Time.frameCount % MaxNPCs == NPCid) || NPCFirst)
+            if (SearchInstance.ShouldSearch(this))
             {
-                NPCFirst = false;
                 // Motion Matching
+                float currentDistance = PrepareQueryVector(out bool isCurrentValid);
                 PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Search");
-                int bestFrame = SearchMotionMatching();
+                int bestFrame = SearchInstance.FindBestFrame(this, currentDistance);
                 PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
+                // Check if use current or best
+                if (isCurrentValid && bestFrame == -1) bestFrame = CurrentFrame;
+                Debug.Assert(bestFrame != -1, "Motion Matching is not able to find any valid pose. Maybe the motion database is empty or the query tag used produces an empty set of poses?");
                 const int ignoreSurrounding = 20; // ignore near frames
                 if (math.abs(bestFrame - CurrentFrame) > ignoreSurrounding)
                 {
@@ -288,7 +213,6 @@ namespace MotionMatching
                 // Advance
                 SearchTimeLeft -= deltaTime;
             }
-
             // Always advance one (bestFrame from motion matching is the best match to the current frame, but we want to move to the next frame)
             // Ideally the applications runs at 1.0f/FrameTime fps (to match the database) however, as this may not happen, we may need to skip some frames
             // from the database, e.g., if 1.0f/FrameTime = 60 and our game runes at 30, we need to advance 2 frames at each update
@@ -296,128 +220,10 @@ namespace MotionMatching
             CurrentFrameTime += DatabaseFrameRate * deltaTime; // DatabaseFrameRate / (1.0f / deltaTime)
             CurrentFrame = (int)math.floor(CurrentFrameTime);
 
-            UsedPosesIndices.Add(CurrentFrame); // DEBUG
-
             UpdateTransformAndSkeleton(CurrentFrame);
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
 
-            // DEBUG: at the end of the frame update, recompute features to display debug information
-            if (DoCrowdSearch)
-            {
-                (NativeArray<(float2, float, float2)> obstaclesCircles, NativeArray<int> obstaclesCirclesCount,
-                 NativeArray<(float2, float2, float2)> obstaclesEllipses, NativeArray<int> obstaclesEllipsesCount) = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
-                if (obstaclesCircles.Length > 0 || obstaclesEllipses.Length > 0)
-                {
-                    FillQueryVector(QueryFeature); // Force to set obstacles local to the current character position
-                    if (MMData.DynamicFeatures.Count >= 2 && MMData.DynamicFeatures[1].Name == "FutureHeight")
-                    {
-                        var jobCrowd = new CrowdHeightMotionMatchingSearchBurst
-                        {
-                            Valid = FeatureSet.GetValid(),
-                            Features = FeatureSet.GetFeatures(),
-                            FeatureWeights = FeaturesWeightsNativeArray,
-                            QueryFeature = QueryFeature,
-                            AdaptativeFeaturesIndices = AdaptativeFeaturesIndices,
-                            CrowdThreshold = CrowdThreshold,
-                            CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                            CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                            Mean = means,
-                            Std = stds,
-                            ObstaclesCircles = obstaclesCircles,
-                            ObstaclesCirclesCount = obstaclesCirclesCount,
-                            ObstaclesEllipses = obstaclesEllipses,
-                            ObstaclesEllipsesCount = obstaclesEllipsesCount,
-                            FeatureSize = FeatureSet.FeatureSize,
-                            FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                            BestIndex = SearchResult,
-                            PointsOnEllipse = PointsOnEllipse,
-                            PointsOnObstacle = PointsOnObstacle,
-                            ObstacleDistance = ObstacleDistances,
-                            ObstaclePenalization = ObstaclePenalization,
-                            NumberDebugPoints = VisualDebugElements,
-                            IsDebug = true,
-                            DebugIndex = CurrentFrame,
-                            DynamicAccelerationConsts = DynamicAccelerationConsts,
-                        };
-                        jobCrowd.Schedule().Complete();
-                    }
-                    else
-                    {
-                        var jobCrowd = new CrowdMotionMatchingSearchBurst
-                        {
-                            Valid = FeatureSet.GetValid(),
-                            Features = FeatureSet.GetFeatures(),
-                            FeatureWeights = FeaturesWeightsNativeArray,
-                            QueryFeature = QueryFeature,
-                            AdaptativeFeaturesIndices = AdaptativeFeaturesIndices,
-                            CrowdThreshold = CrowdThreshold,
-                            CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                            CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                            Mean = means,
-                            Std = stds,
-                            ObstaclesCircles = obstaclesCircles,
-                            ObstaclesCirclesCount = obstaclesCirclesCount,
-                            ObstaclesEllipses = obstaclesEllipses,
-                            ObstaclesEllipsesCount = obstaclesEllipsesCount,
-                            FeatureSize = FeatureSet.FeatureSize,
-                            FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                            BestIndex = SearchResult,
-                            PointsOnEllipse = PointsOnEllipse,
-                            PointsOnObstacle = PointsOnObstacle,
-                            ObstacleDistance = ObstacleDistances,
-                            ObstaclePenalization = ObstaclePenalization,
-                            NumberDebugPoints = VisualDebugElements,
-                            IsDebug = true,
-                            DebugIndex = CurrentFrame,
-                            DynamicAccelerationConsts = DynamicAccelerationConsts,
-                        };
-                        jobCrowd.Schedule().Complete();
-                    }
-                }
-                else
-                {
-                    VisualDebugElements[0] = 0;
-                }
-            }
-
-            // HARDCODED: this should be defined dynamically because the direction feature may not be the first one
-            if (VisualDebugElements[0] > 0)
-            {
-                float closestObstacleDistance = float.MaxValue;
-                for (int i = 0; i < VisualDebugElements[0]; i++)
-                {
-                    float distance = ObstacleDistances[i];
-                    if (distance < closestObstacleDistance)
-                    {
-                        closestObstacleDistance = distance;
-                    }
-                }
-                float distanceFactor = closestObstacleDistance / CrowdThreshold; // 1.0f is the max distance, 0.0f is touching
-                Debug.Assert(distanceFactor <= 1.0f, "Distance factor should be between 0.0f and 1.0f. If it is not, the obstacle is too close to the character."); ;
-                distanceFactor = math.log10(distanceFactor) + 1.0f;
-                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight * math.max(DynamicDirectionWeightFactor, distanceFactor), math.clamp(Time.deltaTime * 10.0f, 0.0f, 1.0f));
-            }
-            else
-            {
-                FeatureWeights[1] = math.lerp(FeatureWeights[1], StartDirectionWeight, math.clamp(Time.deltaTime * 100.0f, 0.0f, 1.0f));
-            }
-
-            // DEBUG
-            for (int i = 0; i < VisualDebugElements[0]; i++)
-            {
-                // character space to world space
-                PointsOnEllipse[i] = SkeletonTransforms[0].TransformPoint(PointsOnEllipse[i]);
-                PointsOnObstacle[i] = SkeletonTransforms[0].TransformPoint(PointsOnObstacle[i]);
-            }
-
-            if (EvaluationManager.Instance != null && SearchTimeLeft == SearchTime)
-            {
-                stopwatch.Stop();
-                float3 currentAgentPos = transform.position;
-                float3 currentCharacterControllerPos = CharacterController.GetPosition();
-                EvaluationManager.Instance.RegisterAgentPerformance(EvalAgentID, (float)stopwatch.Elapsed.TotalMilliseconds, UsedPosesIndices, math.distance(currentAgentPos, currentCharacterControllerPos), this);
-                UsedPosesIndices.Clear();
-            }
+            SearchInstance.OnSearchCompleted(this);
         }
 
         private void UpdateAnimationSpaceOrigin()
@@ -434,25 +240,20 @@ namespace MotionMatching
             SearchTimeLeft = 0; // Force search
         }
 
-        private int SearchMotionMatching()
+        private float PrepareQueryVector(out bool isCurrentValid)
         {
-            //Stopwatch sw = Stopwatch.StartNew();
-            //Stopwatch swLocal = new Stopwatch();
-
             // Weights
             UpdateAndGetFeatureWeights();
 
             // Init Query Vector
             FeatureSet.GetFeature(QueryFeature, CurrentFrame);
-            FillQueryVector(QueryFeature);
+            FillQueryVector();
 
             // Get next feature vector (when doing motion matching search, they need less error than this)
             float currentDistance = float.MaxValue;
-            bool currentValid = false;
-            //if (FeatureSet.IsValidFeature(CurrentFrame) && TagMask[CurrentFrame]) // DEBUG: tags were removed from the Burst Search functions
-            if (FeatureSet.IsValidFeature(CurrentFrame))
+            isCurrentValid = FeatureSet.IsValidFeature(CurrentFrame) && TagMask[CurrentFrame];
+            if (isCurrentValid)
             {
-                currentValid = true;
                 currentDistance = 0.0f;
                 // the pose is the same... the distance is only the trajectory
                 for (int j = 0; j < FeatureSet.PoseOffset; j++)
@@ -461,142 +262,12 @@ namespace MotionMatching
                     currentDistance += diff * diff * FeaturesWeightsNativeArray[j];
                 }
             }
-
-            // Search
-            if (UseBVHSearch)
-            {
-                Debug.Assert(false, "Not working for now with Dynamic Features");
-                var job = new BVHMotionMatchingSearchBurst
-                {
-                    Valid = FeatureSet.GetValid(),
-                    Features = FeatureSet.GetFeatures(),
-                    QueryFeature = QueryFeature,
-                    FeatureWeights = FeaturesWeightsNativeArray,
-                    FeatureSize = FeatureSet.FeatureSize,
-                    FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                    PoseOffset = FeatureSet.PoseOffset,
-                    CurrentDistance = currentDistance,
-                    LargeBoundingBoxMin = LargeBoundingBoxMin,
-                    LargeBoundingBoxMax = LargeBoundingBoxMax,
-                    SmallBoundingBoxMin = SmallBoundingBoxMin,
-                    SmallBoundingBoxMax = SmallBoundingBoxMax,
-                    BestIndex = SearchResult
-                };
-                job.Schedule().Complete();
-            }
-            else
-            {
-                (NativeArray<(float2, float, float2)> obstaclesCircles, NativeArray<int> obstaclesCirclesCount,
-                 NativeArray<(float2, float2, float2)> obstaclesEllipses, NativeArray<int> obstaclesEllipsesCount) = CharacterController.GetNearbyObstacles(SkeletonTransforms[0]);
-                if ((obstaclesCircles.Length == 0 && obstaclesEllipses.Length == 0) || !DoCrowdSearch)
-                {
-                    //swLocal.Start();
-                    var job = new BVHMotionMatchingSearchBurst
-                    {
-                        Valid = FeatureSet.GetValid(),
-                        Features = FeatureSet.GetFeatures(),
-                        QueryFeature = QueryFeature,
-                        FeatureWeights = FeaturesWeightsNativeArray,
-                        FeatureSize = FeatureSet.FeatureSize,
-                        FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                        PoseOffset = FeatureSet.PoseOffset,
-                        CurrentDistance = currentDistance,
-                        LargeBoundingBoxMin = LargeBoundingBoxMin,
-                        LargeBoundingBoxMax = LargeBoundingBoxMax,
-                        SmallBoundingBoxMin = SmallBoundingBoxMin,
-                        SmallBoundingBoxMax = SmallBoundingBoxMax,
-                        BestIndex = SearchResult
-                    };
-                    job.Schedule().Complete();
-                    //swLocal.Stop();
-                    //Debug.Log($"[Motion Matching] BVH Search Time: {swLocal.Elapsed.TotalMilliseconds} ms");
-                }
-                else
-                {
-                    //swLocal.Restart();
-
-                    if (MMData.DynamicFeatures.Count >= 2 && MMData.DynamicFeatures[1].Name == "FutureHeight")
-                    {
-                        var jobCrowd = new CrowdHeightMotionMatchingSearchBurst
-                        {
-                            Valid = FeatureSet.GetValid(),
-                            Features = FeatureSet.GetFeatures(),
-                            FeatureWeights = FeaturesWeightsNativeArray,
-                            QueryFeature = QueryFeature,
-                            AdaptativeFeaturesIndices = AdaptativeFeaturesIndices,
-                            CrowdThreshold = CrowdThreshold,
-                            CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                            CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                            Mean = means,
-                            Std = stds,
-                            ObstaclesCircles = obstaclesCircles,
-                            ObstaclesCirclesCount = obstaclesCirclesCount,
-                            ObstaclesEllipses = obstaclesEllipses,
-                            ObstaclesEllipsesCount = obstaclesEllipsesCount,
-                            FeatureSize = FeatureSet.FeatureSize,
-                            FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                            BestIndex = SearchResult,
-                            PointsOnEllipse = PointsOnEllipse,
-                            PointsOnObstacle = PointsOnObstacle,
-                            ObstacleDistance = ObstacleDistances,
-                            ObstaclePenalization = ObstaclePenalization,
-                            NumberDebugPoints = VisualDebugElements,
-                            IsDebug = false,
-                            DynamicAccelerationConsts = DynamicAccelerationConsts,
-                        };
-                        jobCrowd.Schedule().Complete();
-                    }
-                    else
-                    {
-                        var jobCrowd = new CrowdMotionMatchingSearchBurst
-                        {
-                            Valid = FeatureSet.GetValid(),
-                            Features = FeatureSet.GetFeatures(),
-                            FeatureWeights = FeaturesWeightsNativeArray,
-                            QueryFeature = QueryFeature,
-                            AdaptativeFeaturesIndices = AdaptativeFeaturesIndices,
-                            CrowdThreshold = CrowdThreshold,
-                            CrowdSecondTrajectoryWeight = CrowdSecondTrajectoryWeight,
-                            CrowdThirdTrajectoryWeight = CrowdThirdTrajectoryWeight,
-                            Mean = means,
-                            Std = stds,
-                            ObstaclesCircles = obstaclesCircles,
-                            ObstaclesCirclesCount = obstaclesCirclesCount,
-                            ObstaclesEllipses = obstaclesEllipses,
-                            ObstaclesEllipsesCount = obstaclesEllipsesCount,
-                            FeatureSize = FeatureSet.FeatureSize,
-                            FeatureStaticSize = FeatureSet.FeatureStaticSize,
-                            BestIndex = SearchResult,
-                            PointsOnEllipse = PointsOnEllipse,
-                            PointsOnObstacle = PointsOnObstacle,
-                            ObstacleDistance = ObstacleDistances,
-                            ObstaclePenalization = ObstaclePenalization,
-                            NumberDebugPoints = VisualDebugElements,
-                            IsDebug = false,
-                            DynamicAccelerationConsts = DynamicAccelerationConsts,
-                        };
-                        jobCrowd.Schedule().Complete();
-                    }
-
-                    //swLocal.Stop();
-                    //Debug.Log($"[Motion Matching] Crowd Search Time: {swLocal.Elapsed.TotalMilliseconds} ms");
-                }
-            }
-
-            // Check if use current or best
-            int best = SearchResult[0];
-            if (currentValid && best == -1) best = CurrentFrame;
-
-            Debug.Assert(best != -1, "Motion Matching is not able to find any valid pose. Maybe the motion database is empty or the query tag used produces an empty set of poses?");
-
-            //sw.Stop();
-            //Debug.Log($"[Motion Matching] Search Time: {sw.Elapsed.TotalMilliseconds} ms");
-
-            return best;
+            return currentDistance;
         }
 
-        private void FillQueryVector(NativeArray<float> vector)
+        public void FillQueryVector()
         {
+            NativeArray<float> queryFeature = QueryFeature;
             int offset = 0;
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
@@ -609,29 +280,29 @@ namespace MotionMatching
                     CharacterController.GetTrajectoryFeature(feature, p, SkeletonTransforms[0], featureVector);
                     for (int j = 0; j < featureSize; j++)
                     {
-                        vector[offset + j] = featureVector[j];
+                        queryFeature[offset + j] = featureVector[j];
                     }
                     offset += featureSize;
                 }
             }
             // Normalize (only trajectory... because current FeatureVector is already normalized)
-            FeatureSet.NormalizeTrajectory(vector);
+            FeatureSet.NormalizeTrajectory(queryFeature);
 
-            if (FeatureSet.DynamicOffset.Length > 0)
+            if (FeatureSet.EnvironmentOffset.Length > 0)
             {
-                offset = FeatureSet.DynamicOffset[0];
-                for (int i = 0; i < MMData.DynamicFeatures.Count; i++)
+                offset = FeatureSet.EnvironmentOffset[0];
+                for (int i = 0; i < MMData.EnvironmentFeatures.Count; i++)
                 {
-                    TrajectoryFeature feature = MMData.DynamicFeatures[i];
+                    TrajectoryFeature feature = MMData.EnvironmentFeatures[i];
                     for (int p = 0; p < feature.FramesPrediction.Length; p++)
                     {
                         int featureSize = feature.GetSize();
-                        Debug.Assert(featureSize > 0, "Dynamic feature size must be larger than 0");
+                        Debug.Assert(featureSize > 0, "Environment feature size must be larger than 0");
                         NativeArray<float> featureVector = new(featureSize, Allocator.Temp);
-                        CharacterController.GetDynamicFeature(feature, p, SkeletonTransforms[0], featureVector);
+                        CharacterController.GetEnvironmentFeature(feature, p, SkeletonTransforms[0], featureVector);
                         for (int j = 0; j < featureSize; j++)
                         {
-                            vector[offset + j] = featureVector[j];
+                            queryFeature[offset + j] = featureVector[j];
                         }
                         offset += featureSize;
                     }
@@ -654,8 +325,8 @@ namespace MotionMatching
             float3 localSpacePos = math.mul(InverseAnimationSpaceOriginRot, pose.JointLocalPositions[0] - AnimationSpaceOriginPos);
             quaternion localSpaceRot = math.mul(InverseAnimationSpaceOriginRot, pose.JointLocalRotations[0]);
             // local space to world space
-            SkeletonTransforms[0].position = math.mul(MMTransformOriginRot, localSpacePos) + MMTransformOriginPose;
-            SkeletonTransforms[0].rotation = math.mul(MMTransformOriginRot, localSpaceRot);
+            SkeletonTransforms[0].SetPositionAndRotation(math.mul(MMTransformOriginRot, localSpacePos) + MMTransformOriginPose,
+                                                         math.mul(MMTransformOriginRot, localSpaceRot));
             // update velocity and angular velocity
             Velocity = ((float3)SkeletonTransforms[0].position - previousPosition) / Time.deltaTime;
             AngularVelocity = MathExtensions.AngularVelocity(previousRotation, SkeletonTransforms[0].rotation, Time.deltaTime);
@@ -801,7 +472,6 @@ namespace MotionMatching
         /// </summary>
         public void DisableQueryTag()
         {
-            throw new NotImplementedException(); // DEBUG: tags were removed from the Burst Search functions
             var job = new DisableTagBurst
             {
                 TagMask = TagMask,
@@ -815,7 +485,6 @@ namespace MotionMatching
         /// </summary>
         public void SetQueryTag(string name)
         {
-            throw new NotImplementedException(); // DEBUG: tags were removed from the Burst Search functions
             PoseSet.Tag tag = PoseSet.GetTag(name);
             // TODO: cache results to avoid duplicated computations...
             var job = new SetTagBurst
@@ -834,7 +503,6 @@ namespace MotionMatching
         /// </summary>
         public void SetQueryTag(QueryTag query)
         {
-            throw new NotImplementedException(); // DEBUG: tags were removed from the Burst Search functions
             query.ComputeRanges(PoseSet);
             var job = new SetTagBurst
             {
@@ -864,28 +532,13 @@ namespace MotionMatching
             MMTransformOriginRot = math.mul(rotAdjustment, MMTransformOriginRot);
         }
 
-        public int GetCurrentFrame()
-        {
-            return CurrentFrame;
-        }
-        public int GetLastFrame()
-        {
-            return LastMMSearchFrame;
-        }
         public void SetCurrentFrame(int frame)
         {
             CurrentFrame = frame;
         }
-        public FeatureSet GetFeatureSet()
-        {
-            return FeatureSet;
-        }
-        public NativeArray<float> GetQueryFeature()
-        {
-            return QueryFeature;
-        }
         public NativeArray<float> UpdateAndGetFeatureWeights()
         {
+            NativeArray<float> featuresWeightsNativeArray = FeaturesWeightsNativeArray;
             int offset = 0;
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
@@ -896,7 +549,7 @@ namespace MotionMatching
                 {
                     for (int f = 0; f < featureSize; f++)
                     {
-                        FeaturesWeightsNativeArray[offset + f] = weight;
+                        featuresWeightsNativeArray[offset + f] = weight;
                     }
                     offset += featureSize;
                 }
@@ -904,64 +557,73 @@ namespace MotionMatching
             for (int i = 0; i < MMData.PoseFeatures.Count; i++)
             {
                 float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count] * Quality;
-                FeaturesWeightsNativeArray[offset + 0] = weight;
-                FeaturesWeightsNativeArray[offset + 1] = weight;
-                FeaturesWeightsNativeArray[offset + 2] = weight;
+                featuresWeightsNativeArray[offset + 0] = weight;
+                featuresWeightsNativeArray[offset + 1] = weight;
+                featuresWeightsNativeArray[offset + 2] = weight;
                 offset += 3;
             }
-            for (int i = 0; i < MMData.DynamicFeatures.Count; i++)
+            for (int i = 0; i < MMData.EnvironmentFeatures.Count; i++)
             {
-                TrajectoryFeature feature = MMData.DynamicFeatures[i];
+                TrajectoryFeature feature = MMData.EnvironmentFeatures[i];
                 int featureSize = feature.GetSize();
                 float baseWeight = FeatureWeights[i + MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count];
-                float weight = math.max(baseWeight * Anticipation * CharacterController.GetTargetSpeed(), baseWeight * 0.5f);
+                float weight = SearchInstance.OnUpdateEnvironmentFeatureWeight(this, feature, baseWeight);
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
                     for (int f = 0; f < featureSize; f++)
                     {
-                        FeaturesWeightsNativeArray[offset + f] = weight;
+                        featuresWeightsNativeArray[offset + f] = weight;
                     }
                     offset += featureSize;
                 }
             }
-            return FeaturesWeightsNativeArray;
+            return featuresWeightsNativeArray;
         }
 
-        /// <summary>
-        /// Returns the skeleton used by Motion Matching
-        /// </summary>
-        public Skeleton GetSkeleton()
-        {
-            return PoseSet.Skeleton;
-        }
-
-        /// <summary>
-        /// Returns the transforms used by Motion Matching to simulate the skeleton
-        /// </summary>
-        public Transform[] GetSkeletonTransforms()
-        {
-            return SkeletonTransforms;
-        }
-
-        public float3 GetFutureTrajectoryPosition(int trajectoryIndex)
+        public float3 GetMainPositionFeature(int trajectoryIndex)
         {
             float3 characterOrigin = SkeletonTransforms[0].position;
             float3 characterForward = SkeletonTransforms[0].forward;
             quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
-            // HARDCODED
-            int t = 0; // first trajectory feature
-            float3 value = FeatureDebug.Get3DValuePositionOrDirectionFeature(MMData.TrajectoryFeatures[t], FeatureSet, CurrentFrame, t, trajectoryIndex, isDynamic: false);
+            // Find Main Position Trajectory Index
+            int t = -1;
+            for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
+            {
+                if (MMData.TrajectoryFeatures[i].IsMainPositionFeature)
+                {
+                    t = i;
+                    break;
+                }
+            }
+            if (t == -1)
+            {
+                Debug.LogError("[Motion Matching] No Main Position Trajectory Feature found.");
+                return characterOrigin;
+            }
+            float3 value = FeatureDebug.Get3DValuePositionOrDirectionFeature(MMData.TrajectoryFeatures[t], FeatureSet, CurrentFrame, t, trajectoryIndex, isEnvironment: false);
             value = characterOrigin + math.mul(characterRot, value);
             return value;
         }
 
-        public float4 GetFutureEllipses(int trajectoryIndex)
+        public float4 GetEnvironmentFeature(string featureName, int trajectoryIndex)
         {
             float3 characterForward = SkeletonTransforms[0].forward;
             quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
-            // HARDCODED
-            int t = 0; // first dynamic feature
-            float4 value = FeatureSet.Get4DDynamicFeature(CurrentFrame, t, trajectoryIndex);
+            int t = -1;
+            for (int i = 0; i < MMData.EnvironmentFeatures.Count; i++)
+            {
+                if (MMData.EnvironmentFeatures[i].Name == featureName)
+                {
+                    t = i;
+                    break;
+                }
+            }
+            if (t == -1)
+            {
+                Debug.LogError("[Motion Matching] No Environment Feature with name " + featureName + " found.");
+                return float4.zero;
+            }
+            float4 value = FeatureSet.Get4DEnvironmentFeature(CurrentFrame, t, trajectoryIndex);
             float primaryDistance = value.x;
             float secondaryDistance = value.y;
             float3 primaryAxisUnitCharacterSpace = new(value.z, 0.0f, value.w);
@@ -973,12 +635,13 @@ namespace MotionMatching
 
         private void OnDestroy()
         {
+            if (IsDestroyed) return;
+            IsDestroyed = true;
             MMData.Dispose();
+            SearchInstance.Dispose();
             if (QueryFeature != null && QueryFeature.IsCreated) QueryFeature.Dispose();
-            if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
             if (TagMask != null && TagMask.IsCreated) TagMask.Dispose();
-            // HARDCODED: dispose the native arrays that have been added (debug and hardcoded, but i'm waiting to finish refactor before including them here)
         }
 
         private void OnApplicationQuit()
@@ -987,22 +650,6 @@ namespace MotionMatching
         }
 
 #if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (DynamicAccelerationConsts.PercentageThreshold < 0.001f)
-            {
-                DynamicAccelerationConsts.PercentageThreshold = 0.05f;
-            }
-            if (DynamicAccelerationConsts.MinimumStepSize < 1)
-            {
-                DynamicAccelerationConsts.MinimumStepSize = 8;
-            }
-            if (DynamicAccelerationConsts.VarianceFactor < 1.0f)
-            {
-                DynamicAccelerationConsts.VarianceFactor = 1.0f;
-            }
-        }
-
         private void OnDrawGizmos()
         {
             // Skeleton
@@ -1080,25 +727,11 @@ namespace MotionMatching
             if (FeatureSet == null) return;
 
             FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
-                                           SkeletonTransforms, PoseSet.Skeleton, Color.blue, DebugPose, DebugTrajectory, DebugDynamic);
+                                           SkeletonTransforms, PoseSet.Skeleton, Color.blue, DebugPose, DebugTrajectory, DebugEnvironment);
 
-            // DEBUG DebugDistanceToObstacles
-            if (DebugDistanceToObstacles)
+            if (DebugSearch)
             {
-                for (int i = 0; i < VisualDebugElements[0]; i++)
-                {
-                    float3 dir = math.normalize(PointsOnObstacle[i] - PointsOnEllipse[i]);
-                    float3 pointOnDisk = PointsOnEllipse[i] + dir * ObstacleDistances[i];
-                    Gizmos.color = new Color(1.0f, 0.5f, 0.0f);
-                    Gizmos.DrawSphere(PointsOnEllipse[i], SpheresRadius);
-                    Gizmos.DrawLine(PointsOnEllipse[i], pointOnDisk);
-                    Gizmos.DrawSphere(pointOnDisk, SpheresRadius);
-                    //GUI.color = Color.red;
-                    //Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 2.0f, ObstaclePenalization[i].ToString("0.00"));
-                    //GUI.color = new Color(1.0f, 0.5f, 0.0f);
-                    //Handles.Label(PointsOnEllipse[i] + math.up() * SpheresRadius * 3.0f, ObstacleDistances[i].ToString("0.0000"));
-                }
-                //Handles.Label(characterOrigin + math.up() * 2.0f, VisualDebugElements[0].ToString(), SingleLineStyle);
+                SearchInstance.DrawGizmos(this, SpheresRadius);
             }
         }
 #endif

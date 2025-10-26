@@ -46,9 +46,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CharacterController: {fileID: 685709426927877645}
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
+  Search: {fileID: 11400000, guid: e5b83ea29d1d7d04aa788acb4bff504f, type: 2}
   LockFPS: 1
   SearchTime: 0.16666667
-  UseBVHSearch: 1
   Inertialize: 1
   FootLock: 0
   FootUnlockDistance: 0.2
@@ -65,10 +65,14 @@ MonoBehaviour:
   - 1
   SpheresRadius: 0.05
   DebugSkeleton: 1
+  DebugFutureSkeleton: 1
   DebugCurrent: 1
   DebugPose: 1
   DebugTrajectory: 0
+  DebugDynamic: 1
+  DebugSearch: 1
   DebugContacts: 1
+  DebugGUI: 1
 --- !u!1 &5316060768473179198
 GameObject:
   m_ObjectHideFlags: 0

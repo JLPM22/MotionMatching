@@ -17,7 +17,7 @@ namespace MotionMatching
     {
         public int NumberFeatureVectors { get; private set; } // Total number of feature vectors
         public int FeatureSize { get; private set; } // Total size in floats of a feature vector
-        public int FeatureStaticSize { get; private set; } // Total size in floats of a feature vector without dynamic features
+        public int FeatureStaticSize { get; private set; } // Total size in floats of a feature vector without environment features
 
         // Trajectory features
         public int NumberTrajectoryFeatures { get; private set; } // Number of different trajectory features (e.g. 2 = position and direction)
@@ -31,17 +31,17 @@ namespace MotionMatching
         public int PoseOffset { get; private set; } // Offset of the pose feature in the feature vector (e.g. 3 = leftFootPosition is at the third float)
                                                     // Pose Features are always after the Trajectory Features
 
-        // Dynamic
-        public int NumberDynamicFeatures { get; private set; } // Number of dynamic features (e.g. 2 = spheres and ellipses)
-        private readonly int[] NumberPredictionsDynamic; // Size: NumberDynamicFeatures. Number of predictions per dynamic feature (e.g. {3, 4}, means 3 predictions for spheres and 4 for ellipses)
-        private readonly int[] NumberFloatsDynamic; // Size: NumberDynamicFeatures. Number of floats per dynamic feature (e.g. {1, 2}, means 1 floats for spheres (float) and 2 for ellipses (float2))
-        public int[] DynamicOffset { get; private set; } // Size: NumberDynamicFeatures. Offset of the dynamic feature in the feature vector (e.g. 6 = spheres is at the sixth float)
-                                                         // Dynamic Features are always after the Pose Features
+        // Environment
+        public int NumberEnvironmentFeatures { get; private set; } // Number of environment features (e.g. 2 = spheres and ellipses)
+        private readonly int[] NumberPredictionsEnvironment; // Size: NumberEnvironmentFeatures. Number of predictions per environment feature (e.g. {3, 4}, means 3 predictions for spheres and 4 for ellipses)
+        private readonly int[] NumberFloatsEnvironment; // Size: NumberEnvironmentFeatures. Number of floats per environment feature (e.g. {1, 2}, means 1 floats for spheres (float) and 2 for ellipses (float2))
+        public int[] EnvironmentOffset { get; private set; } // Size: NumberEnvironmentFeatures. Offset of the environment feature in the feature vector (e.g. 6 = spheres is at the sixth float)
+                                                             // Environment Features are always after the Pose Features
 
         private NativeArray<bool> Valid; // TODO: Refactor to avoid needing this
-        private NativeArray<float> Features; // Each feature: Trajectory + Pose + Dynamic 
-        private float[] Mean; // Size: DynamicOffset[0]. Dynamic features are never normalized
-        private float[] StandardDeviation; // Size: DynamicOffset[0]. Dynamic features are never normalized
+        private NativeArray<float> Features; // Each feature: Trajectory + Pose + Environment 
+        private float[] Mean; // Size: EnvironmentOffset[0]. Environment features are never normalized
+        private float[] StandardDeviation; // Size: EnvironmentOffset[0]. Environment features are never normalized
 
         // BVH acceleration structures
         private NativeArray<float> LargeBoundingBoxMin;
@@ -49,7 +49,7 @@ namespace MotionMatching
         private NativeArray<float> SmallBoundingBoxMin;
         private NativeArray<float> SmallBoundingBoxMax;
 
-        // Dynamic acceleration structures
+        // Environment acceleration structures
         private NativeArray<int> AdaptativeFeaturesIndices; // Index to the real Features array
 
         public FeatureSet(MotionMatchingData mmData, int numberFeatureVectors)
@@ -77,17 +77,17 @@ namespace MotionMatching
 
             FeatureStaticSize = offset;
 
-            // Dynamic Features
-            NumberDynamicFeatures = mmData.DynamicFeatures.Count;
-            NumberPredictionsDynamic = new int[NumberDynamicFeatures];
-            NumberFloatsDynamic = new int[NumberDynamicFeatures];
-            DynamicOffset = new int[NumberDynamicFeatures];
-            for (int i = 0; i < NumberDynamicFeatures; i++)
+            // Environment Features
+            NumberEnvironmentFeatures = mmData.EnvironmentFeatures.Count;
+            NumberPredictionsEnvironment = new int[NumberEnvironmentFeatures];
+            NumberFloatsEnvironment = new int[NumberEnvironmentFeatures];
+            EnvironmentOffset = new int[NumberEnvironmentFeatures];
+            for (int i = 0; i < NumberEnvironmentFeatures; i++)
             {
-                DynamicOffset[i] = offset;
-                NumberPredictionsDynamic[i] = mmData.DynamicFeatures[i].FramesPrediction.Length;
-                NumberFloatsDynamic[i] = mmData.DynamicFeatures[i].GetSize();
-                offset += NumberPredictionsDynamic[i] * NumberFloatsDynamic[i];
+                EnvironmentOffset[i] = offset;
+                NumberPredictionsEnvironment[i] = mmData.EnvironmentFeatures[i].FramesPrediction.Length;
+                NumberFloatsEnvironment[i] = mmData.EnvironmentFeatures[i].GetSize();
+                offset += NumberPredictionsEnvironment[i] * NumberFloatsEnvironment[i];
             }
 
             FeatureSize = offset;
@@ -178,33 +178,33 @@ namespace MotionMatching
             }
             return new float3(x, y, z);
         }
-        public float Get1DDynamicFeature(int featureIndex, int dynamicFeatureIndex, int predictionIndex)
+        public float Get1DEnvironmentFeature(int featureIndex, int environmentFeatureIndex, int predictionIndex)
         {
-            int featureOffset = DynamicOffset[dynamicFeatureIndex] + predictionIndex * NumberFloatsDynamic[dynamicFeatureIndex];
+            int featureOffset = EnvironmentOffset[environmentFeatureIndex] + predictionIndex * NumberFloatsEnvironment[environmentFeatureIndex];
             int startIndex = featureIndex * FeatureSize + featureOffset;
             float x = Features[startIndex];
             return x;
         }
-        public float2 Get2DDynamicFeature(int featureIndex, int dynamicFeatureIndex, int predictionIndex)
+        public float2 Get2DEnvironmentFeature(int featureIndex, int environmentFeatureIndex, int predictionIndex)
         {
-            int featureOffset = DynamicOffset[dynamicFeatureIndex] + predictionIndex * NumberFloatsDynamic[dynamicFeatureIndex];
+            int featureOffset = EnvironmentOffset[environmentFeatureIndex] + predictionIndex * NumberFloatsEnvironment[environmentFeatureIndex];
             int startIndex = featureIndex * FeatureSize + featureOffset;
             float x = Features[startIndex];
             float y = Features[startIndex + 1];
             return new float2(x, y);
         }
-        public float3 Get3DDynamicFeature(int featureIndex, int dynamicFeatureIndex, int predictionIndex)
+        public float3 Get3DEnvironmentFeature(int featureIndex, int environmentFeatureIndex, int predictionIndex)
         {
-            int featureOffset = DynamicOffset[dynamicFeatureIndex] + predictionIndex * NumberFloatsDynamic[dynamicFeatureIndex];
+            int featureOffset = EnvironmentOffset[environmentFeatureIndex] + predictionIndex * NumberFloatsEnvironment[environmentFeatureIndex];
             int startIndex = featureIndex * FeatureSize + featureOffset;
             float x = Features[startIndex];
             float y = Features[startIndex + 1];
             float z = Features[startIndex + 2];
             return new float3(x, y, z);
         }
-        public float4 Get4DDynamicFeature(int featureIndex, int dynamicFeatureIndex, int predictionIndex)
+        public float4 Get4DEnvironmentFeature(int featureIndex, int environmentFeatureIndex, int predictionIndex)
         {
-            int featureOffset = DynamicOffset[dynamicFeatureIndex] + predictionIndex * NumberFloatsDynamic[dynamicFeatureIndex];
+            int featureOffset = EnvironmentOffset[environmentFeatureIndex] + predictionIndex * NumberFloatsEnvironment[environmentFeatureIndex];
             int startIndex = featureIndex * FeatureSize + featureOffset;
             float x = Features[startIndex];
             float y = Features[startIndex + 1];
@@ -274,27 +274,27 @@ namespace MotionMatching
             smallBoundingBoxMax = SmallBoundingBoxMax;
         }
 
-        public void GetDynamicAccelerationStructures(DynamicAccelerationConsts consts, 
+        public void GetEnvironmentAccelerationStructures(EnvironmentAccelerationConsts consts,
                                                      out NativeArray<int> adaptativeFeaturesIndices)
         {
             if (AdaptativeFeaturesIndices == null || !AdaptativeFeaturesIndices.IsCreated)
             {
-                // Build Dynamic Acceleration Structure
+                // Build Environment Acceleration Structure
                 NativeList<int> adaptativeIndices = new(Allocator.Persistent);
-                var job = new DynamicAccelerationComputeAdaptativeIndices
+                var job = new EnvironmentAccelerationComputeAdaptativeIndices
                 {
                     Features = GetFeatures(),
                     Valid = GetValid(),
                     FeatureSize = FeatureSize,
                     PoseOffset = PoseOffset,
-                    DynamicAccelerationConsts = consts,
+                    EnvironmentAccelerationConsts = consts,
                     FeatureStaticSize = FeatureStaticSize,
                     AdaptativeIndices = adaptativeIndices,
                 };
                 job.Schedule().Complete();
                 AdaptativeFeaturesIndices = adaptativeIndices.AsArray();
             }
-            Debug.Log("Number of features: " + GetFeatures().Length / FeatureSize + " -----  Adaptative Length: " + AdaptativeFeaturesIndices.Length);
+            // Debug.Log("Number of features: " + GetFeatures().Length / FeatureSize + " -----  Adaptative Length: " + AdaptativeFeaturesIndices.Length);
             adaptativeFeaturesIndices = AdaptativeFeaturesIndices;
         }
 
@@ -513,15 +513,15 @@ namespace MotionMatching
                 if (!poseSet.Skeleton.Find(poseFeature.Bone, out jointsPose[i])) Debug.Assert(false, "The skeleton does not contain any joint of type " + poseFeature.Bone);
                 i += 1;
             }
-            Joint[] jointsDynamic = new Joint[NumberDynamicFeatures];
+            Joint[] jointsEnvironment = new Joint[NumberEnvironmentFeatures];
             i = 0;
-            foreach (var dynamicFeature in mmData.DynamicFeatures)
+            foreach (var environmentFeature in mmData.EnvironmentFeatures)
             {
-                if ((dynamicFeature.FeatureType == TrajectoryFeature.Type.Position ||
-                    dynamicFeature.FeatureType == TrajectoryFeature.Type.Direction)
-                    && !dynamicFeature.SimulationBone)
+                if ((environmentFeature.FeatureType == TrajectoryFeature.Type.Position ||
+                    environmentFeature.FeatureType == TrajectoryFeature.Type.Direction)
+                    && !environmentFeature.SimulationBone)
                 {
-                    if (!poseSet.Skeleton.Find(dynamicFeature.Bone, out jointsDynamic[i])) Debug.Assert(false, "The skeleton does not contain any joint of type " + dynamicFeature.Bone);
+                    if (!poseSet.Skeleton.Find(environmentFeature.Bone, out jointsEnvironment[i])) Debug.Assert(false, "The skeleton does not contain any joint of type " + environmentFeature.Bone);
                 }
                 i += 1;
             }
@@ -531,7 +531,7 @@ namespace MotionMatching
                 if (poseSet.IsPoseValidForPrediction(poseIndex))
                 {
                     Valid[poseIndex] = true;
-                    ExtractFeature(poseSet, poseIndex, jointsTrajectory, jointsPose, jointsDynamic, mmData);
+                    ExtractFeature(poseSet, poseIndex, jointsTrajectory, jointsPose, jointsEnvironment, mmData);
                 }
                 else Valid[poseIndex] = false;
             }
@@ -540,11 +540,11 @@ namespace MotionMatching
         /// <summary>
         /// Extract the feature vectors from poseSet
         /// </summary>
-        private void ExtractFeature(PoseSet poseSet, int poseIndex, Joint[] jointsTrajectory, Joint[] jointsPose, Joint[] jointsDynamic, MotionMatchingData mmData)
+        private void ExtractFeature(PoseSet poseSet, int poseIndex, Joint[] jointsTrajectory, Joint[] jointsPose, Joint[] jointsEnvironment, MotionMatchingData mmData)
         {
             int featureIndex = poseIndex * FeatureSize;
             int nextPose = poseIndex + 1;
-            if (nextPose >= poseSet.NumberPoses - 60) // HARDCODED
+            if (nextPose >= poseSet.NumberPoses - poseSet.MaximumFramesPrediction)
             {
                 nextPose = poseIndex;
             }
@@ -600,22 +600,22 @@ namespace MotionMatching
                 Features[featureOffset + 2] = feature.z;
             }
 
-            // Dynamic Features -------------------------------------------------------------
-            for (int i = 0; i < NumberDynamicFeatures; i++)
+            // Environment Features -------------------------------------------------------------
+            for (int i = 0; i < NumberEnvironmentFeatures; i++)
             {
-                TrajectoryFeature dynamicFeature = mmData.DynamicFeatures[i];
-                int featureOffset = featureIndex + DynamicOffset[i];
-                int nextFeatureOffset = nextFeatureIndex + DynamicOffset[i];
+                TrajectoryFeature environmentFeature = mmData.EnvironmentFeatures[i];
+                int featureOffset = featureIndex + EnvironmentOffset[i];
+                int nextFeatureOffset = nextFeatureIndex + EnvironmentOffset[i];
                 bool isStartFeature = true;
-                for (int p = 0; p < dynamicFeature.FramesPrediction.Length; ++p)
+                for (int p = 0; p < environmentFeature.FramesPrediction.Length; ++p)
                 {
-                    int predictionOffset = featureOffset + p * NumberFloatsDynamic[i];
-                    int nextPredictionOffset = nextFeatureOffset + p * NumberFloatsDynamic[i];
-                    int futurePoseIndex = poseIndex + dynamicFeature.FramesPrediction[p];
-                    int nextFuturePoseIndex = nextPose + dynamicFeature.FramesPrediction[p];
+                    int predictionOffset = featureOffset + p * NumberFloatsEnvironment[i];
+                    int nextPredictionOffset = nextFeatureOffset + p * NumberFloatsEnvironment[i];
+                    int futurePoseIndex = poseIndex + environmentFeature.FramesPrediction[p];
+                    int nextFuturePoseIndex = nextPose + environmentFeature.FramesPrediction[p];
 
-                    isStartFeature = ExtractTrajectoryFeature(dynamicFeature, poseSet, futurePoseIndex, nextFuturePoseIndex,
-                                                              jointsDynamic, i, predictionOffset, characterOrigin, characterForward,
+                    isStartFeature = ExtractTrajectoryFeature(environmentFeature, poseSet, futurePoseIndex, nextFuturePoseIndex,
+                                                              jointsEnvironment, i, predictionOffset, characterOrigin, characterForward,
                                                               mmData, isStartFeature);
                 }
             }

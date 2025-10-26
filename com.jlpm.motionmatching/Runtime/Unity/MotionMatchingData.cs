@@ -25,7 +25,7 @@ namespace MotionMatching
         public List<JointToMecanim> SkeletonToMecanim = new();
         public List<TrajectoryFeature> TrajectoryFeatures = new();
         public List<PoseFeature> PoseFeatures = new();
-        public List<TrajectoryFeature> DynamicFeatures = new(); // Features used for dynamic computations and not used during the standard distance check in the Motion Matching search
+        public List<TrajectoryFeature> EnvironmentFeatures = new(); // Features used for dynamic computations and not used during the standard distance check in the Motion Matching search
 
         public PoseSet PoseSet { get; private set; }
         public FeatureSet FeatureSet { get; private set; }

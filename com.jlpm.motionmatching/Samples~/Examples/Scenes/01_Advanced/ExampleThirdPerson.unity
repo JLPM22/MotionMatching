@@ -373,9 +373,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CharacterController: {fileID: 922198739}
   MMData: {fileID: 11400000, guid: 8ddcffd587519e840ba105f93050fcf6, type: 2}
+  Search: {fileID: 11400000, guid: e5b83ea29d1d7d04aa788acb4bff504f, type: 2}
   LockFPS: 1
   SearchTime: 0.16666667
-  UseBVHSearch: 1
   Inertialize: 1
   FootLock: 0
   FootUnlockDistance: 0.2
@@ -392,10 +392,14 @@ MonoBehaviour:
   - 1
   SpheresRadius: 0.05
   DebugSkeleton: 1
+  DebugFutureSkeleton: 1
   DebugCurrent: 1
   DebugPose: 1
   DebugTrajectory: 0
+  DebugDynamic: 1
+  DebugSearch: 1
   DebugContacts: 1
+  DebugGUI: 1
 --- !u!4 &845368628
 Transform:
   m_ObjectHideFlags: 0
@@ -484,7 +488,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 922198738}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 366f437fc25847f46b850e77ce58dd87, type: 3}
+  m_Script: {fileID: 11500000, guid: e7acba3f9e4c60845b361cf44af495e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!114 &922198743
@@ -496,7 +500,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 922198738}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4214c09160b148640afde91a8d0e634f, type: 3}
+  m_Script: {fileID: 11500000, guid: d7a252efd103e734182c96aabfacfc58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &939603974

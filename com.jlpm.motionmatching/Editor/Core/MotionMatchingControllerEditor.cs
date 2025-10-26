@@ -22,7 +22,7 @@ namespace MotionMatching
             if (controller.MMData == null) { return; }
 
             // Feature Weights
-            int featuresCount = controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count + controller.MMData.DynamicFeatures.Count;
+            int featuresCount = controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count + controller.MMData.EnvironmentFeatures.Count;
             if (controller.FeatureWeights.Length != featuresCount)
             {
                 float[] newWeights = new float[featuresCount];
@@ -50,9 +50,9 @@ namespace MotionMatching
                 }
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.BeginVertical(GUI.skin.box);
-                for (int i = 0; i < controller.MMData.DynamicFeatures.Count; ++i)
+                for (int i = 0; i < controller.MMData.EnvironmentFeatures.Count; ++i)
                 {
-                    string name = controller.MMData.DynamicFeatures[i].Name;
+                    string name = controller.MMData.EnvironmentFeatures[i].Name;
                     int index = controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count + i;
                     controller.FeatureWeights[index] = EditorGUILayout.FloatField(name, controller.FeatureWeights[index]);
                 }
@@ -67,7 +67,7 @@ namespace MotionMatching
             ToggleDebug = EditorGUILayout.BeginFoldoutHeaderGroup(ToggleDebug, "Debug");
             if (ToggleDebug)
             {
-                EditorGUILayout.LabelField("Pose Index: " + controller.GetCurrentFrame());
+                EditorGUILayout.LabelField("Pose Index: " + controller.CurrentFrame);
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 

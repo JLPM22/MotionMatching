@@ -5,6 +5,8 @@ namespace MotionMatching
 {
     public class Obstacle : MonoBehaviour
     {
+        public static readonly string EllipsesFeatureName = "FutureEllipse";
+
         public float Radius = 1.0f;
         public bool IsStatic = false;
         public float2 Height = new(0, 1); // Height in Y axis (min, max)
@@ -60,15 +62,15 @@ namespace MotionMatching
             {
                 if (CrowdSplineCharacterController != null)
                 {
-                    return (CrowdSplineCharacterController.MotionMatching.GetFutureTrajectoryPosition(trajectoryIndex),
+                    return (CrowdSplineCharacterController.MotionMatching.GetMainPositionFeature(trajectoryIndex),
                             true,
-                            CrowdSplineCharacterController.MotionMatching.GetFutureEllipses(trajectoryIndex));
+                            CrowdSplineCharacterController.MotionMatching.GetEnvironmentFeature(EllipsesFeatureName, trajectoryIndex));
                 }
                 else
                 {
-                    return (CrowdCharacter.MotionMatching.GetFutureTrajectoryPosition(trajectoryIndex),
+                    return (CrowdCharacter.MotionMatching.GetMainPositionFeature(trajectoryIndex),
                             true,
-                            CrowdCharacter.MotionMatching.GetFutureEllipses(trajectoryIndex));
+                            CrowdCharacter.MotionMatching.GetEnvironmentFeature(EllipsesFeatureName, trajectoryIndex));
                 }
             }
         }

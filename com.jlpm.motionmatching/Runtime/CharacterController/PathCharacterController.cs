@@ -123,7 +123,7 @@ namespace MotionMatching
             Quaternion rot = Quaternion.LookRotation(new Vector3(CurrentDirection.x, 0, CurrentDirection.y));
             return rot * transform.rotation;
         }
-        
+
         public override void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
             if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
@@ -247,11 +247,6 @@ namespace MotionMatching
                 float2 dirf2 = GetWorldPredictedDir(i);
                 GizmosExtensions.DrawLine(predictedPos, predictedPos + new Vector3(dirf2.x, 0.0f, dirf2.y) * 0.5f, 12);
             }
-        }
-
-        public override (NativeArray<(float2, float, float2)>, NativeArray<int>, NativeArray<(float2, float2, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
-        {
-            throw new System.NotImplementedException();
         }
 #endif
     }

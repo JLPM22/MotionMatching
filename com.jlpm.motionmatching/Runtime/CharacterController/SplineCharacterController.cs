@@ -162,11 +162,6 @@ namespace MotionMatching
                 GizmosExtensions.DrawLine(predictedPos, predictedPos + new Vector3(dirf2.x, 0.0f, dirf2.y) * 0.5f, 12);
             }
         }
-
-        public override (NativeArray<(float2, float, float2)>, NativeArray<int>, NativeArray<(float2, float2, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
-        {
-            throw new System.NotImplementedException();
-        }
 #endif
     }
 }

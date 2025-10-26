@@ -9,7 +9,7 @@ namespace MotionMatching
     using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
 
 
-    public class CrowdCharacterController : MotionMatchingCharacterController
+    public class CrowdCharacterController : MotionMatchingCharacterController, IObstacleAwareCharacterControler, IPlayerInputCharacterController
     {
         [Header("Crowd")]
         public Obstacle IgnoreObstacle;
@@ -411,7 +411,12 @@ namespace MotionMatching
             }
         }
 
-        public override (NativeArray<(float2, float, float2)>, NativeArray<int>, NativeArray<(float2, float2, float2)>, NativeArray<int>) GetNearbyObstacles(Transform character)
+        public (
+                    NativeArray<(float2, float, float2)>,
+                    NativeArray<int>,
+                    NativeArray<(float2, float2, float2)>,
+                    NativeArray<int>
+                ) GetNearbyObstacles(Transform character, float obstacleDistanceThreshold)
         {
             for (int p = 0; p < CandidateCirclesObstacles.Count; p++)
             {
@@ -423,10 +428,10 @@ namespace MotionMatching
             }
             int candidateObstaclesCirclesCount = 0;
             int candidateObstaclesEllipsesCount = 0;
-            float candidateThreshold = MaximumEllipseLength + MotionMatching.CrowdThreshold;
+            float candidateThreshold = MaximumEllipseLength + obstacleDistanceThreshold;
             for (int p = 0; p < PredictedPosition.Length; p++)
             {
-                float3 predPos = MotionMatching.GetFutureTrajectoryPosition(p);
+                float3 predPos = MotionMatching.GetMainPositionFeature(p);
                 for (int i = 0; i < Obstacles.Length; i++)
                 {
                     Obstacle obs = Obstacles[i];
@@ -477,7 +482,6 @@ namespace MotionMatching
                     (Obstacle obstacle, bool forceCurrent) = CandidateCirclesObstacles[p][i];
                     (float3 world, _, _) = obstacle.GetProjWorldPosition(p, forceCurrent: forceCurrent);
                     float3 localPos = character.InverseTransformPoint(world);
-                    // HARDCODED: circle radius
                     ObstaclesCirclesArray[itCircle++] = (new float2(localPos.x, localPos.z),
                                                          obstacle.Radius,
                                                          new float2(obstacle.GetMinHeightWorld(), obstacle.GetMaxHeightWorld()));
@@ -492,7 +496,6 @@ namespace MotionMatching
                     float3 secondaryAxis = new(ellipse.z, 0.0f, ellipse.w);
                     primaryAxis = character.InverseTransformDirection(primaryAxis);
                     secondaryAxis = character.InverseTransformDirection(secondaryAxis);
-                    // HARDCODED
                     ObstaclesEllipsesArray[itEllipse++] = (new float2(localPos.x, localPos.z),
                                                            new float2(primaryAxis.x, primaryAxis.z),
                                                            new float2(secondaryAxis.x, secondaryAxis.z));
@@ -503,7 +506,7 @@ namespace MotionMatching
         }
 
         // TODO: maybe get dynamic feature could return something more generic that allows to send custom data like the obstacle arrays
-        public override void GetDynamicFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
+        public override void GetEnvironmentFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
             if (feature.Name == "FutureEllipse")
             {

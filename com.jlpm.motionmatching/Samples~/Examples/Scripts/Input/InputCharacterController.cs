@@ -10,15 +10,13 @@ using MotionMatching;
 public class InputCharacterController : MonoBehaviour
 {
     private InputManager Input;
-    private SpringCharacterController CharacterController;
-    private CollisionsSpringCharacterController CollisionsCharacterController;
+    private IPlayerInputCharacterController CharacterController;
     private TagSwitchHelper TagHelper;
 
     private void Awake()
     {
         Input = GetComponent<InputManager>();
-        CharacterController = GetComponent<SpringCharacterController>();
-        CollisionsCharacterController = GetComponent<CollisionsSpringCharacterController>();
+        CharacterController = GetComponent<IPlayerInputCharacterController>();
         TagHelper = GetComponent<TagSwitchHelper>();
     }
 
@@ -42,10 +40,6 @@ public class InputCharacterController : MonoBehaviour
         {
             CharacterController.SetMovementDirection(movementDirection);
         }
-        if (CollisionsCharacterController != null)
-        {
-            CollisionsCharacterController.SetMovementDirection(movementDirection);
-        }
     }
 
     public void OnFixOrientationSwap()
@@ -53,10 +47,6 @@ public class InputCharacterController : MonoBehaviour
         if (CharacterController != null)
         {
             CharacterController.SwapFixOrientation();
-        }
-        if (CollisionsCharacterController != null)
-        {
-            CollisionsCharacterController.SwapFixOrientation();
         }
     }
 

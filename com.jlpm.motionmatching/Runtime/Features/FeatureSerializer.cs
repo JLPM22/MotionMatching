@@ -29,7 +29,7 @@ namespace MotionMatching
                     // Serialize Number Features Dimension
                     writer.Write((uint)featureSet.FeatureSize);
                     // Serialize Number Features
-                    writer.Write((uint)(featureSet.NumberTrajectoryFeatures + featureSet.NumberPoseFeatures + featureSet.NumberDynamicFeatures));
+                    writer.Write((uint)(featureSet.NumberTrajectoryFeatures + featureSet.NumberPoseFeatures + featureSet.NumberEnvironmentFeatures));
 
                     // Serialize Mean & StandardDeviation
                     for (int i = 0; i < featureSet.FeatureStaticSize; ++i)
@@ -53,12 +53,12 @@ namespace MotionMatching
                         writer.Write(3u);
                         writer.Write(1u);
                     }
-                    for (int d = 0; d < mmData.DynamicFeatures.Count; ++d)
+                    for (int d = 0; d < mmData.EnvironmentFeatures.Count; ++d)
                     {
-                        var dynamicFeature = mmData.DynamicFeatures[d];
-                        writer.Write(dynamicFeature.Name);
-                        writer.Write(dynamicFeature.GetSize());
-                        writer.Write((uint)dynamicFeature.FramesPrediction.Length);
+                        var environmentFeature = mmData.EnvironmentFeatures[d];
+                        writer.Write(environmentFeature.Name);
+                        writer.Write(environmentFeature.GetSize());
+                        writer.Write((uint)environmentFeature.FramesPrediction.Length);
                     }
 
                     // Serialize Feature Vectors
@@ -103,36 +103,36 @@ namespace MotionMatching
                         {
                             WriteFloat3(writer, featureSet.GetPoseFeature(i, p));
                         }
-                        // Dynamic
-                        for (int d = 0; d < mmData.DynamicFeatures.Count; ++d)
+                        // Environment
+                        for (int d = 0; d < mmData.EnvironmentFeatures.Count; ++d)
                         {
-                            var dynamicFeature = mmData.DynamicFeatures[d];
-                            int featureSize = dynamicFeature.GetSize();
-                            for (int p = 0; p < dynamicFeature.FramesPrediction.Length; ++p)
+                            var environmentFeature = mmData.EnvironmentFeatures[d];
+                            int featureSize = environmentFeature.GetSize();
+                            for (int p = 0; p < environmentFeature.FramesPrediction.Length; ++p)
                             {
                                 if (featureSize == 4)
                                 {
-                                    float4 value4D = featureSet.Get4DDynamicFeature(i, d, p);
+                                    float4 value4D = featureSet.Get4DEnvironmentFeature(i, d, p);
                                     WriteFloat4(writer, value4D);
                                 }
                                 else if (featureSize == 3)
                                 {
-                                    float3 value3D = featureSet.Get3DDynamicFeature(i, d, p);
+                                    float3 value3D = featureSet.Get3DEnvironmentFeature(i, d, p);
                                     WriteFloat3(writer, value3D);
                                 }
                                 else if (featureSize == 2)
                                 {
-                                    float2 value2D = featureSet.Get2DDynamicFeature(i, d, p);
+                                    float2 value2D = featureSet.Get2DEnvironmentFeature(i, d, p);
                                     WriteFloat2(writer, value2D);
                                 }
                                 else if (featureSize == 1)
                                 {
-                                    float value1D = featureSet.Get1DDynamicFeature(i, d, p);
+                                    float value1D = featureSet.Get1DEnvironmentFeature(i, d, p);
                                     writer.Write(value1D);
                                 }
                                 else
                                 {
-                                    Debug.Assert(false, "Invalid dynamic feature");
+                                    Debug.Assert(false, "Invalid environment feature");
                                 }
                             }
                         }
@@ -177,7 +177,7 @@ namespace MotionMatching
                         }
 
                         // Deserialize Features (basically check that everything is correct)
-                        Debug.Assert(numberFeatures == (mmData.TrajectoryFeatures.Count + mmData.PoseFeatures.Count + mmData.DynamicFeatures.Count), "Number of features in file does not match number of features in Motion Matching Data");
+                        Debug.Assert(numberFeatures == (mmData.TrajectoryFeatures.Count + mmData.PoseFeatures.Count + mmData.EnvironmentFeatures.Count), "Number of features in file does not match number of features in Motion Matching Data");
                         for (int t = 0; t < mmData.TrajectoryFeatures.Count; ++t)
                         {
                             var trajectoryFeature = mmData.TrajectoryFeatures[t];
@@ -198,15 +198,15 @@ namespace MotionMatching
                             Debug.Assert(nFloatsType == 3u, "Projection type of pose feature does not match");
                             Debug.Assert(nElements == 1u, "Number of frames prediction of pose feature does not match");
                         }
-                        for (int t = 0; t < mmData.DynamicFeatures.Count; ++t)
+                        for (int t = 0; t < mmData.EnvironmentFeatures.Count; ++t)
                         {
-                            var dynamicFeature = mmData.DynamicFeatures[t];
+                            var environmentFeature = mmData.EnvironmentFeatures[t];
                             string name = reader.ReadString();
                             uint nFloatsType = reader.ReadUInt32();
                             uint nElements = reader.ReadUInt32();
-                            Debug.Assert(name == dynamicFeature.Name, "Name of dynamic feature does not match");
-                            Debug.Assert(nFloatsType == (uint)dynamicFeature.GetSize(), "Projection type of dynamic feature does not match");
-                            Debug.Assert(nElements == (uint)dynamicFeature.FramesPrediction.Length, "Number of frames prediction of dynamic feature does not match");
+                            Debug.Assert(name == environmentFeature.Name, "Name of environment feature does not match");
+                            Debug.Assert(nFloatsType == (uint)environmentFeature.GetSize(), "Projection type of environment feature does not match");
+                            Debug.Assert(nElements == (uint)environmentFeature.FramesPrediction.Length, "Number of frames prediction of environment feature does not match");
                         }
 
                         // Deserialize Feature Vectors
