@@ -158,16 +158,41 @@ namespace MotionMatching
 
         private void ReadChannels(List<AxisOrder> channels, string[] words, ref int w, bool root = false)
         {
-            if (words[w++] != "CHANNELS") Debug.LogError("[BVHImporter] CHANNELS not found");
+            if (words[w++] != "CHANNELS")
+            {
+                Debug.LogError("[BVHImporter] CHANNELS keyword not found");
+                return;
+            }
+
+            int numChannels = int.Parse(words[w++]);
+
             if (root)
             {
-                if (int.Parse(words[w++]) != 6) Debug.LogError("[BVHImporter] root must have 6 channels");
+                // The root **must** provide 3 translation + 3 rotation = 6 channels.
+                if (numChannels != 6)
+                {
+                    Debug.LogError("[BVHImporter] The root joint must have exactly 6 channels");
+                }
+
+                // Remember in which order the three position axes appear (XYZ / XZY …)
                 channels.Add(ReadChannelPosition(words, ref w));
             }
             else
             {
-                if (int.Parse(words[w++]) != 3) Debug.LogError("[BVHImporter] all joints must have 3 channels");
+                // Non-root joints may come with 3 **or** 6 channels depending on the exporter.
+                // When 6, the first three are XYZ-position that we can safely ignore.
+                if (numChannels == 6)
+                {
+                    // Consume and discard the position axis order
+                    ReadChannelPosition(words, ref w);
+                }
+                else if (numChannels != 3)
+                {
+                    Debug.LogError($"[BVHImporter] Unexpected channel count ({numChannels}) at joint – expected 3 or 6");
+                }
+                // If there are only 3 channels – nothing to skip, cursor is already after the count.
             }
+            // Rotation channels are always 3, so we can safely read them.
             channels.Add(ReadChannelRotation(words, ref w));
         }
 
