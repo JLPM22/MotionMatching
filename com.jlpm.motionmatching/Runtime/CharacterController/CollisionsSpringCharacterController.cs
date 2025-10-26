@@ -10,7 +10,7 @@ namespace MotionMatching
     // Adjustment between Character Controller and Motion Matching Character Entity
     /* https://theorangeduck.com/page/code-vs-data-driven-displacement */
 
-    public class CollisionsSpringCharacterController : MotionMatchingCharacterController
+    public class CollisionsSpringCharacterController : MotionMatchingCharacterController, IPlayerInputCharacterController
     {
         public MotionMatchingSkinnedMeshRenderer MMSkinnedMeshRenderer;
 
@@ -302,10 +302,6 @@ namespace MotionMatching
             MotionMatching.SetRotAdjustment(adjustmentRotation);
         }
 
-        public float3 GetCurrentPosition()
-        {
-            return transform.position;
-        }
         public quaternion GetCurrentRotation()
         {
             return transform.rotation;
@@ -348,6 +344,15 @@ namespace MotionMatching
         {
             return transform.forward;
         }
+        public override float3 GetPosition()
+        {
+            return transform.position;
+        }
+
+        public override float GetTargetSpeed()
+        {
+            return math.length(PredictedVelocity[^1]);
+        }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
@@ -355,7 +360,7 @@ namespace MotionMatching
             const float radius = 0.05f;
             const float vectorReduction = 0.5f;
             const float verticalOffset = 0.05f;
-            Vector3 transformPos = (Vector3)GetCurrentPosition() + Vector3.up * verticalOffset;
+            Vector3 transformPos = (Vector3)GetPosition() + Vector3.up * verticalOffset;
             if (DebugCurrent)
             {
                 // Draw Current Position & Velocity

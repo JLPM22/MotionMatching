@@ -81,10 +81,6 @@ namespace MotionMatching
             T = math.frac(T);
         }
 
-        public float3 GetCurrentPosition()
-        {
-            return new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
-        }
         public quaternion GetCurrentRotation()
         {
             Quaternion rot = Quaternion.LookRotation(new Vector3(CurrentDirection.x, 0, CurrentDirection.y));
@@ -122,6 +118,10 @@ namespace MotionMatching
         {
             return PredictedDirections[index];
         }
+        public override float3 GetPosition()
+        {
+            return new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
+        }
 
         public override float3 GetWorldInitPosition()
         {
@@ -130,6 +130,10 @@ namespace MotionMatching
         public override float3 GetWorldInitDirection()
         {
             return math.normalize(new float3(transform.forward.x, 0, transform.forward.z));
+        }
+        public override float GetTargetSpeed()
+        {
+            return Speed;
         }
 
 #if UNITY_EDITOR
@@ -142,7 +146,7 @@ namespace MotionMatching
             // Draw Current Position And Direction
             if (!Application.isPlaying) return;
             Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
-            Vector3 currentPos = (Vector3)GetCurrentPosition() + Vector3.up * heightOffset * 2;
+            Vector3 currentPos = (Vector3)GetPosition() + Vector3.up * heightOffset * 2;
             Gizmos.DrawSphere(currentPos, 0.1f);
             GizmosExtensions.DrawLine(currentPos, currentPos + (Quaternion)GetCurrentRotation() * Vector3.forward, 12);
             // Draw Prediction

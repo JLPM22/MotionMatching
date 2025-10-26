@@ -19,6 +19,7 @@ namespace MotionMatching
         private float2 CurrentDirection;
         private float2[] PredictedPositions;
         private float2[] PredictedDirections;
+        private float TargetVelocity;
 
         // Features -----------------------------------------------------------------
         private int TrajectoryPosFeatureIndex;
@@ -89,17 +90,18 @@ namespace MotionMatching
             while (remainingTime > 0)
             {
                 KeyPoint current = Path[currentKeypoint];
+                TargetVelocity = current.Velocity;
                 KeyPoint next = Path[(currentKeypoint + 1) % Path.Length];
                 float2 dir = next.Position - current.Position;
                 float2 dirNorm = math.normalize(dir);
                 float2 currentPos = current.Position + dir * currentKeyPointT;
-                float timeToNext = math.distance(currentPos, next.Position) / current.Velocity; // Time needed to get to the next keypoint
+                float timeToNext = math.distance(currentPos, next.Position) / TargetVelocity; // Time needed to get to the next keypoint
                 float dt = math.min(remainingTime, timeToNext);
                 remainingTime -= dt;
                 if (remainingTime <= 0)
                 {
                     // Move
-                    currentPos += dirNorm * current.Velocity * dt;
+                    currentPos += dirNorm * TargetVelocity * dt;
                     currentKeyPointT = math.distance(current.Position, currentPos) / math.distance(current.Position, next.Position);
                     nextPos = currentPos;
                     nextDir = dirNorm;
@@ -116,16 +118,12 @@ namespace MotionMatching
             nextKeyPointTime = currentKeyPointT;
         }
 
-        public float3 GetCurrentPosition()
-        {
-            return transform.position + new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
-        }
         public quaternion GetCurrentRotation()
         {
             Quaternion rot = Quaternion.LookRotation(new Vector3(CurrentDirection.x, 0, CurrentDirection.y));
             return rot * transform.rotation;
         }
-        
+
         public override void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
             if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
@@ -166,6 +164,15 @@ namespace MotionMatching
         {
             float2 dir = Path.Length > 0 ? Path[1].Position - Path[0].Position : new float2(0, 1);
             return math.normalize(new float3(dir.x, 0, dir.y));
+        }
+        public override float3 GetPosition()
+        {
+            return transform.position + new Vector3(CurrentPosition.x, 0, CurrentPosition.y);
+        }
+
+        public override float GetTargetSpeed()
+        {
+            return TargetVelocity;
         }
 
         [System.Serializable]
@@ -225,7 +232,7 @@ namespace MotionMatching
             // Draw Current Position And Direction
             if (!Application.isPlaying) return;
             Gizmos.color = new Color(1.0f, 0.3f, 0.1f, 1.0f);
-            Vector3 currentPos = (Vector3)GetCurrentPosition() + Vector3.up * heightOffset * 2;
+            Vector3 currentPos = (Vector3)GetPosition() + Vector3.up * heightOffset * 2;
             Gizmos.DrawSphere(currentPos, 0.1f);
             GizmosExtensions.DrawLine(currentPos, currentPos + (Quaternion)GetCurrentRotation() * Vector3.forward, 12);
             // Draw Prediction

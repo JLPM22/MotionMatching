@@ -1,7 +1,6 @@
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
-using UnityEngine;
 using Unity.Mathematics;
 
 namespace MotionMatching
@@ -18,13 +17,14 @@ namespace MotionMatching
     {
         [ReadOnly] public NativeArray<float> Features;
         [ReadOnly] public int FeatureSize;
+        [ReadOnly] public int FeatureStaticSize;
         [ReadOnly] public int NumberBoundingBoxLarge;
         [ReadOnly] public int NumberBoundingBoxSmall;
 
-        public NativeArray<float> LargeBoundingBoxMin; // Size = NumberBoundingBoxLarge x FeatureSize
-        public NativeArray<float> LargeBoundingBoxMax; // Size = NumberBoundingBoxLarge x FeatureSize
-        public NativeArray<float> SmallBoundingBoxMin; // Size = NumberBoundingBoxSmall x FeatureSize
-        public NativeArray<float> SmallBoundingBoxMax; // Size = NumberBoundingBoxSmall x FeatureSize
+        public NativeArray<float> LargeBoundingBoxMin; // Size = NumberBoundingBoxLarge x FeatureStaticSize
+        public NativeArray<float> LargeBoundingBoxMax; // Size = NumberBoundingBoxLarge x FeatureStaticSize
+        public NativeArray<float> SmallBoundingBoxMin; // Size = NumberBoundingBoxSmall x FeatureStaticSize
+        public NativeArray<float> SmallBoundingBoxMax; // Size = NumberBoundingBoxSmall x FeatureStaticSize
 
         public void Execute()
         {
@@ -42,11 +42,11 @@ namespace MotionMatching
             for (int i = 0; i < numberFrames; ++i)
             {
                 int iSmall = i / SmallBoxSize;
-                int iSmallIndex = iSmall * FeatureSize;
+                int iSmallIndex = iSmall * FeatureStaticSize;
                 int iLarge = i / LargeBoxSize;
-                int iLargeIndex = iLarge * FeatureSize;
+                int iLargeIndex = iLarge * FeatureStaticSize;
 
-                for (int j = 0; j < FeatureSize; ++j)
+                for (int j = 0; j < FeatureStaticSize; ++j)
                 {
                     float feature = Features[i * FeatureSize + j];
                     LargeBoundingBoxMin[iLargeIndex + j] = math.min(LargeBoundingBoxMin[iLargeIndex + j], feature);
@@ -68,6 +68,7 @@ namespace MotionMatching
         [ReadOnly] public NativeArray<float> QueryFeature;
         [ReadOnly] public NativeArray<float> FeatureWeights; // Size = FeatureSize
         [ReadOnly] public int FeatureSize;
+        [ReadOnly] public int FeatureStaticSize;
         [ReadOnly] public int PoseOffset;
         [ReadOnly] public float CurrentDistance;
         // BVH
@@ -92,12 +93,12 @@ namespace MotionMatching
             {
                 // Current and next large box
                 int iLarge = i / LargeBoxSize;
-                int iLargeIndex = iLarge * FeatureSize;
+                int iLargeIndex = iLarge * FeatureStaticSize;
                 int iLargeNext = (iLarge + 1) * LargeBoxSize;
 
                 // Find distance to box
                 float currentCost = 0.0f;
-                for (int j = 0; j < FeatureSize; ++j)
+                for (int j = 0; j < FeatureStaticSize; ++j)
                 {
                     float query = QueryFeature[j];
                     float cost = query - math.clamp(query, LargeBoundingBoxMin[iLargeIndex + j], LargeBoundingBoxMax[iLargeIndex + j]);
@@ -120,12 +121,12 @@ namespace MotionMatching
                 {
                     // Current and next small box
                     int iSmall = i / SmallBoxSize;
-                    int iSmallIndex = iSmall * FeatureSize;
+                    int iSmallIndex = iSmall * FeatureStaticSize;
                     int iSmallNext = (iSmall + 1) * SmallBoxSize;
 
                     // Find distance to box
                     currentCost = 0.0f;
-                    for (int j = 0; j < FeatureSize; ++j)
+                    for (int j = 0; j < FeatureStaticSize; ++j)
                     {
                         float query = QueryFeature[j];
                         float cost = query - math.clamp(query, SmallBoundingBoxMin[iSmallIndex + j], SmallBoundingBoxMax[iSmallIndex + j]);
@@ -147,7 +148,7 @@ namespace MotionMatching
                     while (i < iSmallNext && i < endIndex)
                     {
                         // Skip non-valid or not correct tag
-                        if (!Valid[i] || !TagMask[i])
+                        if (!Valid[i] || !TagMask[i]) // TODO: build tag mask for large boxes as well
                         {
                             i += 1;
                             continue;
@@ -155,7 +156,7 @@ namespace MotionMatching
 
                         // Test all frames
                         currentCost = 0.0f;
-                        for (int j = 0; j < FeatureSize; ++j)
+                        for (int j = 0; j < FeatureStaticSize; ++j)
                         {
                             float query = QueryFeature[j];
                             float cost = query - Features[i * FeatureSize + j];

@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace MotionMatching
 {
+    using static MotionMatching.Skeleton;
     using Joint = Skeleton.Joint;
 
     /// <summary>
@@ -15,7 +16,7 @@ namespace MotionMatching
     public class PoseSet
     {
         // Public ---
-        public Skeleton Skeleton { get; private set; } // No simulation bone
+        public Skeleton Skeleton { get; private set; }
         public float FrameTime { get; private set; }
         public int NumberPoses { get { return Poses.Count; } }
         public int NumberClips { get { return Clips.Count; } }
@@ -210,6 +211,60 @@ namespace MotionMatching
             }
             Debug.Assert(animationClip != -1, "Clip index not found");
             return GetPose(poseIndex, out pose);
+        }
+
+        /// <summary>
+        /// Returns the position of each joint in world space after applying FK using the pose.
+        /// worldJoints has size Skeleton.Joints.Count
+        /// </summary>
+        public void GetWorldPositions(PoseVector pose, NativeArray<float3> worldJoints)
+        {
+            Span<Matrix4x4> localToWorld = stackalloc Matrix4x4[Skeleton.Joints.Count];
+            for (int i = 0; i < Skeleton.Joints.Count; i++)
+            {
+                localToWorld[i] = Matrix4x4.identity;
+            }
+            for (int i = 0; i < Skeleton.Joints.Count; i++)
+            {
+                Joint joint = Skeleton.Joints[i];
+                Matrix4x4 current = Matrix4x4.TRS(pose.JointLocalPositions[joint.Index], pose.JointLocalRotations[joint.Index], Vector3.one);
+                localToWorld[joint.Index] = localToWorld[joint.ParentIndex] * current;
+            }
+            for (int i = 0; i < worldJoints.Length; i++)
+            {
+                worldJoints[i] = localToWorld[i].MultiplyPoint3x4(Vector3.zero);
+            }
+        }
+
+        /// <summary>
+        /// Returns the position of each joint in world space after applying FK using the pose.
+        /// worldJoints has size Skeleton.Joints.Count
+        /// </summary>
+        public void GetWorldPositions(PoseVector pose, NativeArray<float3> worldJoints, quaternion inverseRotAnimationSpace, float3 posAnimationSpace, quaternion rotWorld, float3 posWorld)
+        {
+            // animation space to local space
+            float3 localSpacePos = math.mul(inverseRotAnimationSpace, pose.JointLocalPositions[0] - posAnimationSpace);
+            quaternion localSpaceRot = math.mul(inverseRotAnimationSpace, pose.JointLocalRotations[0]);
+            // local space to world space
+            float3 simulationBonePos = math.mul(rotWorld, localSpacePos) + posWorld;
+            quaternion simulationBoneRot = math.mul(rotWorld, localSpaceRot);
+
+            Span<Matrix4x4> localToWorldRes = stackalloc Matrix4x4[Skeleton.Joints.Count];
+            localToWorldRes[0] = Matrix4x4.TRS(simulationBonePos, simulationBoneRot, Vector3.one);
+            for (int i = 1; i < Skeleton.Joints.Count; i++)
+            {
+                localToWorldRes[i] = Matrix4x4.identity;
+            }
+            for (int i = 1; i < Skeleton.Joints.Count; i++)
+            {
+                Joint joint = Skeleton.Joints[i];
+                Matrix4x4 current = Matrix4x4.TRS(pose.JointLocalPositions[joint.Index], pose.JointLocalRotations[joint.Index], Vector3.one);
+                localToWorldRes[joint.Index] = localToWorldRes[joint.ParentIndex] * current;
+            }
+            for (int i = 0; i < worldJoints.Length; i++)
+            {
+                worldJoints[i] = localToWorldRes[i].MultiplyPoint3x4(Vector3.zero);
+            }
         }
 
         /// <summary>

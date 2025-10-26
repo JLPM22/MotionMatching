@@ -81,6 +81,7 @@ MonoBehaviour:
     ZeroY: 1
     ZeroZ: 0
     FeatureExtractor: {fileID: 0}
+    IsMainPositionFeature: 1
   - Name: FutureDirection
     FeatureType: 1
     FramesPrediction: 14000000280000003c000000
@@ -90,6 +91,7 @@ MonoBehaviour:
     ZeroY: 1
     ZeroZ: 0
     FeatureExtractor: {fileID: 0}
+    IsMainPositionFeature: 0
   PoseFeatures:
   - Name: LeftFootPosition
     FeatureType: 0
@@ -106,6 +108,7 @@ MonoBehaviour:
   - Name: HipsVelocity
     FeatureType: 1
     Bone: 0
+  DynamicFeatures: []
   JointsLocalForward:
   - x: 0
     y: 0

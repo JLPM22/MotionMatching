@@ -1,6 +1,6 @@
 {
   "name": "com.jlpm.motionmatching",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "displayName": "Motion Matching",
   "description": "Motion Matching implementation for Unity",
   "unity": "2020.1",
@@ -22,7 +22,7 @@
   "samples": [
     {
       "displayName": "Examples",
-      "description": "Contains two working examples on how to use the package for a character controller and a path controller",
+      "description": "Contains examples on how to use the package.",
       "path": "Samples~/Examples"
     }
   ]

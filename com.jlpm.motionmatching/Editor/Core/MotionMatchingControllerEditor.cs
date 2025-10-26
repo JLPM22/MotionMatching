@@ -22,9 +22,10 @@ namespace MotionMatching
             if (controller.MMData == null) { return; }
 
             // Feature Weights
-            if (controller.FeatureWeights.Length != (controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count))
+            int featuresCount = controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count + controller.MMData.EnvironmentFeatures.Count;
+            if (controller.FeatureWeights.Length != featuresCount)
             {
-                float[] newWeights = new float[controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count];
+                float[] newWeights = new float[featuresCount];
                 for (int i = 0; i < newWeights.Length; ++i) newWeights[i] = 1.0f;
                 for (int i = 0; i < Mathf.Min(controller.FeatureWeights.Length, newWeights.Length); i++) newWeights[i] = controller.FeatureWeights[i];
                 controller.FeatureWeights = newWeights;
@@ -48,6 +49,14 @@ namespace MotionMatching
                     controller.FeatureWeights[index] = EditorGUILayout.FloatField(name, controller.FeatureWeights[index]);
                 }
                 EditorGUILayout.EndVertical();
+                EditorGUILayout.BeginVertical(GUI.skin.box);
+                for (int i = 0; i < controller.MMData.EnvironmentFeatures.Count; ++i)
+                {
+                    string name = controller.MMData.EnvironmentFeatures[i].Name;
+                    int index = controller.MMData.TrajectoryFeatures.Count + controller.MMData.PoseFeatures.Count + i;
+                    controller.FeatureWeights[index] = EditorGUILayout.FloatField(name, controller.FeatureWeights[index]);
+                }
+                EditorGUILayout.EndVertical();
                 EditorGUI.indentLevel--;
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
@@ -58,7 +67,7 @@ namespace MotionMatching
             ToggleDebug = EditorGUILayout.BeginFoldoutHeaderGroup(ToggleDebug, "Debug");
             if (ToggleDebug)
             {
-                EditorGUILayout.LabelField("Pose Index: " + controller.GetCurrentFrame());
+                EditorGUILayout.LabelField("Pose Index: " + controller.CurrentFrame);
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 

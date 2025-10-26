@@ -10,7 +10,7 @@ namespace MotionMatching
     // Adjustment between Character Controller and Motion Matching Character Entity
     /* https://theorangeduck.com/page/code-vs-data-driven-displacement */
 
-    public class SpringCharacterController : MotionMatchingCharacterController
+    public class SpringCharacterController : MotionMatchingCharacterController, IPlayerInputCharacterController
     {
         // Features ----------------------------------------------------------
         [Header("Features")]
@@ -254,35 +254,42 @@ namespace MotionMatching
             MotionMatching.SetRotAdjustment(adjustmentRotation);
         }
 
-        public float3 GetCurrentPosition()
-        {
-            return transform.position;
-        }
         public quaternion GetCurrentRotation()
         {
             return transform.rotation;
         }
+        public override float3 GetPosition()
+        {
+            return transform.position;
+        }
 
         public override void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output)
         {
-            if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
-            switch (feature.FeatureType)
+            if (feature.Name == "FutureSphere")
             {
-                case TrajectoryFeature.Type.Position:
-                    float2 world = PredictedPosition[index];
-                    float3 local = character.InverseTransformPoint(new float3(world.x, 0.0f, world.y));
-                    output[0] = local.x;
-                    output[1] = local.z;
-                    break;
-                case TrajectoryFeature.Type.Direction:
-                    float2 dirProjected = GetWorldSpaceDirectionPrediction(index);
-                    float3 localDir = character.InverseTransformDirection(new Vector3(dirProjected.x, 0.0f, dirProjected.y));
-                    output[0] = localDir.x;
-                    output[1] = localDir.z;
-                    break;
-                default:
-                    Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
-                    break;
+                output[0] = 0.0f;
+            }
+            else
+            {
+                if (!feature.SimulationBone) Debug.Assert(false, "Trajectory should be computed using the SimulationBone");
+                switch (feature.FeatureType)
+                {
+                    case TrajectoryFeature.Type.Position:
+                        float2 world = PredictedPosition[index];
+                        float3 local = character.InverseTransformPoint(new float3(world.x, 0.0f, world.y));
+                        output[0] = local.x;
+                        output[1] = local.z;
+                        break;
+                    case TrajectoryFeature.Type.Direction:
+                        float2 dirProjected = GetWorldSpaceDirectionPrediction(index);
+                        float3 localDir = character.InverseTransformDirection(new Vector3(dirProjected.x, 0.0f, dirProjected.y));
+                        output[0] = localDir.x;
+                        output[1] = localDir.z;
+                        break;
+                    default:
+                        Debug.Assert(false, "Unknown feature type: " + feature.FeatureType);
+                        break;
+                }
             }
         }
 
@@ -301,13 +308,18 @@ namespace MotionMatching
             return transform.forward;
         }
 
+        public override float GetTargetSpeed()
+        {
+            return math.length(PredictedVelocity[^1]);
+        }
+
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             const float radius = 0.05f;
             const float vectorReduction = 0.5f;
             const float verticalOffset = 0.05f;
-            Vector3 transformPos = (Vector3)GetCurrentPosition() + Vector3.up * verticalOffset;
+            Vector3 transformPos = (Vector3)GetPosition() + Vector3.up * verticalOffset;
             if (DebugCurrent)
             {
                 // Draw Current Position & Velocity

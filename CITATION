@@ -1,0 +1,25 @@
+Preferred citation (please use this if you cite the code):
+
+@article{2025:ponton:emm,
+  author = {Ponton, Jose Luis and Andrews, Sheldon and Andujar, Carlos and Pelechano, Nuria},
+  title = {Environment-aware Motion Matching},
+  year = {2025},
+  publisher = {Association for Computing Machinery},
+  booktitle = {SIGGRAPH Asia 2025},
+  address = {New York, NY, USA},
+  issn = {0730-0301},
+  doi = {10.1145/3763334},
+  journal = {ACM Trans. Graph.},
+}
+
+Also for background / historical context:
+
+@mastersthesis{ponton2022mm,
+  author  = {Ponton, Jose Luis},
+  title   = {Motion Matching for Character Animation and Virtual Reality Avatars in Unity},
+  school  = {Universitat Politecnica de Catalunya},
+  year    = {2022},
+  doi     = {10.13140/RG.2.2.31741.23528/1}
+}
+
+Thank you

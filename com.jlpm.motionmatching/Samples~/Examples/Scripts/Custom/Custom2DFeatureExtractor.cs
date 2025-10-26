@@ -19,7 +19,7 @@ public class Custom2DFeatureExtractor : Feature2DExtractor
     }
 
     // This function is called for each pose in the pose database.
-    public override float2 ExtractFeature(PoseVector pose, int poseIndex, int animationClip, Skeleton skeleton, float3 characterOrigin, float3 characterForward)
+    public override float2 ExtractFeature(PoseVector pose, int poseIndex, PoseVector nextPose, int animationClip, Skeleton skeleton, float3 characterOrigin, float3 characterForward)
     {
         float3 worldPos = FeatureSet.GetWorldPosition(skeleton, pose, HeadJoint);
         float3 localPos = FeatureSet.GetLocalPositionFromCharacter(worldPos, characterOrigin, characterForward);
@@ -27,7 +27,7 @@ public class Custom2DFeatureExtractor : Feature2DExtractor
     }
 
     // This function is called when features are visualized during gizmo drawing. It can be left empty if visualization is not needed.
-    public override void DrawGizmos(float2 feature, float radius, float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton)
+    public override void DrawGizmos(float2 feature, float radius, float3 characterOrigin, float3 characterForward, Transform[] joints, Skeleton skeleton, float3 posOffset)
     {
         bool found = skeleton.Find(HumanBodyBones.Head, out HeadJoint);
         Debug.Assert(found, "Head Joint could not be found");

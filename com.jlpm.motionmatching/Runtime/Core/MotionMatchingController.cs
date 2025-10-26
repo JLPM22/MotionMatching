@@ -3,23 +3,27 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
+using UnityEditor;
+using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace MotionMatching
 {
     using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
-    using PoseFeature = MotionMatchingData.PoseFeature;
     using Debug = UnityEngine.Debug;
+    using static MotionMatching.MotionMatchingData;
 
     // Simulation bone is the transform
     public class MotionMatchingController : MonoBehaviour
     {
         public event Action OnSkeletonTransformUpdated;
 
+        [Header("General")]
         public MotionMatchingCharacterController CharacterController;
         public MotionMatchingData MMData;
+        public MotionMatchingSearch Search;
         public bool LockFPS = true;
         public float SearchTime = 10.0f / 60.0f; // Motion Matching search every SearchTime seconds
-        public bool UseBVHSearch = true; // Use Bounding Volume Hierarchy acceleration structure for the search.
         public bool Inertialize = true; // Should inertialize transitions after a big change of the pose
         public bool FootLock = true; // Should lock the feet to the ground when contact information is true
         public float FootUnlockDistance = 0.2f; // Distance from actual pose to IK target to unlock the feet
@@ -30,38 +34,35 @@ namespace MotionMatching
         [Header("Debug")]
         public float SpheresRadius = 0.1f;
         public bool DebugSkeleton = true;
+        public bool DebugFutureSkeleton = true;
         public bool DebugCurrent = true;
         public bool DebugPose = true;
         public bool DebugTrajectory = true;
+        public bool DebugEnvironment = true;
+        public bool DebugSearch = true;
         public bool DebugContacts = true;
+        public bool DebugGUI = true;
 
         public float3 Velocity { get; private set; }
         public float3 AngularVelocity { get; private set; }
         public float DatabaseFrameTime { get; private set; }
         public int DatabaseFrameRate { get; private set; }
+        public PoseSet PoseSet { get; private set; }
+        public FeatureSet FeatureSet { get; private set; }
+        public float SearchTimeLeft { get; private set; }
+        public Transform[] SkeletonTransforms { get; private set; }
+        public NativeArray<float> QueryFeature { get; private set; }
+        public NativeArray<float> FeaturesWeightsNativeArray { get; private set; }
+        public int CurrentFrame { get; private set; } // Current frame index in the pose/feature set
+        public int LastMMSearchFrame { get; private set; } // Frame before the last Motion Matching Search
+        public NativeArray<bool> TagMask { get; private set; }
 
-        private PoseSet PoseSet;
-        private FeatureSet FeatureSet;
-        private Transform[] SkeletonTransforms;
         private float3 AnimationSpaceOriginPos;
         private quaternion InverseAnimationSpaceOriginRot;
         private float3 MMTransformOriginPose; // Position of the transform right after motion matching search
         private quaternion MMTransformOriginRot; // Rotation of the transform right after motion matching search
-        private int LastMMSearchFrame; // Frame before the last Motion Matching Search
-        private int CurrentFrame; // Current frame index in the pose/feature set
         private float CurrentFrameTime; // Current frame index as float to keep track of variable frame rate
-        private float SearchTimeLeft;
-        private NativeArray<float> QueryFeature;
-        private NativeArray<int> SearchResult;
-        private NativeArray<float> FeaturesWeightsNativeArray;
         private Inertialization Inertialization;
-        // BVH Acceleration Structure
-        private NativeArray<float> LargeBoundingBoxMin;
-        private NativeArray<float> LargeBoundingBoxMax;
-        private NativeArray<float> SmallBoundingBoxMin;
-        private NativeArray<float> SmallBoundingBoxMax;
-        // Tags
-        private NativeArray<bool> TagMask;
         // Foot Lock
         private bool IsLeftFootContact, IsRightFootContact;
         private float3 LeftToesContactTarget, RightToesContactTarget; // Target position of the toes
@@ -70,18 +71,14 @@ namespace MotionMatching
         private float3 LeftLowerLegLocalForward, RightLowerLegLocalForward;
         private int LeftToesIndex, LeftFootIndex, LeftLowerLegIndex, LeftUpperLegIndex;
         private int RightToesIndex, RightFootIndex, RightLowerLegIndex, RightUpperLegIndex;
+        // Other
+        private bool IsDestroyed = false;
+        private MotionMatchingSearch SearchInstance;
 
         private void Awake()
         {
-            // PoseSet
             PoseSet = MMData.GetOrImportPoseSet();
-
-            // FeatureSet
             FeatureSet = MMData.GetOrImportFeatureSet();
-            FeatureSet.GetBVHBuffers(out LargeBoundingBoxMin,
-                                     out LargeBoundingBoxMax,
-                                     out SmallBoundingBoxMin,
-                                     out SmallBoundingBoxMax);
 
             // Skeleton
             SkeletonTransforms = new Transform[PoseSet.Skeleton.Joints.Count];
@@ -115,8 +112,7 @@ namespace MotionMatching
             }
 
             // Other initialization
-            SearchResult = new NativeArray<int>(1, Allocator.Persistent);
-            int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count;
+            int numberFeatures = MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count + MMData.EnvironmentFeatures.Count;
             if (FeatureWeights == null || FeatureWeights.Length != numberFeatures)
             {
                 float[] newWeights = new float[numberFeatures];
@@ -126,18 +122,6 @@ namespace MotionMatching
             }
             FeaturesWeightsNativeArray = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
             QueryFeature = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
-
-            // Search first Frame valid (to start with a valid pose)
-            for (int i = 0; i < FeatureSet.NumberFeatureVectors; i++)
-            {
-                if (FeatureSet.IsValidFeature(i))
-                {
-                    LastMMSearchFrame = i;
-                    CurrentFrame = i;
-                    UpdateAnimationSpaceOrigin();
-                    break;
-                }
-            }
 
             // Tags
             TagMask = new NativeArray<bool>(FeatureSet.NumberFeatureVectors, Allocator.Persistent);
@@ -164,13 +148,28 @@ namespace MotionMatching
             RightLowerLegLocalForward = MMData.GetLocalForward(RightLowerLegIndex);
 
             // Init Pose
-            SkeletonTransforms[0].position = CharacterController.GetWorldInitPosition();
-            SkeletonTransforms[0].rotation = quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up);
+            SkeletonTransforms[0].SetPositionAndRotation(CharacterController.GetWorldInitPosition(),
+                                                         quaternion.LookRotation(CharacterController.GetWorldInitDirection(), Vector3.up));
+
+            // Search first Frame valid (to start with a valid pose)
+            for (int i = 0; i < FeatureSet.NumberFeatureVectors; i++)
+            {
+                if (FeatureSet.IsValidFeature(i) && TagMask[i])
+                {
+                    LastMMSearchFrame = i;
+                    CurrentFrame = i;
+                    UpdateAnimationSpaceOrigin();
+                    break;
+                }
+            }
+
+            // Search Strategy
+            SearchInstance = Instantiate<MotionMatchingSearch>(Search);
+            SearchInstance.Initialize(this);
         }
 
         private void OnEnable()
         {
-            SearchTimeLeft = 0;
             CharacterController.OnUpdated += OnCharacterControllerUpdated;
             CharacterController.OnInputChangedQuickly += OnInputChangedQuickly;
         }
@@ -184,14 +183,18 @@ namespace MotionMatching
         private void OnCharacterControllerUpdated(float deltaTime)
         {
             PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Total");
-            if (SearchTimeLeft <= 0)
+            if (SearchInstance.ShouldSearch(this))
             {
                 // Motion Matching
+                float currentDistance = PrepareQueryVector(out bool isCurrentValid);
                 PROFILE.BEGIN_SAMPLE_PROFILING("Motion Matching Search");
-                int bestFrame = SearchMotionMatching();
+                int bestFrame = SearchInstance.FindBestFrame(this, currentDistance);
                 PROFILE.END_SAMPLE_PROFILING("Motion Matching Search");
+                // Check if use current or best
+                if (isCurrentValid && bestFrame == -1) bestFrame = CurrentFrame;
+                Debug.Assert(bestFrame != -1, "Motion Matching is not able to find any valid pose. Maybe the motion database is empty or the query tag used produces an empty set of poses?");
                 const int ignoreSurrounding = 20; // ignore near frames
-                if (bestFrame != CurrentFrame && math.abs(bestFrame - CurrentFrame) > ignoreSurrounding)
+                if (math.abs(bestFrame - CurrentFrame) > ignoreSurrounding)
                 {
                     // Inertialize
                     if (Inertialize)
@@ -219,6 +222,8 @@ namespace MotionMatching
 
             UpdateTransformAndSkeleton(CurrentFrame);
             PROFILE.END_SAMPLE_PROFILING("Motion Matching Total");
+
+            SearchInstance.OnSearchCompleted(this);
         }
 
         private void UpdateAnimationSpaceOrigin()
@@ -235,21 +240,20 @@ namespace MotionMatching
             SearchTimeLeft = 0; // Force search
         }
 
-        private int SearchMotionMatching()
+        private float PrepareQueryVector(out bool isCurrentValid)
         {
             // Weights
             UpdateAndGetFeatureWeights();
 
             // Init Query Vector
             FeatureSet.GetFeature(QueryFeature, CurrentFrame);
-            FillTrajectory(QueryFeature);
+            FillQueryVector();
 
             // Get next feature vector (when doing motion matching search, they need less error than this)
             float currentDistance = float.MaxValue;
-            bool currentValid = false;
-            if (FeatureSet.IsValidFeature(CurrentFrame) && TagMask[CurrentFrame])
+            isCurrentValid = FeatureSet.IsValidFeature(CurrentFrame) && TagMask[CurrentFrame];
+            if (isCurrentValid)
             {
-                currentValid = true;
                 currentDistance = 0.0f;
                 // the pose is the same... the distance is only the trajectory
                 for (int j = 0; j < FeatureSet.PoseOffset; j++)
@@ -258,56 +262,12 @@ namespace MotionMatching
                     currentDistance += diff * diff * FeaturesWeightsNativeArray[j];
                 }
             }
-
-            // Search
-            if (UseBVHSearch)
-            {
-                var job = new BVHMotionMatchingSearchBurst
-                {
-                    Valid = FeatureSet.GetValid(),
-                    TagMask = TagMask,
-                    Features = FeatureSet.GetFeatures(),
-                    QueryFeature = QueryFeature,
-                    FeatureWeights = FeaturesWeightsNativeArray,
-                    FeatureSize = FeatureSet.FeatureSize,
-                    PoseOffset = FeatureSet.PoseOffset,
-                    CurrentDistance = currentDistance,
-                    LargeBoundingBoxMin = LargeBoundingBoxMin,
-                    LargeBoundingBoxMax = LargeBoundingBoxMax,
-                    SmallBoundingBoxMin = SmallBoundingBoxMin,
-                    SmallBoundingBoxMax = SmallBoundingBoxMax,
-                    BestIndex = SearchResult
-                };
-                job.Schedule().Complete();
-            }
-            else
-            {
-                var job = new LinearMotionMatchingSearchBurst
-                {
-                    Valid = FeatureSet.GetValid(),
-                    TagMask = TagMask,
-                    Features = FeatureSet.GetFeatures(),
-                    QueryFeature = QueryFeature,
-                    FeatureWeights = FeaturesWeightsNativeArray,
-                    FeatureSize = FeatureSet.FeatureSize,
-                    PoseOffset = FeatureSet.PoseOffset,
-                    CurrentDistance = currentDistance,
-                    BestIndex = SearchResult
-                };
-                job.Schedule().Complete();
-            }
-
-            // Check if use current or best
-            int best = SearchResult[0];
-            if (currentValid && best == -1) best = CurrentFrame;
-
-            Debug.Assert(best != -1, "Motion Matching is not able to find any valid pose. Maybe the motion database is empty or the query tag used produces an empty set of poses?");
-
-            return best;
+            return currentDistance;
         }
 
-        private void FillTrajectory(NativeArray<float> vector)
+        public void FillQueryVector()
         {
+            NativeArray<float> queryFeature = QueryFeature;
             int offset = 0;
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
@@ -315,18 +275,39 @@ namespace MotionMatching
                 for (int p = 0; p < feature.FramesPrediction.Length; ++p)
                 {
                     int featureSize = feature.GetSize();
-                    Debug.Assert(featureSize > 0, "Trajectory feature size must be greater than 0");
-                    NativeArray<float> featureVector = new NativeArray<float>(featureSize, Allocator.Temp);
+                    Debug.Assert(featureSize > 0, "Trajectory feature size must be larger than 0");
+                    NativeArray<float> featureVector = new(featureSize, Allocator.Temp);
                     CharacterController.GetTrajectoryFeature(feature, p, SkeletonTransforms[0], featureVector);
                     for (int j = 0; j < featureSize; j++)
                     {
-                        vector[offset + j] = featureVector[j];
+                        queryFeature[offset + j] = featureVector[j];
                     }
                     offset += featureSize;
                 }
             }
             // Normalize (only trajectory... because current FeatureVector is already normalized)
-            FeatureSet.NormalizeTrajectory(vector);
+            FeatureSet.NormalizeTrajectory(queryFeature);
+
+            if (FeatureSet.EnvironmentOffset.Length > 0)
+            {
+                offset = FeatureSet.EnvironmentOffset[0];
+                for (int i = 0; i < MMData.EnvironmentFeatures.Count; i++)
+                {
+                    TrajectoryFeature feature = MMData.EnvironmentFeatures[i];
+                    for (int p = 0; p < feature.FramesPrediction.Length; p++)
+                    {
+                        int featureSize = feature.GetSize();
+                        Debug.Assert(featureSize > 0, "Environment feature size must be larger than 0");
+                        NativeArray<float> featureVector = new(featureSize, Allocator.Temp);
+                        CharacterController.GetEnvironmentFeature(feature, p, SkeletonTransforms[0], featureVector);
+                        for (int j = 0; j < featureSize; j++)
+                        {
+                            queryFeature[offset + j] = featureVector[j];
+                        }
+                        offset += featureSize;
+                    }
+                }
+            }
         }
 
         private void UpdateTransformAndSkeleton(int frameIndex)
@@ -344,8 +325,8 @@ namespace MotionMatching
             float3 localSpacePos = math.mul(InverseAnimationSpaceOriginRot, pose.JointLocalPositions[0] - AnimationSpaceOriginPos);
             quaternion localSpaceRot = math.mul(InverseAnimationSpaceOriginRot, pose.JointLocalRotations[0]);
             // local space to world space
-            SkeletonTransforms[0].position = math.mul(MMTransformOriginRot, localSpacePos) + MMTransformOriginPose;
-            SkeletonTransforms[0].rotation = math.mul(MMTransformOriginRot, localSpaceRot);
+            SkeletonTransforms[0].SetPositionAndRotation(math.mul(MMTransformOriginRot, localSpacePos) + MMTransformOriginPose,
+                                                         math.mul(MMTransformOriginRot, localSpaceRot));
             // update velocity and angular velocity
             Velocity = ((float3)SkeletonTransforms[0].position - previousPosition) / Time.deltaTime;
             AngularVelocity = MathExtensions.AngularVelocity(previousRotation, SkeletonTransforms[0].rotation, Time.deltaTime);
@@ -551,28 +532,13 @@ namespace MotionMatching
             MMTransformOriginRot = math.mul(rotAdjustment, MMTransformOriginRot);
         }
 
-        public int GetCurrentFrame()
-        {
-            return CurrentFrame;
-        }
-        public int GetLastFrame()
-        {
-            return LastMMSearchFrame;
-        }
         public void SetCurrentFrame(int frame)
         {
             CurrentFrame = frame;
         }
-        public FeatureSet GetFeatureSet()
-        {
-            return FeatureSet;
-        }
-        public NativeArray<float> GetQueryFeature()
-        {
-            return QueryFeature;
-        }
         public NativeArray<float> UpdateAndGetFeatureWeights()
         {
+            NativeArray<float> featuresWeightsNativeArray = FeaturesWeightsNativeArray;
             int offset = 0;
             for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
             {
@@ -583,44 +549,97 @@ namespace MotionMatching
                 {
                     for (int f = 0; f < featureSize; f++)
                     {
-                        FeaturesWeightsNativeArray[offset + f] = weight;
+                        featuresWeightsNativeArray[offset + f] = weight;
                     }
                     offset += featureSize;
                 }
             }
             for (int i = 0; i < MMData.PoseFeatures.Count; i++)
             {
-                PoseFeature feature = MMData.PoseFeatures[i];
                 float weight = FeatureWeights[i + MMData.TrajectoryFeatures.Count] * Quality;
-                FeaturesWeightsNativeArray[offset + 0] = weight;
-                FeaturesWeightsNativeArray[offset + 1] = weight;
-                FeaturesWeightsNativeArray[offset + 2] = weight;
+                featuresWeightsNativeArray[offset + 0] = weight;
+                featuresWeightsNativeArray[offset + 1] = weight;
+                featuresWeightsNativeArray[offset + 2] = weight;
                 offset += 3;
             }
-            return FeaturesWeightsNativeArray;
+            for (int i = 0; i < MMData.EnvironmentFeatures.Count; i++)
+            {
+                TrajectoryFeature feature = MMData.EnvironmentFeatures[i];
+                int featureSize = feature.GetSize();
+                float baseWeight = FeatureWeights[i + MMData.TrajectoryFeatures.Count + MMData.PoseFeatures.Count];
+                float weight = SearchInstance.OnUpdateEnvironmentFeatureWeight(this, feature, baseWeight);
+                for (int p = 0; p < feature.FramesPrediction.Length; ++p)
+                {
+                    for (int f = 0; f < featureSize; f++)
+                    {
+                        featuresWeightsNativeArray[offset + f] = weight;
+                    }
+                    offset += featureSize;
+                }
+            }
+            return featuresWeightsNativeArray;
         }
 
-        /// <summary>
-        /// Returns the skeleton used by Motion Matching
-        /// </summary>
-        public Skeleton GetSkeleton()
+        public float3 GetMainPositionFeature(int trajectoryIndex)
         {
-            return PoseSet.Skeleton;
+            float3 characterOrigin = SkeletonTransforms[0].position;
+            float3 characterForward = SkeletonTransforms[0].forward;
+            quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
+            // Find Main Position Trajectory Index
+            int t = -1;
+            for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
+            {
+                if (MMData.TrajectoryFeatures[i].IsMainPositionFeature)
+                {
+                    t = i;
+                    break;
+                }
+            }
+            if (t == -1)
+            {
+                Debug.LogError("[Motion Matching] No Main Position Trajectory Feature found.");
+                return characterOrigin;
+            }
+            float3 value = FeatureDebug.Get3DValuePositionOrDirectionFeature(MMData.TrajectoryFeatures[t], FeatureSet, CurrentFrame, t, trajectoryIndex, isEnvironment: false);
+            value = characterOrigin + math.mul(characterRot, value);
+            return value;
         }
 
-        /// <summary>
-        /// Returns the transforms used by Motion Matching to simulate the skeleton
-        /// </summary>
-        public Transform[] GetSkeletonTransforms()
+        public float4 GetEnvironmentFeature(string featureName, int trajectoryIndex)
         {
-            return SkeletonTransforms;
+            float3 characterForward = SkeletonTransforms[0].forward;
+            quaternion characterRot = quaternion.LookRotation(characterForward, math.up());
+            int t = -1;
+            for (int i = 0; i < MMData.EnvironmentFeatures.Count; i++)
+            {
+                if (MMData.EnvironmentFeatures[i].Name == featureName)
+                {
+                    t = i;
+                    break;
+                }
+            }
+            if (t == -1)
+            {
+                Debug.LogError("[Motion Matching] No Environment Feature with name " + featureName + " found.");
+                return float4.zero;
+            }
+            float4 value = FeatureSet.Get4DEnvironmentFeature(CurrentFrame, t, trajectoryIndex);
+            float primaryDistance = value.x;
+            float secondaryDistance = value.y;
+            float3 primaryAxisUnitCharacterSpace = new(value.z, 0.0f, value.w);
+            float3 primaryAxisUnitWorldSpace = math.mul(characterRot, primaryAxisUnitCharacterSpace);
+            float2 primaryAxisUnit = new(primaryAxisUnitWorldSpace.x, primaryAxisUnitWorldSpace.z);
+            float2 secondaryAxisUnit = new(-primaryAxisUnit.y, primaryAxisUnit.x);
+            return new float4(primaryAxisUnit * primaryDistance, secondaryAxisUnit * secondaryDistance);
         }
 
         private void OnDestroy()
         {
+            if (IsDestroyed) return;
+            IsDestroyed = true;
             MMData.Dispose();
+            SearchInstance.Dispose();
             if (QueryFeature != null && QueryFeature.IsCreated) QueryFeature.Dispose();
-            if (SearchResult != null && SearchResult.IsCreated) SearchResult.Dispose();
             if (FeaturesWeightsNativeArray != null && FeaturesWeightsNativeArray.IsCreated) FeaturesWeightsNativeArray.Dispose();
             if (TagMask != null && TagMask.IsCreated) TagMask.Dispose();
         }
@@ -642,7 +661,7 @@ namespace MotionMatching
                 for (int i = 2; i < SkeletonTransforms.Length; i++) // skip Simulation Bone
                 {
                     Transform t = SkeletonTransforms[i];
-                    GizmosExtensions.DrawLine(t.parent.position, t.position, 3);
+                    GizmosExtensions.DrawLine(t.parent.position, t.position, 6.0f);
                 }
             }
 
@@ -650,15 +669,47 @@ namespace MotionMatching
             if (PoseSet == null) return;
 
             int currentFrame = CurrentFrame;
-            PoseSet.GetPose(currentFrame, out PoseVector pose);
             float3 characterOrigin = SkeletonTransforms[0].position;
             float3 characterForward = SkeletonTransforms[0].forward;
+
+            if (DebugFutureSkeleton)
+            {
+                // Find Main Position Trajectory
+                TrajectoryFeature feature = null;
+                for (int i = 0; i < MMData.TrajectoryFeatures.Count; i++)
+                {
+                    if (MMData.TrajectoryFeatures[i].IsMainPositionFeature)
+                    {
+                        feature = MMData.TrajectoryFeatures[i];
+                    }
+                }
+                if (feature != null)
+                {
+                    NativeArray<float3> worldPos = new(PoseSet.Skeleton.Joints.Count, Allocator.Temp);
+                    for (int p = 0; p < feature.FramesPrediction.Length; p++)
+                    {
+                        Gizmos.color = Color.red + Color.cyan * ((float)p / feature.FramesPrediction.Length);
+                        int frame = currentFrame + feature.FramesPrediction[p];
+                        PoseSet.GetPose(frame, out PoseVector futurePose);
+                        PoseSet.GetWorldPositions(futurePose, worldPos, InverseAnimationSpaceOriginRot, AnimationSpaceOriginPos, MMTransformOriginRot, MMTransformOriginPose);
+                        for (int i = 2; i < PoseSet.Skeleton.Joints.Count; i++)
+                        {
+                            float3 child = worldPos[i];
+                            float3 parent = worldPos[PoseSet.Skeleton.Joints[i].ParentIndex];
+                            GizmosExtensions.DrawLine(parent, child, 3);
+                        }
+                    }
+                    worldPos.Dispose();
+                }
+            }
+
             if (DebugCurrent)
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 0.5f, 1.0f);
                 Gizmos.DrawSphere(characterOrigin, SpheresRadius);
-                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 3);
+                GizmosExtensions.DrawArrow(characterOrigin, characterOrigin + characterForward * 1.5f, thickness: 4);
             }
+
             if (DebugContacts)
             {
                 Gizmos.color = Color.green;
@@ -676,7 +727,12 @@ namespace MotionMatching
             if (FeatureSet == null) return;
 
             FeatureDebug.DrawFeatureGizmos(FeatureSet, MMData, SpheresRadius, currentFrame, characterOrigin, characterForward,
-                                           SkeletonTransforms, PoseSet.Skeleton, DebugPose, DebugTrajectory);
+                                           SkeletonTransforms, PoseSet.Skeleton, Color.blue, DebugPose, DebugTrajectory, DebugEnvironment);
+
+            if (DebugSearch)
+            {
+                SearchInstance.DrawGizmos(this, SpheresRadius);
+            }
         }
 #endif
     }

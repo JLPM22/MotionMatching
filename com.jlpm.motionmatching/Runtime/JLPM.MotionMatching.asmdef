@@ -5,7 +5,9 @@
         "Unity.Burst",
         "Unity.Mathematics",
         "Unity.InputSystem",
-        "Unity.Splines"
+        "Unity.Splines",
+        "Unity.Collections",
+        "Sperlich.SDraw"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
