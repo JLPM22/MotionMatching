@@ -15,7 +15,7 @@ namespace MotionMatching
         private bool SkeletonToMecanimFoldout;
         private bool TrajectoryFeaturesSelectorFoldout;
         private bool PoseFeaturesSelectorFoldout;
-        private bool DynamicFeaturesSelectorFoldout;
+        private bool EnvironmentFeaturesSelectorFoldout;
 
         public void GenerateDatabases(MotionMatchingData mmData)
         {
@@ -261,14 +261,14 @@ namespace MotionMatching
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 
-            // Dynamic Features ------------------------------------------------------------------------------------
-            DynamicFeaturesSelectorFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(DynamicFeaturesSelectorFoldout, "Dynamic Features");
-            if (DynamicFeaturesSelectorFoldout)
+            // Environment Features ------------------------------------------------------------------------------------
+            EnvironmentFeaturesSelectorFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(EnvironmentFeaturesSelectorFoldout, "Environment Features");
+            if (EnvironmentFeaturesSelectorFoldout)
             {
                 EditorGUI.indentLevel++;
                 for (int i = 0; i < data.EnvironmentFeatures.Count; i++)
                 {
-                    MotionMatchingData.TrajectoryFeature dynamicFeature = data.EnvironmentFeatures[i];
+                    MotionMatchingData.TrajectoryFeature environmentFeature = data.EnvironmentFeatures[i];
                     // Header
                     EditorGUILayout.BeginVertical(GUI.skin.box);
                     EditorGUILayout.BeginHorizontal();
@@ -280,15 +280,15 @@ namespace MotionMatching
                     }
                     EditorGUILayout.EndHorizontal();
                     // Name
-                    dynamicFeature.Name = EditorGUILayout.TextField("Name", dynamicFeature.Name);
+                    environmentFeature.Name = EditorGUILayout.TextField("Name", environmentFeature.Name);
                     // Feature Type
-                    dynamicFeature.FeatureType = (MotionMatchingData.TrajectoryFeature.Type)EditorGUILayout.EnumPopup("Type", dynamicFeature.FeatureType);
-                    dynamicFeature.IsMainPositionFeature = false;
-                    generateButtonError = generateButtonError || TrajectoryFramesLayout(dynamicFeature);
-                    generateButtonError = generateButtonError || TrajectoryTypeOptionsLayout(dynamicFeature);
+                    environmentFeature.FeatureType = (MotionMatchingData.TrajectoryFeature.Type)EditorGUILayout.EnumPopup("Type", environmentFeature.FeatureType);
+                    environmentFeature.IsMainPositionFeature = false;
+                    generateButtonError = generateButtonError || TrajectoryFramesLayout(environmentFeature);
+                    generateButtonError = generateButtonError || TrajectoryTypeOptionsLayout(environmentFeature);
                     EditorGUILayout.EndVertical();
                 }
-                if (GUILayout.Button("Add Dynamic Feature"))
+                if (GUILayout.Button("Add Environment Feature"))
                 {
                     data.EnvironmentFeatures.Add(new MotionMatchingData.TrajectoryFeature());
                 }
