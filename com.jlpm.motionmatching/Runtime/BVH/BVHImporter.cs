@@ -63,11 +63,27 @@ namespace MotionMatching
                 }
                 while (words[w] == "End")
                 {
-                    Debug.LogWarning("[BVHImporter] Some joints have multiple End Sites. Skipping the additional ones.");
                     w += 1;
                     if (words[w++] != "Site") Debug.LogError("[BVHImporter] End Site not found");
                     ReadLeftBracket(words, ref w);
-                    ReadOffset(words, ref w);
+                    Vector3 offset = ReadOffset(words, ref w) * scale;
+                    EndSite endSite = new EndSite(parent, offset);
+                    animation.AddEndSite(endSite);
+                    if (!ReadRightBracket(words, ref w)) Debug.LogError("[BVHImporter] End Site right bracket not found");
+                }
+                while (ReadRightBracket(words, ref w))
+                {
+                    brackets -= 1;
+                    if (parentIndexStack.Count > 0) parent = parentIndexStack.Pop();
+                }
+                while (words[w] == "End")
+                {
+                    w += 1;
+                    if (words[w++] != "Site") Debug.LogError("[BVHImporter] End Site not found");
+                    ReadLeftBracket(words, ref w);
+                    Vector3 offset = ReadOffset(words, ref w) * scale;
+                    EndSite endSite = new EndSite(parent, offset);
+                    animation.AddEndSite(endSite);
                     if (!ReadRightBracket(words, ref w)) Debug.LogError("[BVHImporter] End Site right bracket not found");
                 }
                 while (ReadRightBracket(words, ref w))

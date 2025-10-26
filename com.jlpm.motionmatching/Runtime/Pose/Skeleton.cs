@@ -56,7 +56,7 @@ namespace MotionMatching
         {
             public string Name;
             public int Index;
-            public int ParentIndex; // 0 - Root
+            public int ParentIndex; // The Root has ParentIndex = 0
             public Vector3 LocalOffset;
             public HumanBodyBones Type;
 

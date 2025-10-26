@@ -17,14 +17,15 @@ namespace MotionMatching
 
         public List<AnimationData> AnimationDatas;
         public AnimationData AnimationDataTPose; // Animation with a TPose in the first frame, used for retargeting
-        public float3 HipsForwardLocalVector = new float3(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
-        public float3 HipsUpLocalVector = new float3(0, 1, 0); // Local vector (axis) pointing in the up direction of the hips
+        public float3 HipsForwardLocalVector = new(0, 0, 1); // Local vector (axis) pointing in the forward direction of the hips
+        public float3 HipsUpLocalVector = new(0, 1, 0); // Local vector (axis) pointing in the up direction of the hips
         // TODO: Implement Savitzky-Golay filter or similar low-pass filter in Unity (before I was using Python implementation)
         //public bool SmoothSimulationBone; // Smooth the simulation bone (articial root added during pose extraction) using Savitzky-Golay filter
         public float ContactVelocityThreshold = 0.15f; // Minimum velocity of the foot to be considered in movement and not in contact with the ground
-        public List<JointToMecanim> SkeletonToMecanim = new List<JointToMecanim>();
-        public List<TrajectoryFeature> TrajectoryFeatures = new List<TrajectoryFeature>();
-        public List<PoseFeature> PoseFeatures = new List<PoseFeature>();
+        public List<JointToMecanim> SkeletonToMecanim = new();
+        public List<TrajectoryFeature> TrajectoryFeatures = new();
+        public List<PoseFeature> PoseFeatures = new();
+        public List<TrajectoryFeature> EnvironmentFeatures = new(); // Features used for dynamic computations and not used during the standard distance check in the Motion Matching search
 
         public PoseSet PoseSet { get; private set; }
         public FeatureSet FeatureSet { get; private set; }
@@ -95,6 +96,7 @@ namespace MotionMatching
                 }
             }
             PoseSet.ConvertTagsToNativeArrays();
+            Debug.Log("Numer of poses: " + PoseSet.NumberPoses);
         }
 
         public FeatureSet GetOrImportFeatureSet()
@@ -256,6 +258,7 @@ namespace MotionMatching
             public HumanBodyBones Bone; // Bone used to compute the trajectory in the feature set
             public bool ZeroX, ZeroY, ZeroZ; // Zero the X, Y and/or Z component of the trajectory feature
             public ScriptableObject FeatureExtractor; // Custom feature extractor for user-defined types
+            public bool IsMainPositionFeature; // Only for position feature type. Used for visualizing gizmos of other trajectory features colocated with this position feature.
 
             public int GetSize()
             {

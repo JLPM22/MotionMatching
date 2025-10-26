@@ -10,10 +10,10 @@ namespace MotionMatching
 
     public abstract class MotionMatchingCharacterController : MonoBehaviour
     {
-		// TODO: Create a OnValidate() (other name because it will collide with Unity's
-		//       that validates if the current MMData has the necessary trajectories requeried
-		//       by the current controller (eg. simulation bone pos + dir, or HMD + L/R controllers pos + dir)
-		
+        // TODO: Create a OnValidate() (other name because it will collide with Unity's
+        //       that validates if the current MMData has the necessary trajectories requeried
+        //       by the current controller (eg. simulation bone pos + dir, or HMD + L/R controllers pos + dir)
+
         public event Action<float> OnUpdated;
         public event Action OnInputChangedQuickly;
 
@@ -45,13 +45,22 @@ namespace MotionMatching
         protected abstract void OnUpdate();
 
         /// <summary>
-        /// Return the initial world position of the character.
+        /// Return the initial world position of the character controller.
         /// </summary>
         public abstract float3 GetWorldInitPosition();
         /// <summary>
-        /// Return the initial world direction of the character.
+        /// Return the initial world direction of the character controller.
         /// </summary>
         public abstract float3 GetWorldInitDirection();
+        /// <summary>
+        /// Return the current world position of the character controller.
+        /// </summary>
+        public abstract float3 GetPosition();
+
+        /// <summary>
+        /// Return the target speed of the character, which may be different from the current speed.
+        /// </summary>
+        public abstract float GetTargetSpeed();
 
         /// <summary>
         /// Get the prediction in character space of a trajectory feature.
@@ -60,5 +69,11 @@ namespace MotionMatching
         ///       e.g., when index==1, it should return the position of the character at frame 40.
         /// </summary>
         public abstract void GetTrajectoryFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output);
+
+        /// <summary>
+        /// Get the prediction in character space of a environment feature.
+        /// Similarly to GetTrajectoryFeature, the output should be filled with the predicted values of the feature.
+        /// </summary>
+        public virtual void GetEnvironmentFeature(TrajectoryFeature feature, int index, Transform character, NativeArray<float> output) { }
     }
 }

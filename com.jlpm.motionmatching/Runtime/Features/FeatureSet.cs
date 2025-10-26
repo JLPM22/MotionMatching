@@ -3,10 +3,12 @@ using Unity.Collections;
 using UnityEngine;
 using Unity.Mathematics;
 using Unity.Jobs;
+using System.Collections.Generic;
 
 namespace MotionMatching
 {
     using Joint = Skeleton.Joint;
+    using TrajectoryFeature = MotionMatchingData.TrajectoryFeature;
 
     /// <summary>
     /// Stores all features vectors of all poses for Motion Matching
@@ -14,19 +16,32 @@ namespace MotionMatching
     public class FeatureSet
     {
         public int NumberFeatureVectors { get; private set; } // Total number of feature vectors
+        public int FeatureSize { get; private set; } // Total size in floats of a feature vector
+        public int FeatureStaticSize { get; private set; } // Total size in floats of a feature vector without environment features
+
+        // Trajectory features
         public int NumberTrajectoryFeatures { get; private set; } // Number of different trajectory features (e.g. 2 = position and direction)
         private readonly int[] NumberPredictionsTrajectory; // Size: NumberTrajectoryFeatures. Number of predictions per trajectory feature (e.g. {3, 4}, means 3 predictions for position and 4 for direction)
         private readonly int[] NumberFloatsTrajectory; // Size: NumberTrajectoryFeatures. Number of floats per trajectory feature (e.g. {2, 3}, means 2 floats for position (float2) and 3 for direction (float3))
         private readonly int[] TrajectoryOffset; // Size: NumberTrajectoryFeatures. Offset of the trajectory feature in the feature vector (e.g. {0, 6}, means the position feature is at the beginning of the feature vector, and the direction feature starts at the sixth float)
+
+        // Pose Features
         public int NumberPoseFeatures { get; private set; } // Number of different pose features (e.g. 3 = leftFootPosition, leftFootVelocity, hipsVelocity)
         private const int NumberFloatsPose = 3; // Number of floats per pose feature (e.g. 3 = float3)
         public int PoseOffset { get; private set; } // Offset of the pose feature in the feature vector (e.g. 3 = leftFootPosition is at the third float)
-        public int FeatureSize { get; private set; } // Total size of a feature vector
+                                                    // Pose Features are always after the Trajectory Features
+
+        // Environment
+        public int NumberEnvironmentFeatures { get; private set; } // Number of environment features (e.g. 2 = spheres and ellipses)
+        private readonly int[] NumberPredictionsEnvironment; // Size: NumberEnvironmentFeatures. Number of predictions per environment feature (e.g. {3, 4}, means 3 predictions for spheres and 4 for ellipses)
+        private readonly int[] NumberFloatsEnvironment; // Size: NumberEnvironmentFeatures. Number of floats per environment feature (e.g. {1, 2}, means 1 floats for spheres (float) and 2 for ellipses (float2))
+        public int[] EnvironmentOffset { get; private set; } // Size: NumberEnvironmentFeatures. Offset of the environment feature in the feature vector (e.g. 6 = spheres is at the sixth float)
+                                                             // Environment Features are always after the Pose Features
 
         private NativeArray<bool> Valid; // TODO: Refactor to avoid needing this
-        private NativeArray<float> Features; // Each feature: Trajectory + Pose
-        private float[] Mean;
-        private float[] StandardDeviation;
+        private NativeArray<float> Features; // Each feature: Trajectory + Pose + Environment 
+        private float[] Mean; // Size: EnvironmentOffset[0]. Environment features are never normalized
+        private float[] StandardDeviation; // Size: EnvironmentOffset[0]. Environment features are never normalized
 
         // BVH acceleration structures
         private NativeArray<float> LargeBoundingBoxMin;
@@ -34,10 +49,14 @@ namespace MotionMatching
         private NativeArray<float> SmallBoundingBoxMin;
         private NativeArray<float> SmallBoundingBoxMax;
 
+        // Environment acceleration structures
+        private NativeArray<int> AdaptativeFeaturesIndices; // Index to the real Features array
+
         public FeatureSet(MotionMatchingData mmData, int numberFeatureVectors)
         {
             NumberFeatureVectors = numberFeatureVectors;
 
+            // Trajectory Features
             NumberTrajectoryFeatures = mmData.TrajectoryFeatures.Count;
             NumberPredictionsTrajectory = new int[NumberTrajectoryFeatures];
             NumberFloatsTrajectory = new int[NumberTrajectoryFeatures];
@@ -50,10 +69,28 @@ namespace MotionMatching
                 NumberFloatsTrajectory[i] = mmData.TrajectoryFeatures[i].GetSize();
                 offset += NumberPredictionsTrajectory[i] * NumberFloatsTrajectory[i];
             }
+
+            // Pose Features
             PoseOffset = offset;
             NumberPoseFeatures = mmData.PoseFeatures.Count;
-            FeatureSize = offset; // Trajectory
-            FeatureSize += NumberPoseFeatures * NumberFloatsPose; // + Pose
+            offset += NumberPoseFeatures * NumberFloatsPose; // + Pose
+
+            FeatureStaticSize = offset;
+
+            // Environment Features
+            NumberEnvironmentFeatures = mmData.EnvironmentFeatures.Count;
+            NumberPredictionsEnvironment = new int[NumberEnvironmentFeatures];
+            NumberFloatsEnvironment = new int[NumberEnvironmentFeatures];
+            EnvironmentOffset = new int[NumberEnvironmentFeatures];
+            for (int i = 0; i < NumberEnvironmentFeatures; i++)
+            {
+                EnvironmentOffset[i] = offset;
+                NumberPredictionsEnvironment[i] = mmData.EnvironmentFeatures[i].FramesPrediction.Length;
+                NumberFloatsEnvironment[i] = mmData.EnvironmentFeatures[i].GetSize();
+                offset += NumberPredictionsEnvironment[i] * NumberFloatsEnvironment[i];
+            }
+
+            FeatureSize = offset;
         }
 
         public bool IsValidFeature(int featureIndex)
@@ -141,6 +178,40 @@ namespace MotionMatching
             }
             return new float3(x, y, z);
         }
+        public float Get1DEnvironmentFeature(int featureIndex, int environmentFeatureIndex, int predictionIndex)
+        {
+            int featureOffset = EnvironmentOffset[environmentFeatureIndex] + predictionIndex * NumberFloatsEnvironment[environmentFeatureIndex];
+            int startIndex = featureIndex * FeatureSize + featureOffset;
+            float x = Features[startIndex];
+            return x;
+        }
+        public float2 Get2DEnvironmentFeature(int featureIndex, int environmentFeatureIndex, int predictionIndex)
+        {
+            int featureOffset = EnvironmentOffset[environmentFeatureIndex] + predictionIndex * NumberFloatsEnvironment[environmentFeatureIndex];
+            int startIndex = featureIndex * FeatureSize + featureOffset;
+            float x = Features[startIndex];
+            float y = Features[startIndex + 1];
+            return new float2(x, y);
+        }
+        public float3 Get3DEnvironmentFeature(int featureIndex, int environmentFeatureIndex, int predictionIndex)
+        {
+            int featureOffset = EnvironmentOffset[environmentFeatureIndex] + predictionIndex * NumberFloatsEnvironment[environmentFeatureIndex];
+            int startIndex = featureIndex * FeatureSize + featureOffset;
+            float x = Features[startIndex];
+            float y = Features[startIndex + 1];
+            float z = Features[startIndex + 2];
+            return new float3(x, y, z);
+        }
+        public float4 Get4DEnvironmentFeature(int featureIndex, int environmentFeatureIndex, int predictionIndex)
+        {
+            int featureOffset = EnvironmentOffset[environmentFeatureIndex] + predictionIndex * NumberFloatsEnvironment[environmentFeatureIndex];
+            int startIndex = featureIndex * FeatureSize + featureOffset;
+            float x = Features[startIndex];
+            float y = Features[startIndex + 1];
+            float z = Features[startIndex + 2];
+            float w = Features[startIndex + 3];
+            return new float4(x, y, z, w);
+        }
 
         public NativeArray<bool> GetValid()
         {
@@ -155,9 +226,17 @@ namespace MotionMatching
         {
             return Mean[dimension];
         }
+        public float[] GetMeans()
+        {
+            return Mean;
+        }
         public float GetStandardDeviation(int dimension)
         {
             return StandardDeviation[dimension];
+        }
+        public float[] GetStandardDeviations()
+        {
+            return StandardDeviation;
         }
 
         public void GetBVHBuffers(out NativeArray<float> largeBoundingBoxMin,
@@ -171,14 +250,15 @@ namespace MotionMatching
                 int nFrames = GetFeatures().Length / FeatureSize;
                 int numberBoundingBoxLarge = (nFrames + BVHConsts.LargeBVHSize - 1) / BVHConsts.LargeBVHSize;
                 int numberBoundingBoxSmall = (nFrames + BVHConsts.SmallBVHSize - 1) / BVHConsts.SmallBVHSize;
-                LargeBoundingBoxMin = new NativeArray<float>(numberBoundingBoxLarge * FeatureSize, Allocator.Persistent);
-                LargeBoundingBoxMax = new NativeArray<float>(numberBoundingBoxLarge * FeatureSize, Allocator.Persistent);
-                SmallBoundingBoxMin = new NativeArray<float>(numberBoundingBoxSmall * FeatureSize, Allocator.Persistent);
-                SmallBoundingBoxMax = new NativeArray<float>(numberBoundingBoxSmall * FeatureSize, Allocator.Persistent);
+                LargeBoundingBoxMin = new NativeArray<float>(numberBoundingBoxLarge * FeatureStaticSize, Allocator.Persistent);
+                LargeBoundingBoxMax = new NativeArray<float>(numberBoundingBoxLarge * FeatureStaticSize, Allocator.Persistent);
+                SmallBoundingBoxMin = new NativeArray<float>(numberBoundingBoxSmall * FeatureStaticSize, Allocator.Persistent);
+                SmallBoundingBoxMax = new NativeArray<float>(numberBoundingBoxSmall * FeatureStaticSize, Allocator.Persistent);
                 var job = new BVHMotionMatchingComputeBounds
                 {
                     Features = GetFeatures(),
                     FeatureSize = FeatureSize,
+                    FeatureStaticSize = FeatureStaticSize,
                     NumberBoundingBoxLarge = numberBoundingBoxLarge,
                     NumberBoundingBoxSmall = numberBoundingBoxSmall,
                     LargeBoundingBoxMin = LargeBoundingBoxMin,
@@ -192,6 +272,30 @@ namespace MotionMatching
             largeBoundingBoxMax = LargeBoundingBoxMax;
             smallBoundingBoxMin = SmallBoundingBoxMin;
             smallBoundingBoxMax = SmallBoundingBoxMax;
+        }
+
+        public void GetEnvironmentAccelerationStructures(EnvironmentAccelerationConsts consts,
+                                                     out NativeArray<int> adaptativeFeaturesIndices)
+        {
+            if (AdaptativeFeaturesIndices == null || !AdaptativeFeaturesIndices.IsCreated)
+            {
+                // Build Environment Acceleration Structure
+                NativeList<int> adaptativeIndices = new(Allocator.Persistent);
+                var job = new EnvironmentAccelerationComputeAdaptativeIndices
+                {
+                    Features = GetFeatures(),
+                    Valid = GetValid(),
+                    FeatureSize = FeatureSize,
+                    PoseOffset = PoseOffset,
+                    EnvironmentAccelerationConsts = consts,
+                    FeatureStaticSize = FeatureStaticSize,
+                    AdaptativeIndices = adaptativeIndices,
+                };
+                job.Schedule().Complete();
+                AdaptativeFeaturesIndices = adaptativeIndices.AsArray();
+            }
+            // Debug.Log("Number of features: " + GetFeatures().Length / FeatureSize + " -----  Adaptative Length: " + AdaptativeFeaturesIndices.Length);
+            adaptativeFeaturesIndices = AdaptativeFeaturesIndices;
         }
 
         // Deserialize ---------------------------------------
@@ -215,12 +319,12 @@ namespace MotionMatching
         }
         public void SetMean(float[] mean)
         {
-            Debug.Assert(mean.Length == FeatureSize, "Mean array has wrong size");
+            Debug.Assert(mean.Length == FeatureStaticSize, mean.Length + " != " + FeatureStaticSize);
             Mean = mean;
         }
         public void SetStandardDeviation(float[] standardDeviation)
         {
-            Debug.Assert(standardDeviation.Length == FeatureSize, "Standard deviation array has wrong size");
+            Debug.Assert(standardDeviation.Length == FeatureStaticSize, standardDeviation.Length + " != " + FeatureStaticSize);
             StandardDeviation = standardDeviation;
         }
         // --------------------------------------------------
@@ -249,7 +353,7 @@ namespace MotionMatching
             Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
             Debug.Assert(featureVector.Length == FeatureSize, "Feature vector size does not match");
 
-            for (int i = 0; i < featureVector.Length; i++)
+            for (int i = 0; i < FeatureStaticSize; i++)
             {
                 featureVector[i] = (featureVector[i] - Mean[i]) / StandardDeviation[i];
             }
@@ -264,7 +368,7 @@ namespace MotionMatching
             Debug.Assert(StandardDeviation != null, "StandardDeviation is not initialized");
             Debug.Assert(featureVector.Length == FeatureSize, "Feature vector size does not match");
 
-            for (int i = 0; i < featureVector.Length; i++)
+            for (int i = 0; i < FeatureStaticSize; i++)
             {
                 featureVector[i] = featureVector[i] * StandardDeviation[i] + Mean[i];
             }
@@ -284,7 +388,7 @@ namespace MotionMatching
                 int featureIndex = i * FeatureSize;
                 if (Valid[i])
                 {
-                    for (int j = 0; j < FeatureSize; j++)
+                    for (int j = 0; j < FeatureStaticSize; j++)
                     {
                         Features[featureIndex + j] = (Features[featureIndex + j] - Mean[j]) / StandardDeviation[j];
                     }
@@ -294,7 +398,7 @@ namespace MotionMatching
 
         private void ComputeMeanAndStandardDeviation()
         {
-            int nTotalDimensions = FeatureSize;
+            int nTotalDimensions = FeatureStaticSize;
             // Mean for each dimension
             Mean = new float[nTotalDimensions];
             // Variance for each dimension
@@ -394,8 +498,8 @@ namespace MotionMatching
             int i = 0;
             foreach (var trajectoryFeature in mmData.TrajectoryFeatures)
             {
-                if ((trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position ||
-                    trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction)
+                if ((trajectoryFeature.FeatureType == TrajectoryFeature.Type.Position ||
+                    trajectoryFeature.FeatureType == TrajectoryFeature.Type.Direction)
                     && !trajectoryFeature.SimulationBone)
                 {
                     if (!poseSet.Skeleton.Find(trajectoryFeature.Bone, out jointsTrajectory[i])) Debug.Assert(false, "The skeleton does not contain any joint of type " + trajectoryFeature.Bone);
@@ -409,13 +513,25 @@ namespace MotionMatching
                 if (!poseSet.Skeleton.Find(poseFeature.Bone, out jointsPose[i])) Debug.Assert(false, "The skeleton does not contain any joint of type " + poseFeature.Bone);
                 i += 1;
             }
+            Joint[] jointsEnvironment = new Joint[NumberEnvironmentFeatures];
+            i = 0;
+            foreach (var environmentFeature in mmData.EnvironmentFeatures)
+            {
+                if ((environmentFeature.FeatureType == TrajectoryFeature.Type.Position ||
+                    environmentFeature.FeatureType == TrajectoryFeature.Type.Direction)
+                    && !environmentFeature.SimulationBone)
+                {
+                    if (!poseSet.Skeleton.Find(environmentFeature.Bone, out jointsEnvironment[i])) Debug.Assert(false, "The skeleton does not contain any joint of type " + environmentFeature.Bone);
+                }
+                i += 1;
+            }
             // Extract Features
             for (int poseIndex = 0; poseIndex < nPoses; ++poseIndex)
             {
                 if (poseSet.IsPoseValidForPrediction(poseIndex))
                 {
                     Valid[poseIndex] = true;
-                    ExtractFeature(poseSet, poseIndex, jointsTrajectory, jointsPose, mmData);
+                    ExtractFeature(poseSet, poseIndex, jointsTrajectory, jointsPose, jointsEnvironment, mmData);
                 }
                 else Valid[poseIndex] = false;
             }
@@ -424,126 +540,47 @@ namespace MotionMatching
         /// <summary>
         /// Extract the feature vectors from poseSet
         /// </summary>
-        private void ExtractFeature(PoseSet poseSet, int poseIndex, Joint[] jointsTrajectory, Joint[] jointsPose, MotionMatchingData mmData)
+        private void ExtractFeature(PoseSet poseSet, int poseIndex, Joint[] jointsTrajectory, Joint[] jointsPose, Joint[] jointsEnvironment, MotionMatchingData mmData)
         {
             int featureIndex = poseIndex * FeatureSize;
+            int nextPose = poseIndex + 1;
+            if (nextPose >= poseSet.NumberPoses - poseSet.MaximumFramesPrediction)
+            {
+                nextPose = poseIndex;
+            }
+            int nextFeatureIndex = nextPose * FeatureSize;
             poseSet.GetPose(poseIndex, out PoseVector pose);
-            poseSet.GetPose(poseIndex + 1, out PoseVector poseNext);
+            poseSet.GetPose(nextPose, out PoseVector poseNext);
             // Compute local features based on the Simulation Bone
             // so hips and feet are local to a stable position with respect to the character
             GetWorldOriginCharacter(pose, out float3 characterOrigin, out float3 characterForward);
-            // Trajectory
+
+            // Trajectory Features -------------------------------------------------------------
             for (int i = 0; i < NumberTrajectoryFeatures; i++)
             {
-                MotionMatchingData.TrajectoryFeature trajectoryFeature = mmData.TrajectoryFeatures[i];
+                TrajectoryFeature trajectoryFeature = mmData.TrajectoryFeatures[i];
                 int featureOffset = featureIndex + TrajectoryOffset[i];
-                bool startTrajectory = true;
+                int nextFeatureOffset = nextFeatureIndex + TrajectoryOffset[i];
+                bool isStartFeature = true;
                 for (int p = 0; p < trajectoryFeature.FramesPrediction.Length; ++p)
                 {
                     int predictionOffset = featureOffset + p * NumberFloatsTrajectory[i];
+                    int nextPredictionOffset = nextFeatureOffset + p * NumberFloatsTrajectory[i];
                     int futurePoseIndex = poseIndex + trajectoryFeature.FramesPrediction[p];
-                    poseSet.GetPose(futurePoseIndex, out PoseVector futurePose, out int animationClip);
-                    float3 value = new float3();
-                    switch (trajectoryFeature.FeatureType)
-                    {
-                        case MotionMatchingData.TrajectoryFeature.Type.Position:
-                            {
-                                GetTrajectoryPosition(futurePose, poseSet.Skeleton, trajectoryFeature.SimulationBone, jointsTrajectory[i], characterOrigin, characterForward,
-                                                      out value);
-                            }
-                            break;
-                        case MotionMatchingData.TrajectoryFeature.Type.Direction:
-                            {
-                                GetTrajectoryDirection(futurePose, poseSet.Skeleton, trajectoryFeature.SimulationBone, jointsTrajectory[i], characterForward, mmData,
-                                                       out value);
-                                if (trajectoryFeature.ZeroX) value.x = 0;
-                                if (trajectoryFeature.ZeroY) value.y = 0;
-                                if (trajectoryFeature.ZeroZ) value.z = 0;
-                                value = math.normalize(value);
-                            }
-                            break;
-                        case MotionMatchingData.TrajectoryFeature.Type.Custom1D:
-                            {
-                                Feature1DExtractor extractor1D = trajectoryFeature.FeatureExtractor as Feature1DExtractor;
-                                if (startTrajectory)
-                                {
-                                    startTrajectory = false;
-                                    extractor1D.StartExtracting(poseSet.Skeleton);
-                                }
-                                float value1D = extractor1D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
-                                Features[predictionOffset + 0] = value1D;
-                            }
-                            break;
-                        case MotionMatchingData.TrajectoryFeature.Type.Custom2D:
-                            {
-                                Feature2DExtractor extractor2D = trajectoryFeature.FeatureExtractor as Feature2DExtractor;
-                                if (startTrajectory)
-                                {
-                                    startTrajectory = false;
-                                    extractor2D.StartExtracting(poseSet.Skeleton);
-                                }
-                                float2 value2D = extractor2D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
-                                Features[predictionOffset + 0] = value2D.x;
-                                Features[predictionOffset + 1] = value2D.y;
-                            }
-                            break;
-                        case MotionMatchingData.TrajectoryFeature.Type.Custom3D:
-                            {
-                                Feature3DExtractor extractor3D = trajectoryFeature.FeatureExtractor as Feature3DExtractor;
-                                if (startTrajectory)
-                                {
-                                    startTrajectory = false;
-                                    extractor3D.StartExtracting(poseSet.Skeleton);
-                                }
-                                float3 value3D = extractor3D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
-                                Features[predictionOffset + 0] = value3D.x;
-                                Features[predictionOffset + 1] = value3D.y;
-                                Features[predictionOffset + 2] = value3D.z;
-                            }
-                            break;
-                        case MotionMatchingData.TrajectoryFeature.Type.Custom4D:
-                            {
-                                Feature4DExtractor extractor4D = trajectoryFeature.FeatureExtractor as Feature4DExtractor;
-                                if (startTrajectory)
-                                {
-                                    startTrajectory = false;
-                                    extractor4D.StartExtracting(poseSet.Skeleton);
-                                }
-                                float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
-                                Features[predictionOffset + 0] = value4D.x;
-                                Features[predictionOffset + 1] = value4D.y;
-                                Features[predictionOffset + 2] = value4D.z;
-                                Features[predictionOffset + 3] = value4D.w;
-                            }
-                            break;
-                        default:
-                            Debug.Assert(false, "Unsupported TrajectoryFeature.Type: " + trajectoryFeature.FeatureType);
-                            break;
-                    }
-                    if (trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Position ||
-                        trajectoryFeature.FeatureType == MotionMatchingData.TrajectoryFeature.Type.Direction)
-                    {
-                        int offsetIndex = 0;
-                        int valueIndex = 0;
-                        int size = trajectoryFeature.GetSize();
-                        for (int f = 0; f < size; ++f)
-                        {
-                            if (valueIndex == 0 && trajectoryFeature.ZeroX) valueIndex += 1;
-                            if (valueIndex == 1 && trajectoryFeature.ZeroY) valueIndex += 1;
-                            Features[predictionOffset + offsetIndex] = value[valueIndex];
-                            valueIndex += 1;
-                            offsetIndex += 1;
-                        }
-                    }
+                    int nextFuturePoseIndex = nextPose + trajectoryFeature.FramesPrediction[p];
+
+                    isStartFeature = ExtractTrajectoryFeature(trajectoryFeature, poseSet, futurePoseIndex, nextFuturePoseIndex,
+                                                              jointsTrajectory, i, predictionOffset, characterOrigin, characterForward,
+                                                              mmData, isStartFeature);
                 }
             }
 
-            // Pose
+            // Pose Features -------------------------------------------------------------
             for (int i = 0; i < NumberPoseFeatures; i++)
             {
                 MotionMatchingData.PoseFeature poseFeature = mmData.PoseFeatures[i];
                 int featureOffset = featureIndex + PoseOffset + i * NumberFloatsPose;
-                float3 feature = new float3();
+                float3 feature = new();
                 switch (poseFeature.FeatureType)
                 {
                     case MotionMatchingData.PoseFeature.Type.Position:
@@ -562,6 +599,128 @@ namespace MotionMatching
                 Features[featureOffset + 1] = feature.y;
                 Features[featureOffset + 2] = feature.z;
             }
+
+            // Environment Features -------------------------------------------------------------
+            for (int i = 0; i < NumberEnvironmentFeatures; i++)
+            {
+                TrajectoryFeature environmentFeature = mmData.EnvironmentFeatures[i];
+                int featureOffset = featureIndex + EnvironmentOffset[i];
+                int nextFeatureOffset = nextFeatureIndex + EnvironmentOffset[i];
+                bool isStartFeature = true;
+                for (int p = 0; p < environmentFeature.FramesPrediction.Length; ++p)
+                {
+                    int predictionOffset = featureOffset + p * NumberFloatsEnvironment[i];
+                    int nextPredictionOffset = nextFeatureOffset + p * NumberFloatsEnvironment[i];
+                    int futurePoseIndex = poseIndex + environmentFeature.FramesPrediction[p];
+                    int nextFuturePoseIndex = nextPose + environmentFeature.FramesPrediction[p];
+
+                    isStartFeature = ExtractTrajectoryFeature(environmentFeature, poseSet, futurePoseIndex, nextFuturePoseIndex,
+                                                              jointsEnvironment, i, predictionOffset, characterOrigin, characterForward,
+                                                              mmData, isStartFeature);
+                }
+            }
+        }
+
+        private bool ExtractTrajectoryFeature(TrajectoryFeature feature, PoseSet poseSet, int futurePoseIndex, int nextFuturePoseIndex,
+                                              Joint[] joints, int featureIt, int predictionOffset, float3 characterOrigin, float3 characterForward,
+                                              MotionMatchingData mmData, bool isStartFeature)
+        {
+            poseSet.GetPose(futurePoseIndex, out PoseVector futurePose, out int animationClip);
+            poseSet.GetPose(nextFuturePoseIndex, out PoseVector nextFuturePose, out int nextAnimationClip);
+
+            float3 value = new();
+            switch (feature.FeatureType)
+            {
+                case TrajectoryFeature.Type.Position:
+                    {
+                        GetTrajectoryPosition(futurePose, poseSet.Skeleton, feature.SimulationBone, joints[featureIt], characterOrigin, characterForward,
+                                              out value);
+                    }
+                    break;
+                case TrajectoryFeature.Type.Direction:
+                    {
+                        GetTrajectoryDirection(futurePose, poseSet.Skeleton, feature.SimulationBone, joints[featureIt], characterForward, mmData,
+                                               out value);
+                        if (feature.ZeroX) value.x = 0;
+                        if (feature.ZeroY) value.y = 0;
+                        if (feature.ZeroZ) value.z = 0;
+                        value = math.normalize(value);
+                    }
+                    break;
+                case TrajectoryFeature.Type.Custom1D:
+                    {
+                        Feature1DExtractor extractor1D = feature.FeatureExtractor as Feature1DExtractor;
+                        if (isStartFeature)
+                        {
+                            isStartFeature = false;
+                            extractor1D.StartExtracting(poseSet.Skeleton);
+                        }
+                        float value1D = extractor1D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                        Features[predictionOffset + 0] = value1D;
+                    }
+                    break;
+                case TrajectoryFeature.Type.Custom2D:
+                    {
+                        Feature2DExtractor extractor2D = feature.FeatureExtractor as Feature2DExtractor;
+                        if (isStartFeature)
+                        {
+                            isStartFeature = false;
+                            extractor2D.StartExtracting(poseSet.Skeleton);
+                        }
+                        float2 value2D = extractor2D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                        Features[predictionOffset + 0] = value2D.x;
+                        Features[predictionOffset + 1] = value2D.y;
+                    }
+                    break;
+                case TrajectoryFeature.Type.Custom3D:
+                    {
+                        Feature3DExtractor extractor3D = feature.FeatureExtractor as Feature3DExtractor;
+                        if (isStartFeature)
+                        {
+                            isStartFeature = false;
+                            extractor3D.StartExtracting(poseSet.Skeleton);
+                        }
+                        float3 value3D = extractor3D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                        Features[predictionOffset + 0] = value3D.x;
+                        Features[predictionOffset + 1] = value3D.y;
+                        Features[predictionOffset + 2] = value3D.z;
+                    }
+                    break;
+                case TrajectoryFeature.Type.Custom4D:
+                    {
+                        Feature4DExtractor extractor4D = feature.FeatureExtractor as Feature4DExtractor;
+                        if (isStartFeature)
+                        {
+                            isStartFeature = false;
+                            extractor4D.StartExtracting(poseSet.Skeleton);
+                        }
+                        float4 value4D = extractor4D.ExtractFeature(futurePose, futurePoseIndex, nextFuturePose, animationClip, poseSet.Skeleton, characterOrigin, characterForward);
+                        Features[predictionOffset + 0] = value4D.x;
+                        Features[predictionOffset + 1] = value4D.y;
+                        Features[predictionOffset + 2] = value4D.z;
+                        Features[predictionOffset + 3] = value4D.w;
+                    }
+                    break;
+                default:
+                    Debug.Assert(false, "Unsupported Feature Type: " + feature.FeatureType);
+                    break;
+            }
+            if (feature.FeatureType == TrajectoryFeature.Type.Position ||
+                feature.FeatureType == TrajectoryFeature.Type.Direction)
+            {
+                int offsetIndex = 0;
+                int valueIndex = 0;
+                int size = feature.GetSize();
+                for (int f = 0; f < size; ++f)
+                {
+                    if (valueIndex == 0 && feature.ZeroX) valueIndex += 1;
+                    if (valueIndex == 1 && feature.ZeroY) valueIndex += 1;
+                    Features[predictionOffset + offsetIndex] = value[valueIndex];
+                    valueIndex += 1;
+                    offsetIndex += 1;
+                }
+            }
+            return isStartFeature;
         }
 
         private static void GetTrajectoryPosition(PoseVector pose, Skeleton skeleton, bool simulationBone, Joint joint, float3 characterOrigin, float3 characterForward,
@@ -652,15 +811,23 @@ namespace MotionMatching
             forward = math.mul(poseVector.JointLocalRotations[0], math.forward()); // Simulation Bone World Rotation
         }
 
-        public static float3 GetLocalPositionFromCharacter(float3 worldPos, float3 centerCharacter, float3 forwardCharacter)
+        public static float3 GetLocalPositionFromCharacter(float3 worldPos, float3 characterOrigin, float3 characterForward)
         {
-            return math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, math.up())), worldPos - centerCharacter);
+            return math.mul(math.inverse(quaternion.LookRotation(characterForward, math.up())), worldPos - characterOrigin);
         }
 
-        public static float3 GetLocalDirectionFromCharacter(float3 worldDir, float3 forwardCharacter)
+        public static float3 GetLocalDirectionFromCharacter(float3 worldDir, float3 characterForward)
         {
-            float3 localDir = math.mul(math.inverse(quaternion.LookRotation(forwardCharacter, math.up())), worldDir);
+            float3 localDir = math.mul(math.inverse(quaternion.LookRotation(characterForward, math.up())), worldDir);
             return localDir;
+        }
+        public static float3 GetWorldPositionFromCharacter(float3 localPos, float3 characterOrigin, float3 characterForward)
+        {
+            return characterOrigin + math.mul(quaternion.LookRotation(characterForward, math.up()), localPos);
+        }
+        public static float3 GetWorldDirectionFromCharacter(float3 localDir, float3 characterForward)
+        {
+            return math.mul(quaternion.LookRotation(characterForward, math.up()), localDir);
         }
 
         public void Dispose()
@@ -671,6 +838,7 @@ namespace MotionMatching
             if (LargeBoundingBoxMax != null && LargeBoundingBoxMax.IsCreated) LargeBoundingBoxMax.Dispose();
             if (SmallBoundingBoxMin != null && SmallBoundingBoxMin.IsCreated) SmallBoundingBoxMin.Dispose();
             if (SmallBoundingBoxMax != null && SmallBoundingBoxMax.IsCreated) SmallBoundingBoxMax.Dispose();
+            if (AdaptativeFeaturesIndices != null && AdaptativeFeaturesIndices.IsCreated) AdaptativeFeaturesIndices.Dispose();
         }
     }
 }
