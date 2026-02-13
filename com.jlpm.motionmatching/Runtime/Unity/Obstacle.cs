@@ -36,7 +36,7 @@ namespace MotionMatching
             ObstacleManager.Instance.UnregisterObstacle(this);
         }
 
-        public bool GetCurrentSteering(out float2 steering)
+        public virtual bool GetCurrentSteering(out float2 steering)
         {
             if (CrowdSplineCharacterController != null)
             {
@@ -52,7 +52,7 @@ namespace MotionMatching
             return false;
         }
 
-        public (float3, bool, float4) GetProjWorldPosition(int trajectoryIndex, bool forceCurrent = false)
+        public virtual (float3, bool, float4) GetProjWorldPosition(int trajectoryIndex, bool forceCurrent = false)
         {
             if (IsStatic || forceCurrent)
             {
@@ -117,7 +117,7 @@ namespace MotionMatching
             return true;
         }
 
-        private void OnDrawGizmos()
+        protected virtual void OnDrawGizmos()
         {
             Gizmos.color = Color.red;
             Vector3 position = transform.position;
