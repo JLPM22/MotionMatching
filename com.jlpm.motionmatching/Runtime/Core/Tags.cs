@@ -80,8 +80,8 @@ namespace MotionMatching
                                 return true;
                             }
                         }
-                        start = new NativeArray<int>();
-                        end = new NativeArray<int>();
+                        start = new NativeArray<int>(0, Allocator.Temp);
+                        end = new NativeArray<int>(0, Allocator.Temp);
                         return false;
                     }
                     else
