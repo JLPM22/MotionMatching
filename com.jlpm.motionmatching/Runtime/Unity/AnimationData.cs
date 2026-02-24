@@ -23,8 +23,6 @@ namespace MotionMatching
 
         private BVHAnimation Animation;
 
-        public BVHAnimation HackAnimation { get { return Animation; } set { Animation = value; } }
-
         public void Import()
         {
             BVHImporter importer = new BVHImporter();
@@ -38,6 +36,11 @@ namespace MotionMatching
                 Import();
             }
             return Animation;
+        }
+
+        public void SetAnimation(BVHAnimation animation)
+        {
+            Animation = animation;
         }
 
         public List<Tag> GetTags()

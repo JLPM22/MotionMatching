@@ -24,12 +24,12 @@ namespace MotionMatching
             EndSites = new List<EndSite>();
         }
 
-        public BVHAnimation(Skeleton skeleton, List<EndSite> endSites, Frame[] frames, float frameDuration)
+        public BVHAnimation(Skeleton skeleton, List<EndSite> endSites, Frame[] frames, float frameTime)
         {
             Skeleton = skeleton;
             EndSites = endSites;
             Frames = frames;
-            FrameTime = frameDuration;
+            FrameTime = frameTime;
         }
 
         public void SetFrameTime(float frameTime)
