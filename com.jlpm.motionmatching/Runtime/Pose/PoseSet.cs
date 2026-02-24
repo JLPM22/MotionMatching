@@ -102,6 +102,18 @@ namespace MotionMatching
 
             return true;
         }
+        public void AddClip(PoseVector pose)
+        {
+            Poses.Add(pose);
+        }
+        public void SetPoseCapacity(uint numPoses)
+        {
+            Poses.Capacity = (int)numPoses;
+        }
+        public void SetClipCapacity(uint count)
+        {
+            Clips.Capacity = (int)count;
+        }
 
         /// <summary>
         /// Add a tag to the current pose set

@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using System.IO;
 using System.Text;
 using System;
+using System.Runtime.InteropServices;
 
 namespace MotionMatching
 {
@@ -96,92 +97,150 @@ namespace MotionMatching
         {
             poseSet = new PoseSet(mmData);
 
-            // Read Skeleton
-            Skeleton skeleton = new Skeleton();
+            // --------------------
+            // Read Skeleton File
+            // --------------------
             string skeletonPath = Path.Combine(path, fileName + ".mmskeleton");
-            if (File.Exists(skeletonPath))
+            if (!File.Exists(skeletonPath))
+                return false;
+
+            Skeleton skeleton = new Skeleton();
+            byte[] skeletonData = File.ReadAllBytes(skeletonPath);
+            using (var ms = new MemoryStream(skeletonData))
             {
-                using (var stream = File.Open(skeletonPath, FileMode.Open))
+                using (var reader = new BinaryReader(ms, Encoding.UTF8))
                 {
-                    using (var reader = new BinaryReader(stream, System.Text.Encoding.UTF8))
+                    uint nJoints = reader.ReadUInt32();
+                    skeleton.Joints.Capacity = (int)nJoints;
+                    for (int i = 0; i < nJoints; i++)
                     {
-                        // Read Number Joints
-                        uint nJoints = reader.ReadUInt32();
-                        // Read Joints
-                        for (int i = 0; i < nJoints; i++)
-                        {
-                            string jointName = reader.ReadString();
-                            uint jointIndex = reader.ReadUInt32();
-                            uint jointParentIndex = reader.ReadUInt32();
-                            float3 jointLocalOffset = ReadFloat3(reader);
-                            HumanBodyBones jointType = (HumanBodyBones)reader.ReadUInt32();
-                            skeleton.AddJoint(new Skeleton.Joint(jointName, (int)jointIndex, (int)jointParentIndex, jointLocalOffset, jointType));
-                        }
+                        string jointName = reader.ReadString();
+                        uint jointIndex = reader.ReadUInt32();
+                        uint jointParentIndex = reader.ReadUInt32();
+                        float3 jointLocalOffset = ReadFloat3(reader);
+                        HumanBodyBones jointType = (HumanBodyBones)reader.ReadUInt32();
+                        skeleton.AddJoint(new Skeleton.Joint(jointName, (int)jointIndex, (int)jointParentIndex, jointLocalOffset, jointType));
                     }
                 }
             }
-            else return false;
-            // Set skeleton in poseSet
             poseSet.SetSkeletonFromFile(skeleton);
 
-            // Read Poses
+            // --------------------
+            // Read Pose File
+            // --------------------
             string posePath = Path.Combine(path, fileName + ".mmpose");
-            if (File.Exists(posePath))
+            if (!File.Exists(posePath))
+                return false;
+
+            byte[] poseData = File.ReadAllBytes(posePath);
+            using (var ms = new MemoryStream(poseData))
             {
-                using (var stream = File.Open(posePath, FileMode.Open))
+                using (var reader = new BinaryReader(ms, Encoding.UTF8))
                 {
-                    using (var reader = new BinaryReader(stream, System.Text.Encoding.UTF8))
+                    uint nClips = reader.ReadUInt32();
+                    poseSet.SetClipCapacity(nClips);
+                    for (int i = 0; i < nClips; i++)
                     {
-                        // Deserialize Number Animation Clips
-                        uint nClips = reader.ReadUInt32();
-                        // Deserialize Animation Clips
-                        for (int i = 0; i < nClips; i++)
-                        {
-                            uint start = reader.ReadUInt32();
-                            uint end = reader.ReadUInt32();
-                            float frameTime = reader.ReadSingle();
-                            poseSet.AddAnimationClipDeserialized(new PoseSet.AnimationClip((int)start, (int)end, frameTime));
-                        }
-                        // Deserialize Number Poses & Number Joints & Number Tags
-                        uint nPoses = reader.ReadUInt32();
-                        uint nJoints = reader.ReadUInt32();
-                        uint nTags = reader.ReadUInt32();
-                        Debug.Assert(nJoints == skeleton.Joints.Count, "Number of joints in skeleton and pose do not match");
-                        // Deserialize Poses
-                        PoseVector[] poses = new PoseVector[nPoses];
-                        for (int i = 0; i < nPoses; i++)
-                        {
-                            PoseVector pose = new PoseVector();
-                            pose.JointLocalPositions = ReadFloat3Array(reader, nJoints);
-                            pose.JointLocalRotations = ReadQuaternionArray(reader, nJoints);
-                            pose.JointLocalVelocities = ReadFloat3Array(reader, nJoints);
-                            pose.JointLocalAngularVelocities = ReadFloat3Array(reader, nJoints);
-                            pose.LeftFootContact = reader.ReadUInt32() == 1u;
-                            pose.RightFootContact = reader.ReadUInt32() == 1u;
-                            poses[i] = pose;
-                        }
-                        // Set Poses in poseSet
-                        poseSet.AddClipDeserialized(poses);
-                        // Deserialize Tags
-                        for (int i = 0; i < nTags; ++i)
-                        {
-                            string name = reader.ReadString();
-                            int nRanges = (int)reader.ReadUInt32();
-                            List<int> tagStarts = new List<int>(nRanges);
-                            List<int> tagEnds = new List<int>(nRanges);
-                            for (int r = 0; r < nRanges; ++r)
-                            {
-                                tagStarts.Add((int)reader.ReadUInt32());
-                                tagEnds.Add((int)reader.ReadUInt32());
-                            }
-                            poseSet.AddTagDeserialized(name, tagStarts, tagEnds);
-                        }
-                        poseSet.ConvertTagsToNativeArrays();
+                        uint start = reader.ReadUInt32();
+                        uint end = reader.ReadUInt32();
+                        float frameTime = reader.ReadSingle();
+                        poseSet.AddAnimationClipDeserialized(new PoseSet.AnimationClip((int)start, (int)end, frameTime));
                     }
+
+                    uint nPoses = reader.ReadUInt32();
+                    uint nJoints = reader.ReadUInt32();
+                    uint nTags = reader.ReadUInt32();
+                    Debug.Assert(nJoints == skeleton.Joints.Count, "Number of joints in skeleton and pose do not match");
+
+                    // Precompute sizes for the buffers (they remain constant across iterations)
+                    int float3BufferSize = (int)nJoints * 3 * sizeof(float);
+                    int quaternionBufferSize = (int)nJoints * 4 * sizeof(float);
+
+                    // Allocate reusable buffers once outside the loop
+                    byte[] float3Buffer = new byte[float3BufferSize];
+                    byte[] quaternionBuffer = new byte[quaternionBufferSize];
+
+                    poseSet.SetPoseCapacity(nPoses);
+                    for (int i = 0; i < nPoses; i++)
+                    {
+                        PoseVector pose = new PoseVector();
+
+                        // --- Read JointLocalPositions ---
+                        reader.Read(float3Buffer, 0, float3BufferSize);
+                        Span<float> positionsSpan = MemoryMarshal.Cast<byte, float>(float3Buffer);
+                        pose.JointLocalPositions = new float3[nJoints];
+                        for (int j = 0; j < nJoints; j++)
+                        {
+                            pose.JointLocalPositions[j] = new float3(
+                                positionsSpan[j * 3],
+                                positionsSpan[j * 3 + 1],
+                                positionsSpan[j * 3 + 2]
+                            );
+                        }
+
+                        // --- Read JointLocalRotations ---
+                        reader.Read(quaternionBuffer, 0, quaternionBufferSize);
+                        Span<float> rotationsSpan = MemoryMarshal.Cast<byte, float>(quaternionBuffer);
+                        pose.JointLocalRotations = new quaternion[nJoints];
+                        for (int j = 0; j < nJoints; j++)
+                        {
+                            pose.JointLocalRotations[j] = new quaternion(
+                                rotationsSpan[j * 4],
+                                rotationsSpan[j * 4 + 1],
+                                rotationsSpan[j * 4 + 2],
+                                rotationsSpan[j * 4 + 3]
+                            );
+                        }
+
+                        // --- Read JointLocalVelocities ---
+                        reader.Read(float3Buffer, 0, float3BufferSize);
+                        Span<float> velocitiesSpan = MemoryMarshal.Cast<byte, float>(float3Buffer);
+                        pose.JointLocalVelocities = new float3[nJoints];
+                        for (int j = 0; j < nJoints; j++)
+                        {
+                            pose.JointLocalVelocities[j] = new float3(
+                                velocitiesSpan[j * 3],
+                                velocitiesSpan[j * 3 + 1],
+                                velocitiesSpan[j * 3 + 2]
+                            );
+                        }
+
+                        // --- Read JointLocalAngularVelocities ---
+                        reader.Read(float3Buffer, 0, float3BufferSize);
+                        Span<float> angularVelocitiesSpan = MemoryMarshal.Cast<byte, float>(float3Buffer);
+                        pose.JointLocalAngularVelocities = new float3[nJoints];
+                        for (int j = 0; j < nJoints; j++)
+                        {
+                            pose.JointLocalAngularVelocities[j] = new float3(
+                                angularVelocitiesSpan[j * 3],
+                                angularVelocitiesSpan[j * 3 + 1],
+                                angularVelocitiesSpan[j * 3 + 2]
+                            );
+                        }
+
+                        // --- Read contact flags ---
+                        pose.LeftFootContact = reader.ReadUInt32() == 1u;
+                        pose.RightFootContact = reader.ReadUInt32() == 1u;
+
+                        poseSet.AddClip(pose);
+                    }
+
+                    for (int i = 0; i < nTags; i++)
+                    {
+                        string name = reader.ReadString();
+                        int nRanges = (int)reader.ReadUInt32();
+                        List<int> tagStarts = new List<int>(nRanges);
+                        List<int> tagEnds = new List<int>(nRanges);
+                        for (int r = 0; r < nRanges; r++)
+                        {
+                            tagStarts.Add((int)reader.ReadUInt32());
+                            tagEnds.Add((int)reader.ReadUInt32());
+                        }
+                        poseSet.AddTagDeserialized(name, tagStarts, tagEnds);
+                    }
+                    poseSet.ConvertTagsToNativeArrays();
                 }
             }
-            else return false;
-
             return true;
         }
     }
