@@ -117,7 +117,7 @@ namespace MotionMatching
             {
                 float[] newWeights = new float[numberFeatures];
                 for (int i = 0; i < newWeights.Length; ++i) newWeights[i] = 1.0f;
-                for (int i = 0; i < Mathf.Min(FeatureWeights.Length, newWeights.Length); i++) newWeights[i] = FeatureWeights[i];
+                for (int i = 0; i < Mathf.Min(FeatureWeights?.Length ?? 0, newWeights.Length); i++) newWeights[i] = FeatureWeights[i];
                 FeatureWeights = newWeights;
             }
             FeaturesWeightsNativeArray = new NativeArray<float>(FeatureSet.FeatureSize, Allocator.Persistent);
